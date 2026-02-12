@@ -1,0 +1,22 @@
+cd my-app
+npm start
+
+//paste in cmd
+
+
+------------------------------------------------------
+Lucide React (它的图标全是这种简约的线条风格)。 lib 图标
+npm install lucide-react
+
+代码示例：
+你可以直接在你的 grid-menu 中这样使用：
+
+JavaScript
+import { FileText, Car, Users } from 'lucide-react'; // 导入线框图标
+
+// 在你的 menuItems 数组中使用组件
+{ label: 'Meeting Room', icon: <FileText size={24} color="#333" /> }
+
+-------------------------------------------
+
+transport page bookingStatus === 1 view design booking, 2= empty
