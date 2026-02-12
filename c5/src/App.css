@@ -1,0 +1,486 @@
+/* --- 顶部欢迎栏样式优化 --- */
+.welcome-bar {
+  background-color: #2b1d62; 
+  height: 8vh; /* 保持 10vh 高度 */
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px; 
+  color: white;
+  z-index: 100;
+}
+
+.welcome-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px; /* 控制 Scan 和 Bell 之间的间距 */
+  margin-right: 7%;
+}
+
+.welcome-label {
+  font-size: 14px;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.welcome-name {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* 确保图标有足够的显示空间 */
+.icon-wrapper, .bell-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  position: relative;
+}
+
+.bell-container {
+  /* 确保容器不会剪裁掉红点 */
+  overflow: visible; 
+}
+
+.bell-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background-color: #ff4d4f; 
+  border-radius: 50%;
+  border: 2px solid #2b1d62; /* 强化红点边缘，使其更显眼 */
+  z-index: 10;
+}
+
+/* 调整后的背景区，确保总比例为 50/50 */
+.hero-header {
+  height: 40vh; 
+  background-image: url('../public/icon_img/background.png'); 
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 之前其他的 CSS 保持不变 */
+.mobile-app {
+  max-width: 480px;
+  margin: 0 auto;
+  background: #ffffff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hero-content h1 {
+  color: white;
+  font-size: 30px;
+  text-align: center;
+  font-weight: 600;
+}
+/* ... 滚动条和网格菜单的样式 ... */
+.warning-container {
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  padding: 10px 0;
+  display: flex;       /* 使用 Flex 让图标和文字并排 */
+  align-items: center;
+  overflow: hidden;    /* 隐藏溢出内容 */
+}
+
+.fixed-calendar-icon {
+  padding: 0 10px;
+  background: #f8f9fa; /* 背景色遮盖滚动过来的文字 */
+  z-index: 2;          /* 确保图标在文字上方 */
+  color: #555;
+  display: flex;
+  align-items: center;
+}
+
+.marquee-wrapper {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+}
+
+.scrolling-text {
+  display: flex;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: bold;
+  color: #555;
+  /* 调整时间可以改变速度，10s 比较平滑 */
+  animation: scroll-left 10s linear infinite; 
+}
+
+/* 无缝衔接的关键：从 0 移动到 -50% */
+@keyframes scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.grid-menu {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px 10px;
+  padding: 20px 15px;
+  flex: 1;           /* 自动占满剩下的空间 */
+  overflow-y: auto;  /* 如果图标太多，可以在下半部分滚动 */
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.link-item {
+  text-decoration: none;
+  color: inherit;
+}
+
+.icon-container {
+  position: relative;
+  width: 45px;
+  height: 45px;
+  margin-bottom: 8px;
+}
+
+.icon-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.label {
+  font-size: 10px;
+  color: #333;
+}
+
+.badge {
+  position: absolute;
+  top: -5px;
+  right: -8px;
+  background: #ff4d4f;
+  color: white;
+  font-size: 8px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0 20px;
+  border-top: 1px solid #eee;
+  background: white;
+  position: sticky;
+  bottom: 0;
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #8c8c8c;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.nav-item img {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 4px;
+  opacity: 0.5;
+}
+
+.nav-item.active {
+  color: #1890ff;
+}
+
+.nav-item.active img {
+  opacity: 1;
+}
+
+/* --- 扫描页面容器 --- */
+.scan-page-container {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #000; /* 模拟摄像头关闭时的黑色背景 */
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+}
+
+.scan-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+.scan-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.scan-back-btn, .scan-action-btn {
+  background: none;
+  border: none;
+  padding: 10px;
+  cursor: pointer;
+}
+
+/* --- 扫描框区域 --- */
+.scan-viewfinder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.viewfinder-box {
+  width: 260px;
+  height: 260px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+/* 四个角设计 */
+.corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #1a73e8; /* 扫描框颜色 */
+}
+.top-left { top: -2px; left: -2px; border-right: none; border-bottom: none; }
+.top-right { top: -2px; right: -2px; border-left: none; border-bottom: none; }
+.bottom-left { bottom: -2px; left: -2px; border-right: none; border-top: none; }
+.bottom-right { bottom: -2px; right: -2px; border-left: none; border-top: none; }
+
+/* 扫描线动画 */
+.scan-line {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, #1a73e8, transparent);
+  box-shadow: 0 0 8px #1a73e8;
+  animation: scanMove 3s infinite linear;
+}
+
+@keyframes scanMove {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+.scan-tip {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  margin-top: 30px;
+}
+
+/* --- 扫描底部栏 --- */
+.scan-footer {
+  height: 120px;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-bottom: 20px;
+}
+
+.footer-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-size: 12px;
+}
+
+.action-icon-circle {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 让视频流铺满全屏背景 */
+.camera-video-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 类似 background-size: cover */
+  z-index: 1;
+}
+
+/* UI 覆盖层，放在视频上面 */
+.scan-overlay-ui {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2); /* 给视频加一层淡淡的遮罩，让 UI 更清晰 */
+}
+
+/* 之前定义的动画和扫描框保持不变，只需确保 z-index 正确 */
+.scan-viewfinder { flex: 1; display: flex; align-items: center; justify-content: center; }
+.viewfinder-box { border: 1px solid rgba(255, 255, 255, 0.3); }
+
+/* --- ChatBot 悬浮球 --- */
+.chatbot-float-btn {
+  position: fixed;
+  width: 60px;
+  height: 60px;
+  background: #2b1d62;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: grab;
+  z-index: 10000;
+  color: white;
+  touch-action: none; /* 防止拖动时页面滚动 */
+}
+
+.chatbot-float-btn span {
+  font-size: 8px;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+/* --- 聊天窗口 --- */
+.chat-window-overlay {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 320px;
+  height: 450px;
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  z-index: 10001;
+  overflow: hidden;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chat-header {
+  background: #2b1d62;
+  color: white;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.chat-messages {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f9f9f9;
+}
+
+.message {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.message.bot {
+  background: #eee;
+  align-self: flex-start;
+  color: #333;
+}
+
+.message.user {
+  background: #2b1d62;
+  color: white;
+  align-self: flex-end;
+}
+
+.chat-input-area {
+  padding: 10px;
+  border-top: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-input-area input {
+  flex: 1;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  padding: 8px 15px;
+  outline: none;
+}
+
+.mic-btn, .send-btn {
+  background: none;
+  border: none;
+  color: #2b1d62;
+  cursor: pointer;
+}
+
+.mic-btn.listening {
+  color: #ff4d4f;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* --- 扫描页面容器适配 --- */
+.scan-page-container {
+  position: absolute; /* 从 fixed 改为 absolute */
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%; /* 与手机容器高度一致 */
+  background-color: #000;
+  z-index: 50; /* 低于 ChatBot，但高于主内容 */
+  display: flex;
+  flex-direction: column;
+}

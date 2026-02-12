@@ -1,0 +1,716 @@
+/* 基础布局容器 */
+.transport-container {
+  background-color: #ffffff;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 顶部导航：沿用 MeetingRoom 的深色调 */
+.transport-top-nav {
+  background-color: #2b1d62;
+  color: #ffffff;
+  height: 7vh;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  flex-shrink: 0;
+}
+
+.back-arrow {
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.nav-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-left: 10px;
+}
+
+/* 主内容区布局 */
+.transport-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: #fafafa;
+}
+
+/* Tab 切换逻辑：靠左对齐的关键 */
+.transport-tabs-container {
+  padding: 15px 20px;
+  display: flex;
+  justify-content: flex-start; /* 确保靠左 */
+}
+
+.transport-tabs-left {
+  display: flex;
+  gap: 12px;
+}
+
+.trans-tab {
+  background: none;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #a0a0a0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.trans-tab.active {
+  background-color: #2b1d62;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* 滚动区域与空状态 */
+.transport-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.transport-empty-state {
+  margin: auto; /* 水平垂直居中 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 10vh; /* 视觉补偿 */
+}
+
+.empty-img-wrapper img {
+  width: 350px; /* 适当放大图标 */
+  height: auto;
+  opacity: 0.5;
+  /*filter: grayscale(100%); /* 增加高级感 */
+  margin-bottom: 20px;
+  margin-top:50px;
+}
+
+.empty-text {
+  color: #999;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 底部操作按钮 */
+.transport-action-footer {
+  padding: 15px;
+  background-color: #ffffff;
+  border-top: 1px solid #eeeeee;
+
+  /* 关键修改：启用 Flex 并设置水平居中 */
+  display: flex;
+  justify-content: center; 
+  align-items: center;
+}
+
+.new-booking-btn {
+  width: 80%;
+  height: 50px;
+  background-color: #2b1d62;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease; /* 顺手帮你加个点击过渡，更专业 */
+}
+
+.new-booking-btn:active {
+  opacity: 0.9;
+  transform: scale(0.98);
+}
+
+/* 全局底部导航栏样式 (同步 App.css) */
+.transport-bottom-nav {
+  display: flex;
+  justify-content: space-around;
+  padding: 10px 0 20px;
+  border-top: 1px solid #eee;
+  background: white;
+}
+
+.transport-bottom-nav .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #8c8c8c;
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.transport-bottom-nav .nav-item img {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 4px;
+  opacity: 0.5;
+}
+
+/* --- 预约表单视图专用 (New Booking View) --- */
+.booking-form-view {
+  padding: 20px 25px;
+  background-color: #ffffff;
+  height: 100%;
+  animation: fadeIn 0.3s ease-in-out; /* 增加一个温和的进入动画 */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-intro-text {
+  font-size: 14px;
+  color: #1a1a1a;
+  font-weight: 500;
+  margin-bottom: 25px;
+  line-height: 1.4;
+}
+
+.transport-form-group {
+  margin-bottom: 20px;
+}
+
+.transport-form-group label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+/* --- Search Van 按钮区域 --- */
+.transport-form-footer {
+  margin-top: 40px;
+  display: flex;
+  justify-content: center; /* 确保按钮在表单底部水平居中 */
+}
+
+.search-van-btn {
+  width: 90%; /* 稍微宽一点，视觉上更稳重 */
+  height: 50px;
+  background-color: #2b1d62;
+  color: #ffffff;
+  border: none;
+  border-radius: 25px; /* 严格按照图片的胶囊形状设计 */
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(43, 29, 98, 0.2); /* 增加一点点悬浮感 */
+}
+
+.search-van-btn:active {
+  transform: scale(0.96);
+  background-color: #1f1547;
+  box-shadow: 0 2px 5px rgba(43, 29, 98, 0.2);
+}
+
+/* --- 日历弹窗辅助样式 --- */
+.calendar-modal {
+  width: 85%;
+  max-width: 360px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.calendar-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: #2b1d62;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 10px;
+}
+
+/* 修正：确保星期表头能够平分宽度并居中 */
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* 严格平分为7列 */
+  width: 100%;                          /* 必须撑满父容器宽度 */
+  text-align: center;
+  font-size: 13px;                      /* 稍微调大一点，看得清楚 */
+  color: #888;                          /* 稍微加深颜色，更有质感 */
+  margin-bottom: 15px;                  /* 与下方日期保持间距 */
+  font-weight: 600;                     /* 加粗，符合 UI 规范 */
+}
+
+.weekday-row span {
+  display: block;                       /* 确保 span 表现得像个盒子 */
+}
+
+/* 别忘了日期网格也要撑满宽度，否则对不齐 */
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  width: 100%;
+  gap: 5px;
+  text-align: center;
+}
+
+/* --- 搜索结果页 (Results View) --- */
+.results-view-container {
+  background-color: #ffffff;
+  height: 100%;
+}
+
+.results-summary-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.route-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+}
+
+.time-text {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.summary-right {
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* 车辆结果卡片 */
+.results-list {
+  padding: 20px;
+}
+
+.van-result-card {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* 截图中的阴影效果 */
+  border: 1px solid #f5f5f5;
+  display: flex;
+  padding: 15px;
+  gap: 15px;
+}
+
+.van-img-box {
+  width: 100px;
+  height: 100px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.van-info-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.van-id {
+  margin: 0;
+  font-size: 16px;
+  color: #000;
+  font-weight: bold;
+}
+
+.seats-left {
+  font-size: 14px;
+  color: #333;
+  margin: 8px 0 12px 0;
+}
+
+.mini-book-btn {
+  width: 80px;
+  height: 32px;
+  background-color: #2b1d62;
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.mini-book-btn:active {
+  opacity: 0.8;
+}
+
+/* --- 预约预览弹窗 (Preview Modal) --- */
+.preview-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4); /* 半透明遮罩 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.preview-modal {
+  width: 90%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 8px; /* 较小的圆角，显得专业 */
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.preview-content-box {
+  border: 1px solid #f2f2f2; /* 浅色边框 */
+  padding: 16px;
+  border-radius: 4px;
+  margin-bottom: 24px;
+}
+
+.preview-instruction {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+
+.preview-item {
+  margin-bottom: 12px;
+}
+
+.preview-item label {
+  display: block;
+  font-size: 13px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.preview-value {
+  font-size: 14px;
+  font-weight: 700; /* 截图中的加粗值 */
+  color: #333;
+}
+
+.preview-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.preview-item.half {
+  flex: 1;
+}
+
+.preview-warning {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.4;
+  margin-top: 16px;
+}
+
+/* --- 底部按钮设计 --- */
+.preview-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.preview-cancel-btn {
+  flex: 1;
+  height: 42px;
+  background: transparent;
+  border: 1px solid #2b1d62; /* 深蓝色边框 */
+  color: #2b1d62;
+  border-radius: 21px; /* 胶囊形状 */
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.preview-cancel-btn:hover {
+  background: #f5f5f5;
+}
+
+.preview-confirm-btn {
+  flex: 1;
+  height: 42px;
+  background: #2b1d62; /* 深蓝色背景 */
+  border: none;
+  color: #ffffff;
+  border-radius: 21px; /* 胶囊形状 */
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.preview-confirm-btn:hover {
+  opacity: 0.9;
+}
+
+.preview-confirm-btn:active {
+  transform: scale(0.98);
+}
+
+/* --- 成功确认视图特有样式 --- */
+.status-section {
+  margin-top: 15px;
+  border-top: 1px dashed #eee;
+  padding-top: 15px;
+  text-align: left;
+}
+
+.status-approved {
+  font-size: 15px;
+  font-weight: 700;
+  color: #27ae60; /* 截图中的 Approved 绿色 */
+  margin-top: 5px;
+}
+
+.scan-instruction {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a73e8; /* 蓝色扫描提醒 */
+  margin-top: 8px;
+}
+
+/* 确认后的全宽 Close 按钮 */
+.confirm-close-btn {
+  width: 100%;
+  height: 42px;
+  background: #ffffff;
+  border: 1.5px solid #2b1d62;
+  color: #2b1d62;
+  border-radius: 21px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-close-btn:active {
+  background: #f0f0f5;
+}
+
+/* --- 有 Booking 时的列表样式 (image_65501e.png) --- */
+.my-bookings-container {
+  padding: 15px 20px;
+}
+
+.my-bookings-header {
+  background-color: #e3f2fd; /* 浅蓝色背景 */
+  padding: 12px 15px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.booking-card {
+  background-color: #ffffff;
+  padding: 18px;
+  border-radius: 0 0 12px 12px; /* 底部圆角 */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  margin-bottom: 20px;
+  border: 1px solid #f0f0f0;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.van-id {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+}
+
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #666;
+}
+
+.info-row span {
+  font-weight: 500;
+}
+
+/* --- My Bookings 列表样式 (还原 image_65501e) --- */
+.bookings-list-view {
+  padding: 0 15px;
+}
+
+.my-bookings-header {
+  background-color: #e3f2fd; /* 浅蓝色块 */
+  padding: 12px 18px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px; /* 与卡片分开 */
+}
+
+.booking-card {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f0f0f0;
+  position: relative;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.van-id { font-size: 16px; font-weight: 700; color: #333; }
+
+/* 三点菜单逻辑 */
+.more-options-wrapper { position: relative; }
+.more-btn { background: none; border: none; padding: 5px; cursor: pointer; }
+
+.card-dropdown {
+  position: absolute;
+  top: 30px;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  z-index: 50;
+  width: 140px;
+  border: 1px solid #eee;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+}
+
+.dropdown-item.delete { color: #ff4d4f; border-top: 1px solid #eee; }
+
+.card-info { display: flex; flex-direction: column; gap: 10px; }
+.info-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #666; }
+
+/* --- 时刻表样式 (还原 image_656ec0) --- */
+.timetable-view { padding: 20px; }
+.timetable-header { font-size: 13px; font-weight: 600; margin-bottom: 15px; color: #333; }
+
+.timetable-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border: 1px solid #eee;
+  font-size: 12px;
+}
+
+.timetable-table th, .timetable-table td {
+  border: 1px solid #ddd;
+  padding: 12px 10px;
+  text-align: left;
+}
+
+.timetable-table th { background: #f8f9fa; color: #333; }
+.timetable-table td { color: #555; line-height: 1.5; }
+
+/* 锁定过去日期的样式 */
+.calendar-day.past-day {
+  color: #d1d1d1 !important;
+  cursor: not-allowed !important;
+  pointer-events: none; /* 彻底禁止点击事件 */
+}
+
+/* 即使悬停也不产生效果 */
+.calendar-day.past-day:hover {
+  background-color: transparent !important;
+}
+
+/* 按钮禁用状态的视觉反馈 */
+.search-van-btn:disabled {
+  background-color: #cccccc !important;
+  cursor: not-allowed;
+}
+/* Track Ride 专属样式 */
+.track-modal {
+  max-width: 340px;
+}
+
+.van-badge {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 0;
+  border-bottom: 1px dashed #eee;
+}
+
+.van-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.plate-no {
+  font-size: 18px;
+  font-weight: 800;
+  color: #2b1d62;
+}
+
+.status-tag {
+  font-size: 12px;
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.track-content {
+  text-align: left;
+}
