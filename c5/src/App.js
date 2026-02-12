@@ -2,29 +2,26 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Calendar, Scan, Bell, ChevronLeft, 
-  Zap, Image as ImageIcon, Bot, Mic, Send, X 
+  Zap, Image as ImageIcon, Bot, Send, X 
 } from 'lucide-react';
 import MeetingRoom from './MeetingRoom';
 import Transport from './Transport';
-import EVisitor from './EVisitor'; // 新增导入
+import EVisitor from './EVisitor'; 
+import Ticketing from './Ticketing';
 import './App.css';
 
-// --- 1. 全局 ChatBot 组件 (支持容器内拖拽、点击判定、快捷键) ---
+// --- 1. 全局 ChatBot 组件 ---
 const ChatBot = ({ containerRef }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { id: 1, type: 'bot', text: 'Hi! I am your AI assistant. How can I help you today?' }
+    { id: 1, type: 'bot', text: 'Hi! I am your assistant. How can I help you today?' }
   ]);
   const [inputValue, setInputValue] = useState('');
-  
-  // 初始位置设定
   const [position, setPosition] = useState({ x: 380, y: 550 }); 
   const [isDragging, setIsDragging] = useState(false);
-  
   const startPosRef = useRef({ x: 0, y: 0 }); 
   const offsetRef = useRef({ x: 0, y: 0 });
 
-  // 电脑调试快捷键：按 B 开关
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key.toLowerCase() === 'b' && e.target.tagName !== 'INPUT') {
@@ -48,8 +45,6 @@ const ChatBot = ({ containerRef }) => {
     const clientX = e.clientX || e.touches?.[0].clientX;
     const clientY = e.clientY || e.touches?.[0].clientY;
     const rect = containerRef.current.getBoundingClientRect();
-
-    // 限制在手机模拟框内
     const newX = Math.min(Math.max(10, clientX - offsetRef.current.x), rect.width - 70);
     const newY = Math.min(Math.max(10, clientY - offsetRef.current.y), rect.height - 70);
     setPosition({ x: newX, y: newY });
@@ -58,34 +53,28 @@ const ChatBot = ({ containerRef }) => {
   const handleEnd = () => setIsDragging(false);
 
   const handleBotClick = (e) => {
-    const distance = Math.sqrt(
-      Math.pow(e.clientX - startPosRef.current.x, 2) + 
-      Math.pow(e.clientY - startPosRef.current.y, 2)
-    );
-    // 判定为点击而非拖拽
+    const distance = Math.sqrt(Math.pow(e.clientX - startPosRef.current.x, 2) + Math.pow(e.clientY - startPosRef.current.y, 2));
     if (distance < 5) setIsOpen(!isOpen);
   };
 
-  const handleSend = (text) => {
-    const msg = text || inputValue;
-    if (!msg.trim()) return;
-    setMessages(prev => [...prev, { id: Date.now(), type: 'user', text: msg }]);
+  const handleSend = () => {
+    if (!inputValue.trim()) return;
+    setMessages([...messages, { id: Date.now(), type: 'user', text: inputValue }]);
     setInputValue('');
     setTimeout(() => {
-      setMessages(prev => [...prev, { id: Date.now() + 1, type: 'bot', text: "I'm here to help with your bookings! ✅" }]);
+      setMessages(prev => [...prev, { id: Date.now() + 1, type: 'bot', text: "I've received your request! ✅" }]);
     }, 800);
   };
 
   return (
     <>
       <div className="chatbot-float-btn"
-        style={{ position: 'absolute', left: `${position.x}px`, top: `${position.y}px`, zIndex: 9999, cursor: isDragging ? 'grabbing' : 'pointer' }}
+        style={{ position: 'absolute', left: `${position.x}px`, top: `${position.y}px`, zIndex: 9999 }}
         onMouseDown={handleStart} onTouchStart={handleStart}
         onMouseMove={handleMove} onTouchMove={handleMove}
         onMouseUp={handleEnd} onTouchEnd={handleEnd}
         onClick={handleBotClick}>
         <Bot size={28} color="white" />
-        <span style={{ fontSize: '7px' }}>Press 'B'</span>
       </div>
       {isOpen && (
         <div className="chat-window-overlay" style={{ position: 'absolute', zIndex: 10000 }}>
@@ -93,15 +82,13 @@ const ChatBot = ({ containerRef }) => {
             <div className="header-info"><Bot size={18} /> <span>Smart Bot</span></div>
             <X size={20} onClick={() => setIsOpen(false)} style={{cursor:'pointer'}} />
           </div>
-          <div className="chat-messages">
-            {messages.map(m => (
-              <div key={m.id} className={`message ${m.type}`}>{m.text}</div>
-            ))}
-          </div>
+          <div className="chat-messages">{messages.map(m => (
+            <div key={m.id} className={`message ${m.type}`}>{m.text}</div>
+          ))}</div>
           <div className="chat-input-area">
             <input value={inputValue} onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Type or press B..." onKeyPress={(e) => e.key === 'Enter' && handleSend()} autoFocus />
-            <button className="send-btn" onClick={() => handleSend()}><Send size={20} /></button>
+              placeholder="Type message..." onKeyPress={(e) => e.key === 'Enter' && handleSend()} autoFocus />
+            <button className="send-btn" onClick={handleSend}><Send size={20} /></button>
           </div>
         </div>
       )}
@@ -109,7 +96,7 @@ const ChatBot = ({ containerRef }) => {
   );
 };
 
-// --- 2. 扫描页面 ---
+// --- 2. 扫描页面 (适配容器大小) ---
 const ScanPage = () => {
   const navigate = useNavigate();
   const videoRef = useRef(null);
@@ -154,7 +141,7 @@ const Home = () => {
     { label: 'Meeting Room', icon: 'meeting room.png', path: '/meeting-room', badge: '1' },
     { label: 'Transport', icon: 'transportation.png', path: '/transport' },
     { label: 'e-Visitor', icon: 'evisitor.png', path: '/evisitor' },
-    { label: 'Ticketing', icon: 'ticketing.png' },
+    { label: 'Ticketing', icon: 'ticketing.png', path: '/ticketing' },
     { label: 'CHART', icon: 'chart.png' },
     { label: 'Wellness', icon: 'wellness.png' },
     { label: 'Meal', icon: 'meal.png' },
@@ -183,7 +170,6 @@ const Home = () => {
         <div className="marquee-wrapper">
           <div className="scrolling-text">
             <span>LIVE/PRODUCTION ENVIRONMENT. USE WITH CAUTION. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
-            <span>LIVE/PRODUCTION ENVIRONMENT. USE WITH CAUTION. &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
           </div>
         </div>
       </div>
@@ -205,7 +191,6 @@ const Home = () => {
 // --- 4. 根组件 ---
 function App() {
   const appRef = useRef(null); 
-
   return (
     <Router>
       <div className="mobile-app" ref={appRef} style={{ position: 'relative' }}>
@@ -214,9 +199,9 @@ function App() {
           <Route path="/meeting-room" element={<MeetingRoom />} />
           <Route path="/transport" element={<Transport />} />
           <Route path="/evisitor" element={<EVisitor />} />
+          <Route path="/ticketing" element={<Ticketing />} /> {/* 新增路由 */}
           <Route path="/scan" element={<ScanPage />} />
         </Routes>
-        
         <FooterWithConditionalRendering />
         <ChatBot containerRef={appRef} />
       </div>
@@ -226,9 +211,8 @@ function App() {
 
 const FooterWithConditionalRendering = () => {
   const location = useLocation();
-  const hideFooterOn = ['/scan', '/evisitor']; // 这些页面不显示底部导航
-  if (hideFooterOn.includes(location.pathname)) return null;
-
+  // 仅在扫描页隐藏底部导航，eVisitor 现在会显示底部栏
+  if (location.pathname === '/scan') return null;
   return (
     <footer className="bottom-nav">
       <Link to="/" className={`nav-item ${location.pathname === '/' ? 'active' : ''}`}>
