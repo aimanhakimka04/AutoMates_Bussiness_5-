@@ -8,6 +8,9 @@ import MeetingRoom from './MeetingRoom';
 import Transport from './Transport';
 import EVisitor from './EVisitor'; 
 import Ticketing from './Ticketing';
+import Chart from './Chart';
+import Wellness from './Wellness';
+
 import './App.css';
 
 // --- 1. 全局 ChatBot 组件 ---
@@ -142,8 +145,8 @@ const Home = () => {
     { label: 'Transport', icon: 'transportation.png', path: '/transport' },
     { label: 'e-Visitor', icon: 'evisitor.png', path: '/evisitor' },
     { label: 'Ticketing', icon: 'ticketing.png', path: '/ticketing' },
-    { label: 'CHART', icon: 'chart.png' },
-    { label: 'Wellness', icon: 'wellness.png' },
+    { label: 'CHART', icon: 'chart.png', path: '/chart'  },
+    { label: 'Wellness', icon: 'wellness.png', path: '/wellness' },
     { label: 'Meal', icon: 'meal.png' },
     { label: 'Energy', icon: 'energy.png' },
     { label: 'flexHR', icon: 'flexhr.png' },
@@ -200,6 +203,8 @@ function App() {
           <Route path="/transport" element={<Transport />} />
           <Route path="/evisitor" element={<EVisitor />} />
           <Route path="/ticketing" element={<Ticketing />} /> {/* 新增路由 */}
+          <Route path="/chart" element={<Chart />} /> {/* 新增路由 */}
+          <Route path="/wellness" element={<Wellness />} /> {/* 新增路由 */}
           <Route path="/scan" element={<ScanPage />} />
         </Routes>
         <FooterWithConditionalRendering />

@@ -1,0 +1,481 @@
+/*----------------------------for container layout----------------//*/
+.chart-page-container {
+  background-color: #ffffff;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chart-top-nav {
+  background-color: #2b1d62;
+  color: #ffffff;
+  height: 7vh;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  flex-shrink: 0;
+}
+
+.chart-top-nav .nav-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-left: 10px;
+}
+
+.chart-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+}
+/*-------------------end of container layout -------------------------//*/
+
+/*----------------------------for hero section styling----------------//*/
+.chart-hero-header {
+  background-color: #140d36; /* 保持深蓝色背景 */
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  color: white;
+  height: 30%;
+}
+
+.chart-logo-box {
+  width: 140px;
+  height: auto;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.chart-main-logo {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  margin-top: -40px;
+}
+
+.about-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  margin-top: -50px;
+}
+
+.about-desc {
+  font-size: 13px;
+  opacity: 0.9;
+  line-height: 1.5;
+  max-width: 250px;
+  margin-bottom: 20px;
+}
+
+.read-more-btn {
+  background: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 8px 30px;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+}
+/*-------------------end of hero section styling -------------------------//*/
+
+/*----------------------------for menu list styling----------------//*/
+.chart-menu-list {
+  background: white;
+}
+
+.chart-menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #f2f2f2;
+  cursor: pointer;
+}
+
+.menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.menu-item-left span {
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+}
+/*-------------------end of menu list styling -------------------------//*/
+
+/*----------------------------for important note styling----------------//*/
+.important-note-box {
+  background-color: #f1fbe9; /* 截图中的浅黄绿色 */
+  margin: 20px;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.note-header {
+  font-size: 14px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.note-body {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.note-body p {
+  font-size: 12px;
+  color: #555;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.note-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+/*-------------------end of important note styling -------------------------//*/
+
+/*----------------------------for subpage layout----------------//*/
+.chart-subpage-view {
+  padding: 20px;
+}
+
+.empty-sub-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 50px;
+  color: #999;
+  text-align: center;
+}
+
+.empty-sub-content img {
+  width: 200px;
+  opacity: 0.6;
+  margin-bottom: 15px;
+}
+/*-------------------end of subpage layout -------------------------//*/
+
+/*----------------------------for subpage content layouts----------------//*/
+.chart-subpage-view {
+  padding: 15px;
+  background-color: #f8f9fa;
+  min-height: 100%;
+}
+
+.section-title {
+  font-size: 16px;
+  color: #2b1d62;
+  margin-bottom: 15px;
+  font-weight: 700;
+}
+
+/* Learning Calendar 样式 */
+.calendar-mock-container {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  margin-bottom: 20px;
+}
+.calendar-header { text-align: center; font-weight: bold; margin-bottom: 15px; color: #333; }
+.calendar-grid-mock {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+}
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 4px;
+  background: #fdfdfd;
+}
+.cal-day.has-event { background: #2b1d62; color: white; font-weight: bold; }
+
+.program-list-card {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border-left: 4px solid #2b1d62;
+}
+.p-info h5 { margin: 0 0 4px 0; font-size: 14px; }
+.p-info span { font-size: 11px; color: #888; }
+
+/* Upcoming Trainings 样式 */
+.upcoming-detail-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+.status-badge { background: #e3f2fd; color: #1976d2; padding: 4px 10px; border-radius: 15px; font-size: 11px; font-weight: bold; }
+.detail-row { display: flex; align-items: center; gap: 10px; color: #666; font-size: 13px; margin-bottom: 10px; }
+
+/* Learning Programs 样式 */
+.available-program-card {
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+.signup-btn {
+  background-color: #2b1d62;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* My Learning Request Form 样式 */
+.request-form-container { background: white; padding: 20px; border-radius: 12px; }
+.form-hint { font-size: 12px; color: #888; margin-bottom: 20px; }
+.c-form-group { margin-bottom: 15px; }
+.c-form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.c-form-group input, .c-form-group textarea {
+  width: 80%;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 14px;
+  outline: none;
+}
+.submit-request-btn {
+  width: 100%;
+  padding: 12px;
+  background-color: #2b1d62;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-weight: bold;
+  margin-top: 10px;
+}
+/*-------------------end of subpage content layouts -------------------------//*/
+
+/*----------------------------for calendar navigation styling----------------//*/
+.calendar-month-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.current-month-label {
+  font-weight: 800;
+  font-size: 16px;
+  color: #2b1d62;
+}
+
+.calendar-month-nav button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 5px;
+}
+/*-------------------end of calendar navigation styling -------------------------//*/
+
+/*----------------------------for modal and dialog styling----------------//*/
+.chart-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.chart-detail-modal {
+  background: white;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 15px;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+  padding: 15px 20px;
+  background: #2b1d62;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 { font-size: 16px; margin: 0; }
+
+.modal-body { padding: 20px; }
+.modal-title { margin: 0 0 10px 0; font-size: 18px; color: #333; }
+.modal-desc { font-size: 13px; color: #666; line-height: 1.5; margin-bottom: 20px; }
+
+.modal-meta { display: flex; flex-direction: column; gap: 8px; }
+.meta-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #888; }
+
+.modal-signup-btn {
+  width: 100%;
+  padding: 15px;
+  background: #2b1d62;
+  color: white;
+  border: none;
+  font-weight: bold;
+}
+
+/* 二次确认框 */
+.confirm-dialog {
+  background: white;
+  padding: 30px 20px;
+  border-radius: 12px;
+  text-align: center;
+  width: 85%;
+  max-width: 300px;
+}
+
+.confirm-dialog h3 { margin: 15px 0 10px; font-size: 18px; }
+.confirm-dialog p { font-size: 13px; color: #777; margin-bottom: 25px; }
+
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 25px;
+  border: none;
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.cancel-btn { background: #f5f5f5; color: #666; }
+.confirm-btn { background: #2b1d62; color: white; }
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.view-detail-link { font-size: 11px; color: #2b1d62; text-decoration: underline; margin-left: 5px; cursor: pointer; }
+/*-------------------end of modal and dialog styling -------------------------//*/
+
+/*----------------------------for calendar and timeline styling----------------//*/
+.cal-section { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.calendar-grid-mock { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; margin-top: 10px; }
+
+.cal-day {
+  height: 40px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: 13px; position: relative; cursor: pointer; border-radius: 6px;
+}
+.cal-day.has-event { font-weight: bold; color: #2b1d62; }
+.cal-day.selected { background-color: #f0f7ff; border: 1px solid #2b1d62; }
+.event-dot { width: 4px; height: 4px; background: #00a8ff; border-radius: 50%; position: absolute; bottom: 4px; }
+
+.registered-hints { background: white; padding: 15px; border-radius: 12px; margin-top: 15px; }
+.hint-item { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #555; margin-bottom: 8px; }
+
+/* Timeline 容器 */
+.timeline-container {
+  height: 400px; overflow-y: auto; background: white; border-radius: 12px; padding: 10px;
+  border: 1px solid #eee; position: relative;
+}
+.timeline-grid { position: relative; height: 1440px; /* 24小时 * 60px */ }
+.timeline-hour-row { height: 60px; border-top: 1px solid #f0f0f0; display: flex; align-items: flex-start; }
+.hour-label { width: 50px; font-size: 10px; color: #999; margin-top: -6px; }
+.hour-line { flex: 1; height: 1px; }
+
+.timeline-event-block {
+  position: absolute; left: 60px; right: 10px; background: rgba(0, 168, 255, 0.15);
+  border-left: 4px solid #00a8ff; border-radius: 4px; padding: 8px; cursor: pointer;
+}
+.block-title { display: block; font-size: 12px; font-weight: bold; color: #2b1d62; }
+.block-time { font-size: 10px; color: #666; }
+
+/*----------------------------for training card and form styling----------------//*/
+.training-detail-card {
+  background: white; padding: 15px; border-radius: 12px; margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05); cursor: pointer;
+}
+.card-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.s-badge { background: #e3f2fd; color: #1976d2; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; }
+.card-info-row { display: flex; align-items: center; gap: 10px; font-size: 12px; color: #666; margin-bottom: 6px; }
+
+.request-form-card { background: white; padding: 20px; border-radius: 12px; }
+.c-input { width: 95%; height: 40px; border: 1px solid #ddd; border-radius: 6px; padding: 0 10px; margin-top: 5px; outline: none; }
+.submit-req-btn { width: 100%; height: 45px; background: #140d36; color: white; border-radius: 22px; margin-top: 20px; font-weight: bold; }
+
+/*----------------------------for details modal styling----------------//*/
+.chart-modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px;
+}
+.event-detail-modal { background: white; border-radius: 15px; width: 100%; max-width: 340px; overflow: hidden; }
+.modal-top { background: #2b1d62; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+.modal-main { padding: 20px; }
+.m-title { font-size: 20px; margin-bottom: 15px; color: #333; }
+.m-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; color: #666; }
+.m-desc-box { margin-top: 20px; border-top: 1px solid #eee; paddingTop: 15px; }
+.m-close-btn { width: 100%; padding: 15px; background: #eee; border: none; font-weight: bold; cursor: pointer; }
+
+/*----------------------------for about and confirm modals----------------//*/
+.about-modal .modal-main p {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+.confirm-dialog {
+  background: white;
+  padding: 30px 20px;
+  border-radius: 12px;
+  text-align: center;
+  width: 85%;
+  max-width: 320px;
+  animation: slideUp 0.3s ease;
+}
+
+.confirm-dialog h3 { margin: 15px 0 10px; font-size: 18px; }
+.confirm-dialog p { font-size: 13px; color: #777; margin-bottom: 25px; }
+
+.confirm-actions { display: flex; gap: 10px; }
+.confirm-actions button {
+  flex: 1;
+  padding: 12px;
+  border-radius: 25px;
+  border: none;
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.cancel-btn { background: #f5f5f5; color: #666; }
+.confirm-btn { background: #2b1d62; color: white; }
+
+/* 修复 Learning Program 列表样式 */
+.view-detail-link { 
+  font-size: 11px; 
+  color: #2b1d62; 
+  text-decoration: underline; 
+  cursor: pointer; 
+}
+/*-------------------end of modal styling -------------------------//*/
