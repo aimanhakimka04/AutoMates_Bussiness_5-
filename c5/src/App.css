@@ -1,36 +1,62 @@
-/* --- 顶部欢迎栏样式优化 --- */
-.welcome-bar {
-  background-color: #2b1d62; 
-  height: 8vh; /* 保持 10vh 高度 */
-  width: 100%;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px; 
-  color: white;
-  z-index: 100;
+/* ===== 全局重置 ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-.welcome-icons {
+/* ===== 手机容器 ===== */
+.mobile-app {
+  max-width: 480px;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #ffffff;
+  overflow: hidden; /* 防止外层滚动 */
+}
+
+/* ===== 固定顶部栏 ===== */
+.welcome-bar-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  height: 80px;
+  background-color: #2b1d62;
   display: flex;
   align-items: center;
-  gap: 20px; /* 控制 Scan 和 Bell 之间的间距 */
-  margin-right: 7%;
+  justify-content: space-between;
+  padding: 0 20px;
+  color: white;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.welcome-text {
+  display: flex;
+  flex-direction: column;
 }
 
 .welcome-label {
   font-size: 14px;
   opacity: 0.8;
-  margin: 0;
 }
 
 .welcome-name {
   font-size: 18px;
   font-weight: 600;
-  margin: 0;
 }
 
-/* 确保图标有足够的显示空间 */
+.welcome-icons {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .icon-wrapper, .bell-container {
   display: flex;
   align-items: center;
@@ -38,11 +64,11 @@
   width: 25px;
   height: 25px;
   position: relative;
+  cursor: pointer;
 }
 
 .bell-container {
-  /* 确保容器不会剪裁掉红点 */
-  overflow: visible; 
+  overflow: visible;
 }
 
 .bell-dot {
@@ -51,57 +77,171 @@
   right: 2px;
   width: 8px;
   height: 8px;
-  background-color: #ff4d4f; 
+  background-color: #ff4d4f;
   border-radius: 50%;
-  border: 2px solid #2b1d62; /* 强化红点边缘，使其更显眼 */
+  border: 2px solid #2b1d62;
   z-index: 10;
 }
 
-/* 调整后的背景区，确保总比例为 50/50 */
+/* ===== 固定底部栏 ===== */
+.bottom-nav-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  height: 75px;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid #eee;
+  z-index: 1000;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #8c8c8c;
+  font-size: 10px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.nav-item.active {
+  color: #1890ff;
+}
+
+/* ===== 页面内容容器（自动避开底部栏，动态控制顶部内边距）===== */
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 75px; /* 与底部栏高度一致 */
+  box-sizing: border-box;
+  height: 100%;
+  background: #ffffff;
+  /* padding-top 由内联样式动态控制 */
+}
+
+/* ===== 认证页面样式（全屏居中）===== */
+.auth-container {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f7f9fc 0%, #e3f2fd 100%);
+  padding: 20px;
+}
+
+.auth-card {
+  background: white;
+  width: 100%;
+  max-width: 360px;
+  padding: 35px 25px;
+  border-radius: 24px;
+  box-shadow: 0 15px 35px rgba(43, 29, 98, 0.1);
+  text-align: center;
+}
+
+.auth-card h2 {
+  color: #2b1d62;
+  font-size: 24px;
+  margin-bottom: 8px;
+  font-weight: 800;
+}
+
+.auth-note {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 25px;
+  line-height: 1.5;
+  background: #fff9db;
+  padding: 10px;
+  border-radius: 8px;
+  border-left: 4px solid #f1c40f;
+}
+
+.auth-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f1f4f9;
+  padding: 14px 18px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+  transition: all 0.3s;
+}
+
+.auth-field:focus-within {
+  background: #fff;
+  box-shadow: 0 0 0 2px #2b1d62;
+}
+
+.auth-field input {
+  border: none;
+  background: transparent;
+  outline: none;
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+}
+
+.auth-btn {
+  width: 100%;
+  height: 52px;
+  background: #2b1d62;
+  color: white;
+  border: none;
+  border-radius: 26px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-top: 15px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(43, 29, 98, 0.3);
+}
+
+.auth-footer {
+  margin-top: 20px;
+  font-size: 13px;
+  color: #888;
+}
+
+.auth-footer span {
+  color: #2b1d62;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ===== 首页特有样式 ===== */
 .hero-header {
-  height: 40vh; 
-  background-image: url('../public/icon_img/background.png'); 
+  height: 55vh;
+  background-image: url('../public/icon_img/background.png');
   background-size: cover;
   background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: -30px; /* 抵消顶部栏高度，由 PageWrapper 动态控制，此处保留原逻辑 */
 }
 
-/* 之前其他的 CSS 保持不变 */
-.mobile-app {
-  max-width: 480px;
-  margin: 0 auto;
-  background: #ffffff;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.hero-content h1 {
+.hero-header h1 {
   color: white;
   font-size: 30px;
   text-align: center;
   font-weight: 600;
 }
-/* ... 滚动条和网格菜单的样式 ... */
+
 .warning-container {
   background: #f8f9fa;
   border-bottom: 1px solid #eee;
   padding: 10px 0;
-  display: flex;       /* 使用 Flex 让图标和文字并排 */
-  align-items: center;
-  overflow: hidden;    /* 隐藏溢出内容 */
-}
-
-.fixed-calendar-icon {
-  padding: 0 10px;
-  background: #f8f9fa; /* 背景色遮盖滚动过来的文字 */
-  z-index: 2;          /* 确保图标在文字上方 */
-  color: #555;
   display: flex;
   align-items: center;
+  overflow: hidden;
 }
 
 .marquee-wrapper {
@@ -111,32 +251,26 @@
 }
 
 .scrolling-text {
-  display: flex;
+  display: inline-block;
   white-space: nowrap;
   font-size: 11px;
   font-weight: bold;
   color: #555;
-  /* 调整时间可以改变速度，10s 比较平滑 */
-  animation: scroll-left 10s linear infinite; 
+  animation: scroll-left 10s linear infinite;
+  padding-left: 100%;
 }
 
-/* 无缝衔接的关键：从 0 移动到 -50% */
 @keyframes scroll-left {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
 }
 
+/* ===== 网格菜单 ===== */
 .grid-menu {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px 10px;
   padding: 20px 15px;
-  flex: 1;           /* 自动占满剩下的空间 */
-  overflow-y: auto;  /* 如果图标太多，可以在下半部分滚动 */
 }
 
 .menu-item {
@@ -144,9 +278,6 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-}
-
-.link-item {
   text-decoration: none;
   color: inherit;
 }
@@ -169,60 +300,122 @@
   color: #333;
 }
 
-.badge {
-  position: absolute;
-  top: -5px;
-  right: -8px;
-  background: #ff4d4f;
-  color: white;
-  font-size: 8px;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-weight: bold;
-}
-
-.bottom-nav {
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0 20px;
-  border-top: 1px solid #eee;
+/* ===== 个人中心与标签页样式 ===== */
+.tab-header {
   background: white;
-  position: sticky;
-  bottom: 0;
+  padding: 18px 20px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #2b1d62;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.nav-item {
+.tab-content-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  color: #8c8c8c;
-  font-size: 10px;
-  text-decoration: none;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  padding: 0 40px;
 }
 
-.nav-item img {
-  width: 20px;
-  height: 20px;
+.tab-content-center h3 {
+  margin: 20px 0 10px;
+  color: #333;
+}
+
+.tab-content-center p {
+  font-size: 13px;
+  color: #999;
+  line-height: 1.6;
+}
+
+.profile-section {
+  text-align: center;
+  padding: 40px 20px;
+  background: white;
+  margin-bottom: 10px;
+}
+
+.profile-avatar-box {
+  margin-bottom: 15px;
+  display: inline-block;
+  padding: 5px;
+  border: 3px solid #e3f2fd;
+  border-radius: 50%;
+}
+
+.profile-section h3 {
+  font-size: 18px;
+  color: #333;
   margin-bottom: 4px;
-  opacity: 0.5;
 }
 
-.nav-item.active {
-  color: #1890ff;
+.profile-section p {
+  font-size: 13px;
+  color: #999;
 }
 
-.nav-item.active img {
-  opacity: 1;
+.profile-menu, .info-list {
+  background: white;
 }
 
-/* --- 扫描页面容器 --- */
+.p-menu-item, .info-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px;
+  border-bottom: 1px solid #f9f9f9;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.p-menu-item:active, .info-item-row:active {
+  background-color: #f5f5f5;
+}
+
+.p-menu-item span, .info-item-row span {
+  flex: 1;
+  margin-left: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #444;
+}
+
+.p-menu-item.logout { color: #e74c3c; }
+.p-menu-item.logout span { color: #e74c3c; }
+
+/* ===== 扫描页面样式（限制在手机容器内）===== */
 .scan-page-container {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-color: #000; /* 模拟摄像头关闭时的黑色背景 */
-  z-index: 9999;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  z-index: 2000;
   display: flex;
   flex-direction: column;
+}
+
+.camera-video-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+}
+
+.scan-overlay-ui {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .scan-header {
@@ -232,11 +425,10 @@
   justify-content: space-between;
   padding: 0 15px;
   background: rgba(0, 0, 0, 0.4);
-  z-index: 10;
+  color: white;
 }
 
 .scan-title {
-  color: white;
   font-size: 18px;
   font-weight: 500;
 }
@@ -246,16 +438,14 @@
   border: none;
   padding: 10px;
   cursor: pointer;
+  color: white;
 }
 
-/* --- 扫描框区域 --- */
 .scan-viewfinder {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
 }
 
 .viewfinder-box {
@@ -265,19 +455,17 @@
   position: relative;
 }
 
-/* 四个角设计 */
 .corner {
   position: absolute;
   width: 20px;
   height: 20px;
-  border: 3px solid #1a73e8; /* 扫描框颜色 */
+  border: 3px solid #1a73e8;
 }
 .top-left { top: -2px; left: -2px; border-right: none; border-bottom: none; }
 .top-right { top: -2px; right: -2px; border-left: none; border-bottom: none; }
 .bottom-left { bottom: -2px; left: -2px; border-right: none; border-top: none; }
 .bottom-right { bottom: -2px; right: -2px; border-left: none; border-top: none; }
 
-/* 扫描线动画 */
 .scan-line {
   position: absolute;
   top: 0; left: 0;
@@ -293,93 +481,33 @@
   100% { top: 100%; }
 }
 
-.scan-tip {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 14px;
-  margin-top: 30px;
+/* ===== 手机小屏适配（扫描框缩小）===== */
+@media (max-width: 360px) {
+  .viewfinder-box {
+    width: 220px;
+    height: 220px;
+  }
 }
 
-/* --- 扫描底部栏 --- */
-.scan-footer {
-  height: 120px;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding-bottom: 20px;
-}
-
-.footer-action {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: white;
-  font-size: 12px;
-}
-
-.action-icon-circle {
-  width: 50px;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 让视频流铺满全屏背景 */
-.camera-video-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover; /* 类似 background-size: cover */
-  z-index: 1;
-}
-
-/* UI 覆盖层，放在视频上面 */
-.scan-overlay-ui {
-  position: relative;
-  z-index: 2;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: rgba(0, 0, 0, 0.2); /* 给视频加一层淡淡的遮罩，让 UI 更清晰 */
-}
-
-/* 之前定义的动画和扫描框保持不变，只需确保 z-index 正确 */
-.scan-viewfinder { flex: 1; display: flex; align-items: center; justify-content: center; }
-.viewfinder-box { border: 1px solid rgba(255, 255, 255, 0.3); }
-
-/* --- ChatBot 悬浮球 --- */
+/* ===== ChatBot 样式 ===== */
 .chatbot-float-btn {
-  position: fixed;
+  position: absolute;
   width: 60px;
   height: 60px;
   background: #2b1d62;
   border-radius: 50%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   cursor: grab;
   z-index: 10000;
   color: white;
-  touch-action: none; /* 防止拖动时页面滚动 */
+  touch-action: none;
 }
 
-.chatbot-float-btn span {
-  font-size: 8px;
-  margin-top: 2px;
-  white-space: nowrap;
-}
-
-/* --- 聊天窗口 --- */
 .chat-window-overlay {
-  position: fixed;
+  position: absolute;
   bottom: 90px;
   right: 20px;
   width: 320px;
@@ -454,33 +582,205 @@
   outline: none;
 }
 
-.mic-btn, .send-btn {
+.send-btn {
   background: none;
   border: none;
   color: #2b1d62;
   cursor: pointer;
 }
 
-.mic-btn.listening {
-  color: #ff4d4f;
-  animation: pulse 1s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-
-/* --- 扫描页面容器适配 --- */
-.scan-page-container {
-  position: absolute; /* 从 fixed 改为 absolute */
-  top: 0; 
-  left: 0; 
-  width: 100%; 
-  height: 100%; /* 与手机容器高度一致 */
-  background-color: #000;
-  z-index: 50; /* 低于 ChatBot，但高于主内容 */
+/* ===== 员工 Dashboard 卡片 ===== */
+.employee-stat-card {
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 4px 12px rgba(43, 29, 98, 0.05);
+  border: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  margin: 6px 0;
+}
+
+.stat-sub {
+  font-size: 10px;
+  color: #aaa;
+}
+
+.dashboard-event-item {
+  display: flex;
+  background: #f8faff;
+  padding: 15px;
+  border-radius: 12px;
+  align-items: center;
+  border-left: 4px solid #2b1d62;
+}
+
+.event-time-tag {
+  font-weight: 700;
+  color: #2b1d62;
+  margin-right: 15px;
+  font-size: 13px;
+  border-right: 1px solid #ddd;
+  padding-right: 15px;
+}
+
+.event-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.event-loc {
+  font-size: 12px;
+  color: #888;
+}
+
+/* ===== 还原图片样式的详情弹窗 (Modal) ===== */
+.modal-overlay-custom {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  padding: 20px;
+}
+
+.activity-details-modal {
+  background: white;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+@keyframes modalScaleUp {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modal-header-purple {
+  background: #2b1d62;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-title {
+  color: white;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.modal-body-content {
+  padding: 24px 20px;
+}
+
+.activity-main-name {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 18px;
+  font-weight: 700;
+}
+
+.detail-item-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  color: #555;
+  font-size: 14px;
+}
+
+.modal-hr-line {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 18px 0;
+}
+
+.description-area h4 {
+  font-size: 15px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.description-area p {
+  font-size: 13px;
+  color: #888;
+  line-height: 1.5;
+}
+
+.modal-footer-done-btn {
+  width: 100%;
+  padding: 16px;
+  background: #f1f1f1;
+  border: none;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  cursor: pointer;
+  border-top: 1px solid #eee;
+}
+
+.modal-footer-done-btn:active {
+  background: #e8e8e8;
+}
+
+/* ===== 通知弹窗 ===== */
+.notification-modal {
+  background: white;
+  width: 100%;
+  max-width: 340px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+.notification-list {
+  padding: 16px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notif-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.notif-desc {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.notif-time {
+  font-size: 10px;
+  color: #999;
+  margin-top: 4px;
 }

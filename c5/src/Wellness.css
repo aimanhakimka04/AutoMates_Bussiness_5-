@@ -788,3 +788,147 @@
   font-size: 16px;
   color: #333;
 }
+
+/* 基础按钮样式 */
+.blue-cap-btn {
+  width: 100%;
+  height: 52px;
+  background-color: #2b1d62; /* 深蓝色 */
+  color: white;
+  border: none;
+  border-radius: 26px; /* 胶囊形状 */
+  margin-bottom: 15px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+ 
+
+/* Nursing 专用弹窗样式 */
+.nursing-detail-modal {
+  background: white;
+  width: 85%;
+  max-width: 320px;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+  animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.n-modal-header {
+  padding: 15px 20px;
+  background-color: #f8fbff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+}
+
+.n-modal-header h4 { margin: 0; color: #2b1d62; font-size: 16px; }
+
+.n-modal-body {
+  padding: 20px;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.n-modal-body ul {
+  padding-left: 0;
+  list-style: none;
+  margin-top: 10px;
+}
+
+.n-modal-body li { margin-bottom: 8px; }
+
+.n-modal-close-btn {
+  width: calc(100% - 40px);
+  margin: 0 20px 20px;
+  height: 44px;
+  background-color: #2b1d62;
+  color: white;
+  border: none;
+  border-radius: 22px;
+  font-weight: 600;
+}
+
+/* --- Nursing 下方文字区域样式 (image_2ad60e) --- */
+.nursing-divider {
+  height: 1px;
+  background-color: #f0f0f0;
+  margin: 30px 0 25px;
+  width: 100%;
+}
+
+.nursing-extra-content {
+  text-align: left;
+}
+
+.extra-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.extra-description {
+  font-size: 13.5px;
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.extra-how-works-card {
+  background-color: #fafafa;
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.extra-bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.extra-bullet-list li {
+  font-size: 13px;
+  color: #555;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.extra-bullet-list li:last-child {
+  margin-bottom: 0;
+}
+
+/* 确保 TCM 列表内的项目垂直对齐 */
+.list-item .item-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* 适配 TCM 标题样式 */
+.section-title {
+  padding: 15px 20px 5px;
+  font-size: 16px;
+  color: #333;
+  font-weight: 700;
+}
+
+/* 购买页面的价格显示微调 */
+.trainer-card-info p {
+  margin-top: 4px;
+}
+
+/* 修改 TCM 子页面的导航标题颜色一致性 */
+.nav-title {
+  text-transform: capitalize;
+}

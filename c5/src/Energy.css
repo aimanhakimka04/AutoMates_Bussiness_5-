@@ -1,0 +1,248 @@
+.energy-container {
+  background-color: #f5f7fa;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.energy-top-nav {
+  background-color: #2b1d62;
+  height: 7vh;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.energy-top-nav .nav-title {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  margin-left: 15px;
+}
+
+.energy-scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 100px; /* 留给 FAB 的空间 */
+}
+
+/* Hero Section */
+.energy-hero-section {
+  background-color: #221a52;
+  padding: 20px 20px 45px 20px;
+  color: white;
+}
+
+.dashboard-title { font-size: 22px; font-weight: bold; margin-bottom: 5px; }
+.dashboard-subtitle { font-size: 14px; opacity: 0.8; margin-bottom: 25px; }
+
+.consumption-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  color: #333;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #666;
+}
+
+.consumption-value {
+  font-size: 30px;
+  font-weight: bold;
+  color: #007bff;
+  margin: 15px 0 8px 0;
+}
+
+.consumption-trend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.consumption-trend.green { color: #27ae60; }
+
+.last-updated {
+  font-size: 11px;
+  color: #999;
+  margin-top: 12px;
+}
+
+/* Floor Distribution Card */
+.floor-distribution-section {
+  background: white;
+  margin: -25px 15px 20px 15px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.section-header h3 { font-size: 16px; color: #333; }
+
+.floor-filter-btn {
+  background: none;
+  border: 1px solid #f0f0f0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #007bff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.monthly-trends-btn {
+  width: 100%;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 25px;
+  font-weight: 600;
+  margin-bottom: 25px;
+  cursor: pointer;
+}
+
+/* Chart Styles */
+.chart-container { text-align: center; }
+.chinhin-logo-sm {
+  font-weight: 900;
+  font-style: italic;
+  color: #221a52;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.chart-layout {
+  display: flex;
+  height: 180px;
+  gap: 12px;
+}
+
+.chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #999;
+  text-align: right;
+  width: 40px;
+  padding-bottom: 28px; /* 对齐 X 轴文字高度 */
+}
+
+.chart-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  border-left: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 0 5px;
+}
+
+.bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.bar {
+  width: 32px;
+  background-color: #4dabf7;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bar-x-label {
+  margin-top: 10px;
+  font-size: 11px;
+  color: #999;
+  font-weight: 500;
+}
+
+/* Insights Section */
+.insights-section { padding: 0 15px; }
+.insights-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  align-items: center;
+}
+.insights-header h3 { font-size: 16px; }
+.insights-date { color: #999; font-size: 14px; }
+
+.insight-item-card {
+  background: white;
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.insight-item-card.high { border-left: 4px solid #ff4d4d; }
+.insight-item-card.low { border-left: 4px solid #27ae60; }
+
+.insight-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+}
+.insight-icon.red { background-color: #ff4d4d; }
+.insight-icon.green { background-color: #27ae60; }
+
+.insight-info { flex: 1; }
+.insight-label { font-size: 14px; font-weight: 600; color: #333; display: block; }
+.insight-status { font-size: 12px; color: #888; margin-top: 2px; }
+.insight-value { font-size: 14px; font-weight: bold; color: #333; }
+
+/* FAB & Animations */
+.fab-up-btn {
+  position: absolute;
+  right: 20px;
+  bottom: 30px;
+  width: 50px;
+  height: 50px;
+  background: white;
+  border-radius: 50%;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 100;
+}
+
+.refresh-icon { cursor: pointer; }
+.refresh-icon.spinning { animation: rotate 0.8s linear infinite; }
+
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

@@ -1,0 +1,137 @@
+/* 基础容器：锁定高度，防止全屏滚动 */
+.meal-container {
+  background-color: #e3f2fd;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 禁止外层容器滚动 */
+}
+
+.meal-top-nav {
+  background-color: #2b1d62;
+  color: #ffffff;
+  height: 7vh;
+  display: flex;
+  align-items: center;
+  padding: 0 15px;
+  flex-shrink: 0;
+}
+
+.meal-content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 内部区域自适应 */
+}
+
+/* --- 第一页：卡片样式 --- */
+.meal-main-view {
+  padding: 20px;
+}
+.meal-menu-card {
+  background: white;
+  width: 240px;
+  height: 140px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* --- 第二页：核心滑动设计 --- */
+.meal-details-view {
+  background-color: #ffffff;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0 0 0; /* 底部由列表处理 */
+}
+
+.cafeteria-title {
+  padding: 0 20px;
+  font-size: 18px;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* 1. 横向滑动分类栏样式 */
+.category-scroll-container {
+  display: flex;
+  overflow-x: auto; /* 关键：开启横向滚动 */
+  white-space: nowrap; /* 关键：强制内容不换行 */
+  padding: 0 20px;
+  border-bottom: 2px solid #f0f0f0;
+  -webkit-overflow-scrolling: touch; /* iOS 滑动优化 */
+}
+
+/* 隐藏横向滚动条 */
+.category-scroll-container::-webkit-scrollbar {
+  display: none;
+}
+
+.category-tab {
+  display: inline-block;
+  padding: 10px 0;
+  margin-right: 25px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0; /* 关键：防止被压缩 */
+}
+
+.category-tab.active {
+  color: #00a8ff;
+}
+
+.category-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: #00a8ff;
+}
+
+/* 2. 纵向滑动菜单列表样式 */
+.menu-items-scroll-area {
+  flex: 1;
+  overflow-y: auto; /* 关键：开启纵向滚动 */
+  padding: 0 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.menu-list-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 0;
+  border-bottom: 1px solid #f9f9f9;
+}
+
+.item-name {
+  font-size: 15px;
+  font-weight: bold;
+  margin-bottom: 25px;
+  color: #000;
+}
+
+.item-price {
+  font-size: 14px;
+  color: #333;
+}
+
+.scroll-spacer {
+  height: 100px; /* 底部留白 */
+}
+
+.no-data {
+  text-align: center;
+  margin-top: 50px;
+  color: #999;
+  font-size: 14px;
+}
