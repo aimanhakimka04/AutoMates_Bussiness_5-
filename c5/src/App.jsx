@@ -332,41 +332,109 @@ const ProfilePage = ({ setAuth, userInfo }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  7. HOME  – grid menu
+//  7. HOME  – fancy redesigned grid menu
 // ══════════════════════════════════════════════════════════════════
 const Home = () => {
-  const menuItems = [
-    { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room' },
-    { label:'Transport',    icon:'transportation.png', path:'/transport'  },
-    { label:'e-Visitor',   icon:'evisitor.png',     path:'/evisitor'     },
-    { label:'Ticketing',   icon:'ticketing.png',    path:'/ticketing'    },
-    { label:'CHART',       icon:'chart.png',        path:'/chart'        },
-    { label:'Wellness',    icon:'wellness.png',     path:'/wellness'     },
-    { label:'Meal',        icon:'meal.png',         path:'/meal'         },
-    { label:'Energy',      icon:'energy.png',       path:'/energy'       },
-    { label:'flexHR',      icon:'flexhr.png',       path:'/flexhr'       },
-    { label:'MyNews',      icon:'mynews.png',       path:'/mynews'       },
-    { label:'Childcare',   icon:'childcare.png',    path:'/childcare'    },
-    { label:'EPP',         icon:'epp.png',          path:'/epp'          },
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  const timeStr = currentTime.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
+  const dateStr = currentTime.toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long' });
+
+  const menuGroups = [
+    {
+      title: 'Workplace',
+      color: '#2b1d62',
+      items: [
+        { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room', accent:'#6c47d9' },
+        { label:'Transport',    icon:'transportation.png', path:'/transport',  accent:'#4c3aa3' },
+        { label:'e-Visitor',   icon:'evisitor.png',     path:'/evisitor',     accent:'#5e35b1' },
+        { label:'Ticketing',   icon:'ticketing.png',    path:'/ticketing',    accent:'#7c4dff' },
+      ]
+    },
+    {
+      title: 'Wellbeing',
+      color: '#0d7c66',
+      items: [
+        { label:'CHART',       icon:'chart.png',        path:'/chart',        accent:'#00897b' },
+        { label:'Wellness',    icon:'wellness.png',     path:'/wellness',     accent:'#00acc1' },
+        { label:'Meal',        icon:'meal.png',         path:'/meal',         accent:'#26a69a' },
+        { label:'Childcare',   icon:'childcare.png',    path:'/childcare',    accent:'#0097a7' },
+      ]
+    },
+    {
+      title: 'Resources',
+      color: '#b5560a',
+      items: [
+        { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
+        { label:'flexHR',      icon:'flexhr.png',       path:'/flexhr',       accent:'#d35400' },
+        { label:'MyNews',      icon:'mynews.png',       path:'/mynews',       accent:'#c0392b' },
+        { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
+      ]
+    },
   ];
+
   return (
-    <>
-      <header className="hero-header"><h1>Staging Environment</h1></header>
-      <div className="warning-container">
-        <Calendar size={16} />
-        <div className="marquee-wrapper">
-          <div className="scrolling-text">LIVE/PRODUCTION ENVIRONMENT. USE WITH CAUTION.</div>
+    <div className="home-page">
+      {/* ── Hero Banner ─────────────────────── */}
+      <div className="home-hero">
+        <div className="home-hero-bg" />
+        <div className="home-hero-orb home-hero-orb1" />
+        <div className="home-hero-orb home-hero-orb2" />
+        <div className="home-hero-content">
+          <div className="home-hero-env-badge">
+            <span className="home-hero-env-dot" />
+            STAGING ENVIRONMENT
+          </div>
+          <div className="home-hero-time">{timeStr}</div>
+          <div className="home-hero-date">{dateStr}</div>
+          <div className="home-hero-tagline">Your Intelligent Workplace</div>
+        </div>
+        <div className="home-hero-wave">
+          <svg viewBox="0 0 480 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,20 C80,40 160,0 240,20 C320,40 400,0 480,20 L480,40 L0,40 Z" fill="#f4f6fb"/>
+          </svg>
         </div>
       </div>
-      <main className="grid-menu">
-        {menuItems.map((item,idx) => (
-          <Link to={item.path} key={idx} className="menu-item link-item">
-            <div className="icon-container"><img src={`/icon_img/${item.icon}`} alt={item.label} /></div>
-            <span className="label">{item.label}</span>
-          </Link>
+
+      {/* ── Live Alert Strip ─────────────────── */}
+      <div className="home-alert-strip">
+        <div className="home-alert-icon">
+          <Calendar size={13} color="#2b1d62" />
+        </div>
+        <div className="home-alert-marquee">
+          <span className="home-alert-text">⚠ CAUTION — LIVE / PRODUCTION ENVIRONMENT &nbsp;&nbsp;•&nbsp;&nbsp; USE WITH CARE &nbsp;&nbsp;•&nbsp;&nbsp; ALL ACTIONS ARE REAL &nbsp;&nbsp;•&nbsp;&nbsp;</span>
+        </div>
+      </div>
+
+      {/* ── Menu Groups ──────────────────────── */}
+      <div className="home-menu-body">
+        {menuGroups.map((group, gi) => (
+          <div key={gi} className="home-section">
+            <div className="home-section-label" style={{ color: group.color }}>
+              <span className="home-section-dot" style={{ background: group.color }} />
+              {group.title}
+            </div>
+            <div className="home-grid">
+              {group.items.map((item, idx) => (
+                <Link to={item.path} key={idx} className="home-card" style={{ '--card-accent': item.accent }}>
+                  <div className="home-card-icon-wrap">
+                    <img src={`/icon_img/${item.icon}`} alt={item.label} className="home-card-icon" />
+                    <div className="home-card-glow" />
+                  </div>
+                  <span className="home-card-label">{item.label}</span>
+                  <div className="home-card-arrow">›</div>
+                </Link>
+              ))}
+            </div>
+          </div>
         ))}
-      </main>
-    </>
+      </div>
+    </div>
   );
 };
 
