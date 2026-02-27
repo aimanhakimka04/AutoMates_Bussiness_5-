@@ -155,9 +155,14 @@ const ChatBot = () => {
         {!isOpen && <span className="chatbot-fab-badge">AI</span>}
       </div>
 
+      {/* ── Backdrop ── */}
+      {isOpen && (
+        <div className="chat-backdrop" onClick={() => setIsOpen(false)} />
+      )}
+
       {/* ── Chat Window ─────────────────────────────────────────── */}
       {isOpen && (
-        <div className="chat-window-overlay">
+        <div className="chat-window-overlay" onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
           {/* Header */}
           <div className="chat-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -225,6 +230,7 @@ const ChatBot = () => {
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
               placeholder="Type your request..."
+              style={{ pointerEvents: 'all', position: 'relative', zIndex: 10002 }}
               onKeyPress={e => e.key === 'Enter' && handleSendMessage(inputValue, 'text')}
               disabled={isRecording || isLoading}
             />

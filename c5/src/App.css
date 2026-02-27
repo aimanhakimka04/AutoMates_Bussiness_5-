@@ -797,10 +797,18 @@
   line-height: 1;
 }
 
+/* ── Chat backdrop — blocks clicks going to page behind ── */
+.chat-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: transparent;
+}
+
 /* ===== ChatBot Window — fixed to viewport, above nav bar ===== */
 .chat-window-overlay {
   position: fixed;
-  bottom: 85px; /* sits above the 75px nav bar */
+  bottom: 85px;
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 32px);
@@ -813,6 +821,7 @@
   flex-direction: column;
   z-index: 10001;
   overflow: hidden;
+  pointer-events: all;
   animation: slideUp 0.28s cubic-bezier(.22,1,.36,1);
 }
 
@@ -872,6 +881,9 @@
   gap: 8px;
   background: white;
   flex-shrink: 0;
+  pointer-events: all;
+  position: relative;
+  z-index: 10002;
 }
 
 .chat-input-area input {
@@ -883,6 +895,9 @@
   font-size: 13.5px;
   background: #f7f8fc;
   transition: border-color 0.2s;
+  pointer-events: all;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .chat-input-area input:focus {
