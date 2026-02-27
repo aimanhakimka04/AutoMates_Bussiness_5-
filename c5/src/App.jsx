@@ -6,7 +6,7 @@ import {
 import { PublicClientApplication } from '@azure/msal-browser';
 import {
   Calendar, Scan, Bell, ChevronLeft,
-  Zap, Bot, Send, X, Mic,
+  Zap, X,
   Home as HomeIcon, LayoutDashboard, Info as InfoIcon, UserCircle,
   LogOut, Lock, User, ChevronRight, MapPin
 } from 'lucide-react';
@@ -23,6 +23,7 @@ import FlexHR      from './FlexHR';
 import Mynews      from './Mynews';
 import Childcare   from './Childcare';
 import EPP         from './EPP';
+import ChatBot     from './ChatBot';
 import './App.css';
 
 // ══════════════════════════════════════════════════════════════════
@@ -480,166 +481,7 @@ const ScanPage = () => {
   );
 };
 
-// ══════════════════════════════════════════════════════════════════
-//  9. CHATBOT  (N8N integration — fully preserved)
-// ══════════════════════════════════════════════════════════════════
-const ChatBot = ({ containerRef }) => {
-  const [isOpen,   setIsOpen]   = useState(false);
-  const [position, setPosition] = useState({ x: 340, y: 480 });
-  const [isDragging, setIsDragging] = useState(false);
-  const startPosRef = useRef({ x:0, y:0 });
-  const offsetRef   = useRef({ x:0, y:0 });
-  const [messages,          setMessages]          = useState([
-    { id:1, sender:'bot', msgType:'text', text:'Hai! Saya Employee Assistant anda. Sebut atau taip arahan untuk menempah bilik mesyuarat atau memohon cuti.' }
-  ]);
-  const [inputValue,        setInputValue]        = useState('');
-  const [isRecording,       setIsRecording]       = useState(false);
-  const [isLoading,         setIsLoading]         = useState(false);
-  const [conversationState, setConversationState] = useState({});
-  const messagesEndRef = useRef(null);
-
-  const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook-test/employee-assistant';
-  const TEMP_JWT_TOKEN  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwidXBuIjoicGVrZXJqYUBjaGluaGluLmNvbSIsInJvbGVzIjpbImVtcGxveWVlIl0sInRlbmFudF9pZCI6ImNoaW5oaW5faHEifQ.UqTWTIrSmD9WwDQQd93W17xFMkAqHeZJf2mSg08ldKU';
-
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isOpen]);
-
-  const handleStart = (e) => {
-    const cx = e.clientX ?? e.touches?.[0].clientX;
-    const cy = e.clientY ?? e.touches?.[0].clientY;
-    setIsDragging(true);
-    startPosRef.current = { x:cx, y:cy };
-    offsetRef.current   = { x:cx - position.x, y:cy - position.y };
-  };
-  const handleMove = (e) => {
-    if (!isDragging || !containerRef.current) return;
-    const cx = e.clientX ?? e.touches?.[0].clientX;
-    const cy = e.clientY ?? e.touches?.[0].clientY;
-    const rect = containerRef.current.getBoundingClientRect();
-    setPosition({
-      x: Math.min(Math.max(10, cx - offsetRef.current.x), rect.width  - 70),
-      y: Math.min(Math.max(10, cy - offsetRef.current.y), rect.height - 70),
-    });
-  };
-  const handleEnd      = () => setIsDragging(false);
-  const handleBotClick = (e) => {
-    const d = Math.hypot(e.clientX - startPosRef.current.x, e.clientY - startPosRef.current.y);
-    if (d < 5) setIsOpen(o => !o);
-  };
-
-  const speakText = (text) => {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang  = 'en-US';
-    window.speechSynthesis.speak(u);
-  };
-
-  const startRecording = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { alert('Browser anda tidak menyokong rakaman suara. Sila guna Google Chrome.'); return; }
-    const rec = new SR();
-    rec.lang = 'en-US'; rec.interimResults = false;
-    rec.onstart  = () => { setIsRecording(true); window.speechSynthesis.cancel(); };
-    rec.onresult = (e) => handleSendMessage(e.results[0][0].transcript, 'voice');
-    rec.onerror  = () => setIsRecording(false);
-    rec.onend    = () => setIsRecording(false);
-    rec.start();
-  };
-
-  const addAiMessage = (text, msgType) => setMessages(prev => [...prev, { id:Date.now(), sender:'bot', msgType, text }]);
-
-  const handleSendMessage = async (text, inputType='text', confirmData=null) => {
-    if (!text && !confirmData) return;
-    if (!confirmData) { setMessages(prev => [...prev, { id:Date.now(), sender:'user', msgType:'text', text }]); setInputValue(''); }
-    setIsLoading(true);
-    const payload = confirmData
-      ? { text:'User confirmed the plan', input_type:inputType, state:conversationState, confirm:true, edited_plan:confirmData.plan, client_request_id:`req-${Date.now()}` }
-      : { text, input_type:inputType, state:conversationState, client_request_id:`req-${Date.now()}` };
-    try {
-      const res = await fetch(N8N_WEBHOOK_URL, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${TEMP_JWT_TOKEN}` },
-        body: JSON.stringify(payload),
-      });
-      processN8nResponse(await res.json(), inputType);
-    } catch {
-      addAiMessage('System offline. Cannot connect to the assistant.', 'text');
-    } finally { setIsLoading(false); }
-  };
-
-  const processN8nResponse = (data, inputType) => {
-    let textToSpeak = '';
-    if (data.state) setConversationState(data.state);
-    switch (data.type) {
-      case 'clarify':  textToSpeak = data.question; addAiMessage(data.question,'text'); break;
-      case 'confirm':
-        textToSpeak = data.summary + '. Do you want to proceed?';
-        setMessages(prev => [...prev, { id:Date.now(), sender:'bot', msgType:'confirm_card', text:data.summary, plan:data.plan, confirm_token:data.confirm_token }]);
-        break;
-      case 'receipt':  textToSpeak = 'Success! '+data.summary; addAiMessage(textToSpeak,'text'); setConversationState({}); break;
-      case 'error':
-      case 'auth_error': textToSpeak = 'Sorry, '+(data.message||data.error); addAiMessage(textToSpeak,'text'); break;
-      default: textToSpeak = "I received a response, but I'm not sure how to display it."; addAiMessage(textToSpeak,'text');
-    }
-    if (inputType==='voice' && textToSpeak) speakText(textToSpeak);
-  };
-
-  return (
-    <>
-      <div
-        className="chatbot-float-btn"
-        style={{ left:`${position.x}px`, top:`${position.y}px` }}
-        onMouseDown={handleStart} onTouchStart={handleStart}
-        onMouseMove={handleMove}  onTouchMove={handleMove}
-        onMouseUp={handleEnd}     onTouchEnd={handleEnd}
-        onClick={handleBotClick}
-      >
-        <Bot size={28} color="white" />
-      </div>
-      {isOpen && (
-        <div className="chat-window-overlay">
-          <div className="chat-header">
-            <span>Smart Bot</span>
-            <X size={20} onClick={() => setIsOpen(false)} style={{cursor:'pointer'}} />
-          </div>
-          <div className="chat-messages">
-            {messages.map(m => (
-              <div key={m.id} className={`message ${m.sender}`}>
-                <p style={{margin:0}}>{m.text}</p>
-                {m.msgType==='confirm_card' && (
-                  <div style={{marginTop:10,display:'flex',gap:8}}>
-                    <button style={{padding:'6px 10px',background:'#28a745',color:'white',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,flex:1}}
-                      onClick={() => handleSendMessage(null,'text',m)}>Confirm</button>
-                    <button style={{padding:'6px 10px',background:'#dc3545',color:'white',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,flex:1}}
-                      onClick={() => addAiMessage('Action cancelled.','text')}>Cancel</button>
-                  </div>
-                )}
-              </div>
-            ))}
-            {isLoading && <div className="message bot" style={{opacity:0.7}}>Assistant menaip…</div>}
-            <div ref={messagesEndRef} />
-          </div>
-          <div className="chat-input-area" style={{display:'flex',gap:8,alignItems:'center'}}>
-            <button onClick={startRecording}
-              style={{background:isRecording?'#ffebe9':'transparent',border:'none',cursor:'pointer',padding:8,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              <Mic size={20} color={isRecording?'#ff4d4f':'#666'} />
-            </button>
-            <input value={inputValue} onChange={e=>setInputValue(e.target.value)}
-              placeholder="Type your request..."
-              onKeyPress={e=>e.key==='Enter' && handleSendMessage(inputValue,'text')}
-              disabled={isRecording||isLoading}
-              style={{flex:1,padding:10,borderRadius:20,border:'1px solid #ddd',outline:'none'}} />
-            <button className="send-btn" onClick={()=>handleSendMessage(inputValue,'text')}
-              disabled={!inputValue.trim()||isLoading}
-              style={{opacity:(!inputValue.trim()||isLoading)?0.5:1}}>
-              <Send size={18} />
-            </button>
-          </div>
-        </div>
-      )}
-    </>
-  );
-};
+// ChatBot is now in ./ChatBot.jsx — imported at top of file
 
 // ══════════════════════════════════════════════════════════════════
 //  10. PAGE WRAPPER
@@ -651,21 +493,34 @@ const PageWrapper = ({ children, showTopBar }) => (
 );
 
 // ══════════════════════════════════════════════════════════════════
-//  11. BOTTOM NAV
+//  11. BOTTOM NAV  — 4 items + center ChatBot FAB
 // ══════════════════════════════════════════════════════════════════
 const FooterNav = () => {
   const location = useLocation();
-  const navs = [
-    { label:'Home',      path:'/',          icon:<HomeIcon        size={22}/> },
-    { label:'Dashboard', path:'/dashboard', icon:<LayoutDashboard size={22}/> },
-    { label:'Info',      path:'/info',      icon:<InfoIcon        size={22}/> },
-    { label:'Profile',   path:'/profile',   icon:<UserCircle      size={22}/> },
+  const left  = [
+    { label: 'Home',      path: '/',          icon: <HomeIcon        size={22} /> },
+    { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} /> },
+  ];
+  const right = [
+    { label: 'Info',    path: '/info',    icon: <InfoIcon   size={22} /> },
+    { label: 'Profile', path: '/profile', icon: <UserCircle size={22} /> },
   ];
   return (
-    <footer className="bottom-nav-fixed">
-      {navs.map(n => (
-        <Link to={n.path} key={n.label} className={`nav-item ${location.pathname===n.path?'active':''}`}>
-          {n.icon} <span>{n.label}</span>
+    <footer className="bottom-nav-fixed bottom-nav-with-fab">
+      {left.map(n => (
+        <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
+          {n.icon}<span>{n.label}</span>
+        </Link>
+      ))}
+
+      {/* Center ChatBot FAB slot — component handles its own elevated state */}
+      <div className="nav-chatbot-slot">
+        <ChatBot />
+      </div>
+
+      {right.map(n => (
+        <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
+          {n.icon}<span>{n.label}</span>
         </Link>
       ))}
     </footer>
@@ -676,13 +531,11 @@ const FooterNav = () => {
 //  12. ROOT APP
 // ══════════════════════════════════════════════════════════════════
 function App() {
-  // isAppLoading = true until BOTH splash timer AND auth check are done
   const [isAppLoading,      setIsAppLoading]      = useState(true);
   const [authChecked,       setAuthChecked]       = useState(false);
   const [isAuthenticated,   setIsAuthenticated]   = useState(false);
   const [userInfo,          setUserInfo]          = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const appRef   = useRef(null);
   const location = useLocation();
 
   // Run splash timer AND auth check in parallel — hide splash when BOTH done
@@ -741,7 +594,7 @@ function App() {
   if (isAppLoading) return <SplashScreen />;
 
   return (
-    <div className="mobile-app" ref={appRef}>
+    <div className="mobile-app">
       {showTopBar && <GlobalWelcomeBar userInfo={userInfo} openNotifications={() => setShowNotifications(true)} />}
 
       {!isAuthenticated ? (
@@ -778,7 +631,6 @@ function App() {
         </>
       )}
 
-      <ChatBot containerRef={appRef} />
       {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
     </div>
   );
