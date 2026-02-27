@@ -1,38 +1,180 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { 
-  Calendar, Scan, Bell, ChevronLeft, 
+import {
+  BrowserRouter as Router, Routes, Route, Link,
+  useNavigate, useLocation, Navigate
+} from 'react-router-dom';
+import { PublicClientApplication } from '@azure/msal-browser';
+import {
+  Calendar, Scan, Bell, ChevronLeft,
   Zap, Bot, Send, X, Mic,
   Home as HomeIcon, LayoutDashboard, Info as InfoIcon, UserCircle,
-  LogOut, ShieldCheck, Mail, Lock, User, ChevronRight,
-  Clock, MapPin
+  LogOut, Lock, User, ChevronRight, MapPin
 } from 'lucide-react';
 
-// 导入业务组件 (Pastikan fail komponen ini wujud di direktori anda)
 import MeetingRoom from './MeetingRoom';
-import Transport from './Transport';
-import EVisitor from './EVisitor'; 
-import Ticketing from './Ticketing';
-import Chart from './Chart';
-import Wellness from './Wellness';
-import Meal from './Meal';
-import Energy from './Energy';
-import FlexHR from './FlexHR';
-import Mynews from './Mynews';
-import Childcare from './Childcare';
-import EPP from './EPP';
-
+import Transport   from './Transport';
+import EVisitor    from './EVisitor';
+import Ticketing   from './Ticketing';
+import Chart       from './Chart';
+import Wellness    from './Wellness';
+import Meal        from './Meal';
+import Energy      from './Energy';
+import FlexHR      from './FlexHR';
+import Mynews      from './Mynews';
+import Childcare   from './Childcare';
+import EPP         from './EPP';
 import './App.css';
 
-// --- 1. 全局 Welcome Bar 组件 (固定顶部) ---
-const GlobalWelcomeBar = ({ openNotifications }) => {
+// ══════════════════════════════════════════════════════════════════
+//  MICROSOFT OAUTH2 CONFIG  (matches your n8n credential exactly)
+//  Client ID    : c21063b3-e6df-4a0e-980a-eb69cb6bdd01
+//  Auth URL     : https://login.microsoftonline.com/common/oauth2/v2.0/authorize
+//  Token URL    : https://login.microsoftonline.com/common/oauth2/v2.0/token
+// ══════════════════════════════════════════════════════════════════
+const msalConfig = {
+  auth: {
+    clientId:              'c21063b3-e6df-4a0e-980a-eb69cb6bdd01',
+    authority:             'https://login.microsoftonline.com/common',
+    redirectUri:           'http://localhost:3000/login',
+    postLogoutRedirectUri: window.location.origin + '/login',
+    navigateToLoginRequestUrl: false,
+  },
+  cache: {
+    cacheLocation:          'sessionStorage',
+    storeAuthStateInCookie: true,
+  },
+  system: {
+    allowNativeBroker: false,
+  },
+};
+
+const msalInstance = new PublicClientApplication(msalConfig);
+let _msalReady = false;
+const ensureMsal = async () => {
+  if (!_msalReady) {
+    await msalInstance.initialize();
+    _msalReady = true;
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  0. SPLASH SCREEN
+// ══════════════════════════════════════════════════════════════════
+const SplashScreen = () => (
+  <div style={S.splash.root}>
+    <div style={S.splash.ring}>
+      <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.splash.logo} />
+    </div>
+    <h1 style={S.splash.title}>FlexHR</h1>
+    <p  style={S.splash.sub}>Loading your workspace…</p>
+    <div style={S.splash.dots}>
+      {[0,1,2].map(i => <span key={i} style={{...S.splash.dot, animationDelay:`${i*0.2}s`}} />)}
+    </div>
+    <style>{`
+      @keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(130,90,255,.45)}50%{box-shadow:0 0 70px rgba(130,90,255,.8)}}
+      @keyframes splashBounce{0%,80%,100%{transform:scale(.55);opacity:.4}40%{transform:scale(1);opacity:1}}
+      @keyframes fadeSlideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+      @keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+      @keyframes spinBtn{to{transform:rotate(360deg)}}
+    `}</style>
+  </div>
+);
+
+// ══════════════════════════════════════════════════════════════════
+//  1. LOGIN  — centered icon + Microsoft popup
+// ══════════════════════════════════════════════════════════════════
+const Login = ({ setAuth, setUserInfo }) => {
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState('');
+
+  const handleMicrosoftLogin = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      await ensureMsal();
+
+      // Use loginRedirect — Microsoft is clearly using redirect flow
+      await msalInstance.loginRedirect({
+        scopes: ['openid', 'profile', 'email'],
+        prompt: 'select_account',
+        redirectUri: 'http://localhost:3000/login',
+      });
+      // ⚠️ Code below this line won't run — page will redirect to Microsoft
+      // When it comes back, handleRedirectPromise() in App useEffect catches it
+
+    } catch (err) {
+      console.error('MSAL error:', err);
+      if (err.errorCode === 'user_cancelled' || err.errorCode === 'access_denied') {
+        setError('Sign-in was cancelled.');
+      } else {
+        setError('Sign-in failed: ' + (err.errorCode || err.message || 'Unknown error'));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={S.login.page}>
+      <div style={S.login.blobTR} />
+      <div style={S.login.blobBL} />
+      <div style={S.login.card}>
+
+        {/* ── Centered App Icon ─────────────────────── */}
+        <div style={S.login.iconWrap}>
+          <div style={S.login.iconRing}>
+            <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.login.iconImg} />
+          </div>
+        </div>
+
+        <h1 style={S.login.appName}>FlexHR</h1>
+        <p  style={S.login.tagline}>Your Intelligent Workplace Portal</p>
+        <div style={S.login.divider} />
+        <p  style={S.login.instruction}>
+          Sign in with your Microsoft account to continue.
+        </p>
+
+        {error && <div style={S.login.errorBox}>{error}</div>}
+
+        {/* ── Microsoft Sign-in Button ──────────────── */}
+        <button
+          onClick={handleMicrosoftLogin}
+          disabled={loading}
+          style={{...S.login.msBtn, opacity: loading ? 0.72 : 1, cursor: loading ? 'not-allowed' : 'pointer'}}
+          onMouseEnter={e => { if(!loading) e.currentTarget.style.background='#f3f4f6'; }}
+          onMouseLeave={e => { if(!loading) e.currentTarget.style.background='#ffffff'; }}
+        >
+          {loading ? (
+            <><span style={S.login.spinner} /> Signing in…</>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 23 23">
+                <path fill="#f35325" d="M1 1h10v10H1z"/>
+                <path fill="#81bc06" d="M12 1h10v10H12z"/>
+                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
+                <path fill="#ffba08" d="M12 12h10v10H12z"/>
+              </svg>
+              Sign in with Microsoft
+            </>
+          )}
+        </button>
+
+        <p style={S.login.footerNote}>🔒 Protected by Corporate Security Policy</p>
+      </div>
+    </div>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  2. GLOBAL WELCOME BAR
+// ══════════════════════════════════════════════════════════════════
+const GlobalWelcomeBar = ({ userInfo, openNotifications }) => {
   const navigate = useNavigate();
-  
   return (
     <nav className="welcome-bar-fixed">
       <div className="welcome-text">
         <span className="welcome-label">Welcome</span>
-        <h2 className="welcome-name">ALAN TAN WAI LOON</h2>
+        <h2 className="welcome-name">{userInfo?.name || 'ALAN TAN WAI LOON'}</h2>
       </div>
       <div className="welcome-icons">
         <div className="icon-wrapper" onClick={() => navigate('/scan')}>
@@ -40,27 +182,28 @@ const GlobalWelcomeBar = ({ openNotifications }) => {
         </div>
         <div className="bell-container" onClick={openNotifications}>
           <Bell size={20} color="white" />
-          <span className="bell-dot"></span>
+          <span className="bell-dot" />
         </div>
       </div>
     </nav>
   );
 };
 
-// --- 通知弹窗组件 ---
+// ══════════════════════════════════════════════════════════════════
+//  3. NOTIFICATION PANEL
+// ══════════════════════════════════════════════════════════════════
 const NotificationPanel = ({ onClose }) => {
   const notifications = [
-    { id: 1, title: 'Meeting Reminder', desc: 'UAT Briefing starts in 15 mins', time: 'Just now' },
-    { id: 2, title: 'Booking Confirmed', desc: 'Your shuttle booking is confirmed', time: '2 hours ago' },
-    { id: 3, title: 'Policy Updated', desc: 'Remote Work Policy has been updated', time: 'Yesterday' }
+    { id: 1, title: 'Meeting Reminder',  desc: 'UAT Briefing starts in 15 mins',      time: 'Just now'    },
+    { id: 2, title: 'Booking Confirmed', desc: 'Your shuttle booking is confirmed',    time: '2 hours ago' },
+    { id: 3, title: 'Policy Updated',    desc: 'Remote Work Policy has been updated', time: 'Yesterday'   },
   ];
-
   return (
     <div className="modal-overlay-custom" onClick={onClose}>
       <div className="notification-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header-purple">
           <span className="modal-title">Notifications</span>
-          <X size={20} color="white" onClick={onClose} style={{ cursor: 'pointer' }} />
+          <X size={20} color="white" onClick={onClose} style={{cursor:'pointer'}} />
         </div>
         <div className="notification-list">
           {notifications.map(n => (
@@ -76,75 +219,30 @@ const NotificationPanel = ({ onClose }) => {
   );
 };
 
-// --- 2. 认证页面 (Authentication Page) ---
-const Login = ({ setAuth }) => {
-  const navigate = useNavigate();
-
-  const handleMicrosoftLogin = () => {
-    // NOTA: Di sini anda akan masukkan fungsi integrasi sebenar Microsoft (MSAL).
-    setAuth(true);
-    navigate('/');
-  };
-
-  return (
-    <div className="auth-container">
-      <div className="auth-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-        <h2 style={{ marginBottom: '10px' }}>Welcome to FlexHR</h2>
-        <p style={{ color: '#666', fontSize: '14px', marginBottom: '30px' }}>
-          Please sign in using your corporate Microsoft account to access the workspace.
-        </p>
-        
-        <button 
-          onClick={handleMicrosoftLogin}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            gap: '12px', width: '100%', padding: '12px', backgroundColor: '#ffffff',
-            color: '#5e5e5e', border: '1px solid #8c8c8c', borderRadius: '4px',
-            fontSize: '16px', fontWeight: '600', cursor: 'pointer',
-            transition: 'background-color 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 23 23">
-            <path fill="#f35325" d="M1 1h10v10H1z"/>
-            <path fill="#81bc06" d="M12 1h10v10H12z"/>
-            <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-            <path fill="#ffba08" d="M12 12h10v10H12z"/>
-          </svg>
-          Sign in with Microsoft
-        </button>
-        <p style={{ marginTop: '30px', fontSize: '12px', color: '#999' }}>Protected by Corporate Security</p>
-      </div>
-    </div>
-  );
-};
-
-// --- 3. 底部栏功能页面 (Dashboard, Info, Profile) ---
+// ══════════════════════════════════════════════════════════════════
+//  4. DASHBOARD
+// ══════════════════════════════════════════════════════════════════
 const DashboardPage = () => {
-  const employeeStats = [
-    { label: 'Leave Balance', value: '14 / 20', sub: 'Days Remaining', color: '#2b1d62' },
-    { label: 'My Training', value: '2', sub: 'Upcoming in CHART', color: '#1890ff' },
-    { label: 'Open Tickets', value: '3', sub: 'Ticketing Status', color: '#f39c12' },
-    { label: 'Upcoming Ride', value: '1', sub: 'Shuttle at 11:00 AM', color: '#4caf50' }
+  const stats = [
+    { label: 'Leave Balance',  value: '14 / 20', sub: 'Days Remaining',       color: '#2b1d62' },
+    { label: 'My Training',    value: '2',       sub: 'Upcoming in CHART',    color: '#1890ff' },
+    { label: 'Open Tickets',   value: '3',       sub: 'Ticketing Status',     color: '#f39c12' },
+    { label: 'Upcoming Ride',  value: '1',       sub: 'Shuttle at 11:00 AM',  color: '#4caf50' },
   ];
-
   return (
-    <div style={{ padding: '20px' }}>
-      <div style={{ fontSize: 22, fontWeight: 800, color: '#2b1d62', marginBottom: 20 }}>
-        My Workspace
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
-        {employeeStats.map((stat, idx) => (
-          <div key={idx} className="employee-stat-card">
-            <div className="stat-label">{stat.label}</div>
-            <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
-            <div className="stat-sub">{stat.sub}</div>
+    <div style={{padding:'20px'}}>
+      <div style={{fontSize:22,fontWeight:800,color:'#2b1d62',marginBottom:20}}>My Workspace</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:15}}>
+        {stats.map((s,i) => (
+          <div key={i} className="employee-stat-card">
+            <div className="stat-label">{s.label}</div>
+            <div className="stat-value" style={{color:s.color}}>{s.value}</div>
+            <div className="stat-sub">{s.sub}</div>
           </div>
         ))}
       </div>
-      <div style={{ marginTop: 25 }}>
-        <h3 style={{ fontSize: 16, color: '#2b1d62', marginBottom: 12 }}>Next Event</h3>
+      <div style={{marginTop:25}}>
+        <h3 style={{fontSize:16,color:'#2b1d62',marginBottom:12}}>Next Event</h3>
         <div className="dashboard-event-item">
           <div className="event-time-tag">10:00 AM</div>
           <div className="event-info">
@@ -157,15 +255,17 @@ const DashboardPage = () => {
   );
 };
 
+// ══════════════════════════════════════════════════════════════════
+//  5. INFO PAGE
+// ══════════════════════════════════════════════════════════════════
 const InfoPage = () => {
   const [selectedInfo, setSelectedInfo] = useState(null);
   const infoItems = [
-    { id: '1', label: 'Data Protection Policy', issuedDate: '2025-01-15', department: 'IT Security', scope: 'All Employees', desc: 'This policy outlines the requirements for handling personal and sensitive data...' },
-    { id: '2', label: 'Remote Work Policy', issuedDate: '2025-03-01', department: 'HR', scope: 'Remote-Eligible Roles', desc: 'Employees approved for remote work must maintain a secure home office environment...' },
-    { id: '3', label: 'Code of Conduct', issuedDate: '2024-12-10', department: 'Legal', scope: 'All Employees', desc: 'The Code of Conduct sets expectations for professional behavior...' },
-    { id: '4', label: 'Expense Reimbursement Policy', issuedDate: '2025-02-20', department: 'Finance', scope: 'All Employees', desc: 'Employees may claim reasonable business expenses incurred during company activities...' }
+    { id:'1', label:'Data Protection Policy',       issuedDate:'2025-01-15', department:'IT Security', scope:'All Employees',        desc:'This policy outlines the requirements for handling personal and sensitive data...' },
+    { id:'2', label:'Remote Work Policy',           issuedDate:'2025-03-01', department:'HR',          scope:'Remote-Eligible Roles', desc:'Employees approved for remote work must maintain a secure home office environment...' },
+    { id:'3', label:'Code of Conduct',              issuedDate:'2024-12-10', department:'Legal',       scope:'All Employees',         desc:'The Code of Conduct sets expectations for professional behavior...' },
+    { id:'4', label:'Expense Reimbursement Policy', issuedDate:'2025-02-20', department:'Finance',     scope:'All Employees',         desc:'Employees may claim reasonable business expenses incurred during company activities...' },
   ];
-
   return (
     <>
       <div className="tab-header">Company Info</div>
@@ -182,18 +282,15 @@ const InfoPage = () => {
           <div className="activity-details-modal">
             <div className="modal-header-purple">
               <span className="modal-title">Policy Details</span>
-              <X size={20} color="white" onClick={() => setSelectedInfo(null)} style={{ cursor: 'pointer' }} />
+              <X size={20} color="white" onClick={() => setSelectedInfo(null)} style={{cursor:'pointer'}} />
             </div>
             <div className="modal-body-content">
               <h2 className="activity-main-name">{selectedInfo.label}</h2>
               <div className="detail-item-row"><Calendar size={18} color="#1890ff" /><span>Issued: {selectedInfo.issuedDate}</span></div>
-              <div className="detail-item-row"><User size={18} color="#1890ff" /><span>Department: {selectedInfo.department}</span></div>
-              <div className="detail-item-row"><MapPin size={18} color="#1890ff" /><span>Scope: {selectedInfo.scope}</span></div>
+              <div className="detail-item-row"><User     size={18} color="#1890ff" /><span>Department: {selectedInfo.department}</span></div>
+              <div className="detail-item-row"><MapPin   size={18} color="#1890ff" /><span>Scope: {selectedInfo.scope}</span></div>
               <div className="modal-hr-line" />
-              <div className="description-area">
-                <h4>Description</h4>
-                <p>{selectedInfo.desc}</p>
-              </div>
+              <div className="description-area"><h4>Description</h4><p>{selectedInfo.desc}</p></div>
             </div>
             <button className="modal-footer-done-btn" onClick={() => setSelectedInfo(null)}>Done</button>
           </div>
@@ -203,45 +300,58 @@ const InfoPage = () => {
   );
 };
 
-const ProfilePage = ({ setAuth }) => {
+// ══════════════════════════════════════════════════════════════════
+//  6. PROFILE PAGE
+// ══════════════════════════════════════════════════════════════════
+const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
+  const handleLogout = async () => {
+    try {
+      await ensureMsal();
+      const accounts = msalInstance.getAllAccounts();
+      if (accounts.length > 0) {
+        await msalInstance.logoutPopup({ account: accounts[0] });
+      }
+    } catch { /* skip if MSAL not ready */ }
+    setAuth(false);
+    navigate('/login');
+  };
   return (
     <>
       <div className="profile-section">
         <div className="profile-avatar-box"><UserCircle size={80} color="#2b1d62" /></div>
-        <h3>ALAN TAN WAI LOON</h3>
-        <p>Software Engineer | CH-9920</p>
+        <h3>{userInfo?.name  || 'ALAN TAN WAI LOON'}</h3>
+        <p>{userInfo?.email || 'Software Engineer | CH-9920'}</p>
       </div>
       <div className="profile-menu">
-        <div className="p-menu-item" onClick={() => alert("Check your email for reset code!")}><Lock size={18} /> <span>Reset Password</span></div>
-        <div className="p-menu-item logout" onClick={() => { setAuth(false); navigate('/login'); }}><LogOut size={18} /> <span>Logout</span></div>
+        <div className="p-menu-item" onClick={() => alert('Check your email for reset code!')}><Lock size={18} /> <span>Reset Password</span></div>
+        <div className="p-menu-item logout" onClick={handleLogout}><LogOut size={18} /> <span>Logout</span></div>
       </div>
     </>
   );
 };
 
-// --- 4. 首页内容 ---
+// ══════════════════════════════════════════════════════════════════
+//  7. HOME  – grid menu
+// ══════════════════════════════════════════════════════════════════
 const Home = () => {
   const menuItems = [
-    { label: 'Meeting Room', icon: 'meeting room.png', path: '/meeting-room'},
-    { label: 'Transport', icon: 'transportation.png', path: '/transport' },
-    { label: 'e-Visitor', icon: 'evisitor.png', path: '/evisitor' },
-    { label: 'Ticketing', icon: 'ticketing.png', path: '/ticketing' },
-    { label: 'CHART', icon: 'chart.png', path: '/chart'  },
-    { label: 'Wellness', icon: 'wellness.png', path: '/wellness' },
-    { label: 'Meal', icon: 'meal.png', path: '/meal' },
-    { label: 'Energy', icon: 'energy.png', path: '/energy' },
-    { label: 'flexHR', icon: 'flexhr.png', path: '/flexhr' },
-    { label: 'MyNews', icon: 'mynews.png', path: '/mynews' },
-    { label: 'Childcare', icon: 'childcare.png', path: '/childcare' },
-    { label: 'EPP', icon: 'epp.png', path: '/epp' },
+    { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room' },
+    { label:'Transport',    icon:'transportation.png', path:'/transport'  },
+    { label:'e-Visitor',   icon:'evisitor.png',     path:'/evisitor'     },
+    { label:'Ticketing',   icon:'ticketing.png',    path:'/ticketing'    },
+    { label:'CHART',       icon:'chart.png',        path:'/chart'        },
+    { label:'Wellness',    icon:'wellness.png',     path:'/wellness'     },
+    { label:'Meal',        icon:'meal.png',         path:'/meal'         },
+    { label:'Energy',      icon:'energy.png',       path:'/energy'       },
+    { label:'flexHR',      icon:'flexhr.png',       path:'/flexhr'       },
+    { label:'MyNews',      icon:'mynews.png',       path:'/mynews'       },
+    { label:'Childcare',   icon:'childcare.png',    path:'/childcare'    },
+    { label:'EPP',         icon:'epp.png',          path:'/epp'          },
   ];
-
   return (
     <>
-      <header className="hero-header">
-        <h1>Staging Environment</h1>
-      </header>
+      <header className="hero-header"><h1>Staging Environment</h1></header>
       <div className="warning-container">
         <Calendar size={16} />
         <div className="marquee-wrapper">
@@ -249,11 +359,9 @@ const Home = () => {
         </div>
       </div>
       <main className="grid-menu">
-        {menuItems.map((item, index) => (
-          <Link to={item.path} key={index} className="menu-item link-item">
-            <div className="icon-container">
-              <img src={`/icon_img/${item.icon}`} alt={item.label} />
-            </div>
+        {menuItems.map((item,idx) => (
+          <Link to={item.path} key={idx} className="menu-item link-item">
+            <div className="icon-container"><img src={`/icon_img/${item.icon}`} alt={item.label} /></div>
             <span className="label">{item.label}</span>
           </Link>
         ))}
@@ -262,28 +370,26 @@ const Home = () => {
   );
 };
 
-// --- 5. 扫码页（限制在手机容器内）---
+// ══════════════════════════════════════════════════════════════════
+//  8. SCAN PAGE
+// ══════════════════════════════════════════════════════════════════
 const ScanPage = () => {
   const navigate = useNavigate();
   const videoRef = useRef(null);
-
   useEffect(() => {
     let stream = null;
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
         if (videoRef.current) videoRef.current.srcObject = stream;
-      } catch (err) {
-        alert("Camera access denied.");
+      } catch {
+        alert('Camera access denied.');
         navigate(-1);
       }
     };
     startCamera();
-    return () => {
-      if (stream) stream.getTracks().forEach(track => track.stop());
-    };
+    return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
   }, [navigate]);
-
   return (
     <div className="scan-page-container">
       <video ref={videoRef} autoPlay playsInline muted className="camera-video-layer" />
@@ -295,11 +401,9 @@ const ScanPage = () => {
         </div>
         <div className="scan-viewfinder">
           <div className="viewfinder-box">
-            <div className="corner top-left"></div>
-            <div className="corner top-right"></div>
-            <div className="corner bottom-left"></div>
-            <div className="corner bottom-right"></div>
-            <div className="scan-line"></div>
+            <div className="corner top-left"/><div className="corner top-right"/>
+            <div className="corner bottom-left"/><div className="corner bottom-right"/>
+            <div className="scan-line"/>
           </div>
         </div>
         <div className="scan-tip">Place QR code inside the frame</div>
@@ -308,267 +412,158 @@ const ScanPage = () => {
   );
 };
 
-// --- CHATBOT DENGAN INTEGRASI N8N ---
+// ══════════════════════════════════════════════════════════════════
+//  9. CHATBOT  (N8N integration — fully preserved)
+// ══════════════════════════════════════════════════════════════════
 const ChatBot = ({ containerRef }) => {
-  // Dragging & Window State (Dari App.js)
-  const [isOpen, setIsOpen] = useState(false);
-  const [position, setPosition] = useState({ x: 340, y: 480 }); 
+  const [isOpen,   setIsOpen]   = useState(false);
+  const [position, setPosition] = useState({ x: 340, y: 480 });
   const [isDragging, setIsDragging] = useState(false);
-  const startPosRef = useRef({ x: 0, y: 0 });
-  const offsetRef = useRef({ x: 0, y: 0 });
-
-  // Logic State n8n (Dari App.jsx)
-  const [messages, setMessages] = useState([
-    { id: 1, sender: 'bot', msgType: 'text', text: 'Hai! Saya Employee Assistant anda. Sebut atau taip arahan untuk menempah bilik mesyuarat atau memohon cuti.' }
+  const startPosRef = useRef({ x:0, y:0 });
+  const offsetRef   = useRef({ x:0, y:0 });
+  const [messages,          setMessages]          = useState([
+    { id:1, sender:'bot', msgType:'text', text:'Hai! Saya Employee Assistant anda. Sebut atau taip arahan untuk menempah bilik mesyuarat atau memohon cuti.' }
   ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [inputValue,        setInputValue]        = useState('');
+  const [isRecording,       setIsRecording]       = useState(false);
+  const [isLoading,         setIsLoading]         = useState(false);
   const [conversationState, setConversationState] = useState({});
   const messagesEndRef = useRef(null);
 
-  // Constants n8n
   const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook-test/employee-assistant';
-  const TEMP_JWT_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwidXBuIjoicGVrZXJqYUBjaGluaGluLmNvbSIsInJvbGVzIjpbImVtcGxveWVlIl0sInRlbmFudF9pZCI6ImNoaW5oaW5faHEifQ.UqTWTIrSmD9WwDQQd93W17xFMkAqHeZJf2mSg08ldKU'; 
+  const TEMP_JWT_TOKEN  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwidXBuIjoicGVrZXJqYUBjaGluaGluLmNvbSIsInJvbGVzIjpbImVtcGxveWVlIl0sInRlbmFudF9pZCI6ImNoaW5oaW5faHEifQ.UqTWTIrSmD9WwDQQd93W17xFMkAqHeZJf2mSg08ldKU';
 
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isOpen]);
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior:'smooth' }); }, [messages, isOpen]);
 
-  // --- Dragging Handlers ---
   const handleStart = (e) => {
-    const clientX = e.clientX || e.touches?.[0].clientX;
-    const clientY = e.clientY || e.touches?.[0].clientY;
+    const cx = e.clientX ?? e.touches?.[0].clientX;
+    const cy = e.clientY ?? e.touches?.[0].clientY;
     setIsDragging(true);
-    startPosRef.current = { x: clientX, y: clientY };
-    offsetRef.current = { x: clientX - position.x, y: clientY - position.y };
+    startPosRef.current = { x:cx, y:cy };
+    offsetRef.current   = { x:cx - position.x, y:cy - position.y };
   };
-
   const handleMove = (e) => {
     if (!isDragging || !containerRef.current) return;
-    const clientX = e.clientX || e.touches?.[0].clientX;
-    const clientY = e.clientY || e.touches?.[0].clientY;
+    const cx = e.clientX ?? e.touches?.[0].clientX;
+    const cy = e.clientY ?? e.touches?.[0].clientY;
     const rect = containerRef.current.getBoundingClientRect();
-    const newX = Math.min(Math.max(10, clientX - offsetRef.current.x), rect.width - 70);
-    const newY = Math.min(Math.max(10, clientY - offsetRef.current.y), rect.height - 70);
-    setPosition({ x: newX, y: newY });
+    setPosition({
+      x: Math.min(Math.max(10, cx - offsetRef.current.x), rect.width  - 70),
+      y: Math.min(Math.max(10, cy - offsetRef.current.y), rect.height - 70),
+    });
   };
-
-  const handleEnd = () => setIsDragging(false);
-
+  const handleEnd      = () => setIsDragging(false);
   const handleBotClick = (e) => {
-    const distance = Math.sqrt(Math.pow(e.clientX - startPosRef.current.x, 2) + Math.pow(e.clientY - startPosRef.current.y, 2));
-    if (distance < 5) setIsOpen(!isOpen);
+    const d = Math.hypot(e.clientX - startPosRef.current.x, e.clientY - startPosRef.current.y);
+    if (d < 5) setIsOpen(o => !o);
   };
 
-  // --- Voice & N8N Logic ---
   const speakText = (text) => {
     if (!('speechSynthesis' in window)) return;
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US'; 
-    window.speechSynthesis.speak(utterance);
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang  = 'en-US';
+    window.speechSynthesis.speak(u);
   };
 
   const startRecording = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Browser anda tidak menyokong rakaman suara. Sila guna Google Chrome.");
-      return;
-    }
-
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
-
-    recognition.onstart = () => {
-      setIsRecording(true);
-      window.speechSynthesis.cancel();
-    };
-
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      handleSendMessage(transcript, 'voice');
-    };
-
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onend = () => setIsRecording(false);
-    
-    recognition.start();
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { alert('Browser anda tidak menyokong rakaman suara. Sila guna Google Chrome.'); return; }
+    const rec = new SR();
+    rec.lang = 'en-US'; rec.interimResults = false;
+    rec.onstart  = () => { setIsRecording(true); window.speechSynthesis.cancel(); };
+    rec.onresult = (e) => handleSendMessage(e.results[0][0].transcript, 'voice');
+    rec.onerror  = () => setIsRecording(false);
+    rec.onend    = () => setIsRecording(false);
+    rec.start();
   };
 
-  const handleSendMessage = async (text, inputType = 'text', confirmData = null) => {
+  const addAiMessage = (text, msgType) => setMessages(prev => [...prev, { id:Date.now(), sender:'bot', msgType, text }]);
+
+  const handleSendMessage = async (text, inputType='text', confirmData=null) => {
     if (!text && !confirmData) return;
-
-    if (!confirmData) {
-      setMessages(prev => [...prev, { id: Date.now(), sender: 'user', msgType: 'text', text }]);
-      setInputValue('');
-    }
-
+    if (!confirmData) { setMessages(prev => [...prev, { id:Date.now(), sender:'user', msgType:'text', text }]); setInputValue(''); }
     setIsLoading(true);
-
-    const payload = confirmData ? {
-      text: "User confirmed the plan",
-      input_type: inputType,
-      state: conversationState,
-      confirm: true,
-      edited_plan: confirmData.plan,
-      client_request_id: `req-${Date.now()}`
-    } : {
-      text: text,
-      input_type: inputType,
-      state: conversationState,
-      client_request_id: `req-${Date.now()}`
-    };
-
+    const payload = confirmData
+      ? { text:'User confirmed the plan', input_type:inputType, state:conversationState, confirm:true, edited_plan:confirmData.plan, client_request_id:`req-${Date.now()}` }
+      : { text, input_type:inputType, state:conversationState, client_request_id:`req-${Date.now()}` };
     try {
-      const response = await fetch(N8N_WEBHOOK_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${TEMP_JWT_TOKEN}`
-        },
-        body: JSON.stringify(payload)
+      const res = await fetch(N8N_WEBHOOK_URL, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${TEMP_JWT_TOKEN}` },
+        body: JSON.stringify(payload),
       });
-
-      const data = await response.json();
-      processN8nResponse(data, inputType);
-    } catch (error) {
-      console.error("Error:", error);
-      addAiMessage("System offline. Cannot connect to the assistant.", 'text');
-    } finally {
-      setIsLoading(false);
-    }
+      processN8nResponse(await res.json(), inputType);
+    } catch {
+      addAiMessage('System offline. Cannot connect to the assistant.', 'text');
+    } finally { setIsLoading(false); }
   };
 
   const processN8nResponse = (data, inputType) => {
-    let textToSpeak = "";
-    
+    let textToSpeak = '';
     if (data.state) setConversationState(data.state);
-
     switch (data.type) {
-      case 'clarify':
-        textToSpeak = data.question;
-        addAiMessage(data.question, 'text');
-        break;
-
+      case 'clarify':  textToSpeak = data.question; addAiMessage(data.question,'text'); break;
       case 'confirm':
-        textToSpeak = data.summary + ". Do you want to proceed?";
-        setMessages(prev => [...prev, { 
-          id: Date.now(), 
-          sender: 'bot', 
-          msgType: 'confirm_card', 
-          text: data.summary,
-          plan: data.plan,
-          confirm_token: data.confirm_token
-        }]);
+        textToSpeak = data.summary + '. Do you want to proceed?';
+        setMessages(prev => [...prev, { id:Date.now(), sender:'bot', msgType:'confirm_card', text:data.summary, plan:data.plan, confirm_token:data.confirm_token }]);
         break;
-
-      case 'receipt':
-        textToSpeak = "Success! " + data.summary;
-        addAiMessage(textToSpeak, 'text');
-        setConversationState({}); 
-        break;
-
+      case 'receipt':  textToSpeak = 'Success! '+data.summary; addAiMessage(textToSpeak,'text'); setConversationState({}); break;
       case 'error':
-      case 'auth_error':
-        textToSpeak = "Sorry, " + (data.message || data.error);
-        addAiMessage(textToSpeak, 'text');
-        break;
-
-      default: 
-        textToSpeak = "I received a response, but I'm not sure how to display it.";
-        addAiMessage(textToSpeak, 'text');
+      case 'auth_error': textToSpeak = 'Sorry, '+(data.message||data.error); addAiMessage(textToSpeak,'text'); break;
+      default: textToSpeak = "I received a response, but I'm not sure how to display it."; addAiMessage(textToSpeak,'text');
     }
-
-    if (inputType === 'voice' && textToSpeak) {
-      speakText(textToSpeak);
-    }
-  };
-
-  const addAiMessage = (text, msgType) => {
-    setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', msgType, text }]);
+    if (inputType==='voice' && textToSpeak) speakText(textToSpeak);
   };
 
   return (
     <>
       <div
         className="chatbot-float-btn"
-        style={{ left: `${position.x}px`, top: `${position.y}px` }}
-        onMouseDown={handleStart}
-        onTouchStart={handleStart}
-        onMouseMove={handleMove}
-        onTouchMove={handleMove}
-        onMouseUp={handleEnd}
-        onTouchEnd={handleEnd}
+        style={{ left:`${position.x}px`, top:`${position.y}px` }}
+        onMouseDown={handleStart} onTouchStart={handleStart}
+        onMouseMove={handleMove}  onTouchMove={handleMove}
+        onMouseUp={handleEnd}     onTouchEnd={handleEnd}
         onClick={handleBotClick}
       >
         <Bot size={28} color="white" />
       </div>
-      
       {isOpen && (
         <div className="chat-window-overlay">
           <div className="chat-header">
             <span>Smart Bot</span>
-            <X size={20} onClick={() => setIsOpen(false)} style={{ cursor: 'pointer' }} />
+            <X size={20} onClick={() => setIsOpen(false)} style={{cursor:'pointer'}} />
           </div>
-          
           <div className="chat-messages">
             {messages.map(m => (
               <div key={m.id} className={`message ${m.sender}`}>
-                <p style={{ margin: 0 }}>{m.text}</p>
-                
-                {m.msgType === 'confirm_card' && (
-                  <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
-                    <button 
-                      style={{ padding: '6px 10px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', flex: 1 }}
-                      onClick={() => handleSendMessage(null, 'text', m)}
-                    >
-                      Confirm
-                    </button>
-                    <button 
-                      style={{ padding: '6px 10px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', flex: 1 }}
-                      onClick={() => addAiMessage("Action cancelled.", 'text')}
-                    >
-                      Cancel
-                    </button>
+                <p style={{margin:0}}>{m.text}</p>
+                {m.msgType==='confirm_card' && (
+                  <div style={{marginTop:10,display:'flex',gap:8}}>
+                    <button style={{padding:'6px 10px',background:'#28a745',color:'white',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,flex:1}}
+                      onClick={() => handleSendMessage(null,'text',m)}>Confirm</button>
+                    <button style={{padding:'6px 10px',background:'#dc3545',color:'white',border:'none',borderRadius:6,cursor:'pointer',fontSize:12,flex:1}}
+                      onClick={() => addAiMessage('Action cancelled.','text')}>Cancel</button>
                   </div>
                 )}
               </div>
             ))}
-            {isLoading && (
-               <div className="message bot" style={{ opacity: 0.7 }}>Assistant menaip...</div>
-            )}
+            {isLoading && <div className="message bot" style={{opacity:0.7}}>Assistant menaip…</div>}
             <div ref={messagesEndRef} />
           </div>
-
-          <div className="chat-input-area" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <button 
-              onClick={startRecording}
-              style={{ 
-                background: isRecording ? '#ffebe9' : 'transparent', 
-                border: 'none', cursor: 'pointer', padding: '8px', 
-                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}
-              title="Tekan untuk bercakap"
-            >
-              <Mic size={20} color={isRecording ? '#ff4d4f' : '#666'} />
+          <div className="chat-input-area" style={{display:'flex',gap:8,alignItems:'center'}}>
+            <button onClick={startRecording}
+              style={{background:isRecording?'#ffebe9':'transparent',border:'none',cursor:'pointer',padding:8,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <Mic size={20} color={isRecording?'#ff4d4f':'#666'} />
             </button>
-            <input
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+            <input value={inputValue} onChange={e=>setInputValue(e.target.value)}
               placeholder="Type your request..."
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage(inputValue, 'text')}
-              disabled={isRecording || isLoading}
-              style={{ flex: 1, padding: '10px', borderRadius: '20px', border: '1px solid #ddd', outline: 'none' }}
-            />
-            <button 
-              className="send-btn" 
-              onClick={() => handleSendMessage(inputValue, 'text')}
-              disabled={!inputValue.trim() || isLoading}
-              style={{ opacity: (!inputValue.trim() || isLoading) ? 0.5 : 1 }}
-            >
+              onKeyPress={e=>e.key==='Enter' && handleSendMessage(inputValue,'text')}
+              disabled={isRecording||isLoading}
+              style={{flex:1,padding:10,borderRadius:20,border:'1px solid #ddd',outline:'none'}} />
+            <button className="send-btn" onClick={()=>handleSendMessage(inputValue,'text')}
+              disabled={!inputValue.trim()||isLoading}
+              style={{opacity:(!inputValue.trim()||isLoading)?0.5:1}}>
               <Send size={18} />
             </button>
           </div>
@@ -578,87 +573,30 @@ const ChatBot = ({ containerRef }) => {
   );
 };
 
-// --- 页面包装器，动态设置 paddingTop ---
-const PageWrapper = ({ children, showTopBar }) => {
-  return (
-    <div className="page-content" style={{ paddingTop: showTopBar ? '80px' : '0' }}>
-      {children}
-    </div>
-  );
-};
+// ══════════════════════════════════════════════════════════════════
+//  10. PAGE WRAPPER
+// ══════════════════════════════════════════════════════════════════
+const PageWrapper = ({ children, showTopBar }) => (
+  <div className="page-content" style={{ paddingTop: showTopBar ? '80px' : '0' }}>
+    {children}
+  </div>
+);
 
-// --- 6. 根组件与底部导航 ---
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const appRef = useRef(null);
-  const location = useLocation();
-
-  const showFooter = isAuthenticated && !['/scan', '/login', '/signup'].includes(location.pathname);
-  const showTopBar = showFooter && ['/', '/dashboard', '/info', '/profile'].includes(location.pathname);
-
-  const openNotifications = () => setShowNotifications(true);
-  const closeNotifications = () => setShowNotifications(false);
-
-  return (
-    <div className="mobile-app" ref={appRef}>
-      {showTopBar && <GlobalWelcomeBar openNotifications={openNotifications} />}
-
-      {!isAuthenticated ? (
-        <Routes>
-          <Route path="/login" element={<Login setAuth={setIsAuthenticated} />} />
-          <Route path="*" element={<Navigate to="/login" />} />
-        </Routes>
-      ) : (
-        <>
-          {location.pathname === '/scan' ? (
-            <ScanPage />
-          ) : (
-            <Routes>
-              <Route path="/" element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
-              <Route path="/dashboard" element={<PageWrapper showTopBar={showTopBar}><DashboardPage /></PageWrapper>} />
-              <Route path="/info" element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
-              <Route path="/profile" element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} /></PageWrapper>} />
-              <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom /></PageWrapper>} />
-              <Route path="/transport" element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
-              <Route path="/evisitor" element={<PageWrapper showTopBar={false}><EVisitor /></PageWrapper>} />
-              <Route path="/ticketing" element={<PageWrapper showTopBar={false}><Ticketing /></PageWrapper>} />
-              <Route path="/chart" element={<PageWrapper showTopBar={false}><Chart /></PageWrapper>} />
-              <Route path="/wellness" element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
-              <Route path="/meal" element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
-              <Route path="/energy" element={<PageWrapper showTopBar={false}><Energy /></PageWrapper>} />
-              <Route path="/flexhr" element={<PageWrapper showTopBar={false}><FlexHR /></PageWrapper>} />
-              <Route path="/mynews" element={<PageWrapper showTopBar={false}><Mynews /></PageWrapper>} />
-              <Route path="/childcare" element={<PageWrapper showTopBar={false}><Childcare /></PageWrapper>} />
-              <Route path="/epp" element={<PageWrapper showTopBar={false}><EPP /></PageWrapper>} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          )}
-          {showFooter && <FooterWithConditionalRendering />}
-        </>
-      )}
-
-      {/* Paparkan ChatBot merentasi aplikasi */}
-      <ChatBot containerRef={appRef} />
-
-      {showNotifications && <NotificationPanel onClose={closeNotifications} />}
-    </div>
-  );
-}
-
-const FooterWithConditionalRendering = () => {
+// ══════════════════════════════════════════════════════════════════
+//  11. BOTTOM NAV
+// ══════════════════════════════════════════════════════════════════
+const FooterNav = () => {
   const location = useLocation();
   const navs = [
-    { label: 'Home', path: '/', icon: <HomeIcon size={22} /> },
-    { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} /> },
-    { label: 'Info', path: '/info', icon: <InfoIcon size={22} /> },
-    { label: 'Profile', path: '/profile', icon: <UserCircle size={22} /> }
+    { label:'Home',      path:'/',          icon:<HomeIcon        size={22}/> },
+    { label:'Dashboard', path:'/dashboard', icon:<LayoutDashboard size={22}/> },
+    { label:'Info',      path:'/info',      icon:<InfoIcon        size={22}/> },
+    { label:'Profile',   path:'/profile',   icon:<UserCircle      size={22}/> },
   ];
-
   return (
     <footer className="bottom-nav-fixed">
       {navs.map(n => (
-        <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
+        <Link to={n.path} key={n.label} className={`nav-item ${location.pathname===n.path?'active':''}`}>
           {n.icon} <span>{n.label}</span>
         </Link>
       ))}
@@ -666,10 +604,153 @@ const FooterWithConditionalRendering = () => {
   );
 };
 
-export default function WrappedApp() {
+// ══════════════════════════════════════════════════════════════════
+//  12. ROOT APP
+// ══════════════════════════════════════════════════════════════════
+function App() {
+  // isAppLoading = true until BOTH splash timer AND auth check are done
+  const [isAppLoading,      setIsAppLoading]      = useState(true);
+  const [authChecked,       setAuthChecked]       = useState(false);
+  const [isAuthenticated,   setIsAuthenticated]   = useState(false);
+  const [userInfo,          setUserInfo]          = useState(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const appRef   = useRef(null);
+  const location = useLocation();
+
+  // Run splash timer AND auth check in parallel — hide splash when BOTH done
+  useEffect(() => {
+    let splashDone  = false;
+    let authDone    = false;
+    const tryHide   = () => { if (splashDone && authDone) setIsAppLoading(false); };
+
+    // Splash timer
+    const t = setTimeout(() => { splashDone = true; tryHide(); }, 2000);
+
+    // Auth check — handles redirect result (#code= in URL) AND session restore
+    const checkAuth = async () => {
+      try {
+        await ensureMsal();
+
+        // ✅ CRITICAL: process the #code= token Microsoft put in the URL
+        const redirectResult = await msalInstance.handleRedirectPromise();
+        if (redirectResult && redirectResult.account) {
+          const acct = redirectResult.account;
+          console.log('✅ Redirect login success:', acct.username);
+          setUserInfo({ name: acct.name || acct.username, email: acct.username });
+          setIsAuthenticated(true);
+          // Clean up the ugly #code= from the URL
+          window.history.replaceState({}, document.title, '/');
+          return;
+        }
+
+        // Check existing session (page refresh)
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          const acct = accounts[0];
+          console.log('✅ Session found:', acct.username);
+          setUserInfo({ name: acct.name || acct.username, email: acct.username });
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        console.warn('Auth check error:', err.message);
+      } finally {
+        authDone = true;
+        setAuthChecked(true);
+        tryHide();
+      }
+    };
+    checkAuth();
+
+    return () => clearTimeout(t);
+  }, []);
+
+  const hiddenPaths = ['/scan', '/login', '/signup'];
+  const topBarPaths = ['/', '/dashboard', '/info', '/profile'];
+  const showFooter  = isAuthenticated && !hiddenPaths.includes(location.pathname);
+  const showTopBar  = showFooter && topBarPaths.includes(location.pathname);
+
+  // Show splash until both auth check and splash timer are done
+  if (isAppLoading) return <SplashScreen />;
+
   return (
-    <Router>
-      <App />
-    </Router>
+    <div className="mobile-app" ref={appRef}>
+      {showTopBar && <GlobalWelcomeBar userInfo={userInfo} openNotifications={() => setShowNotifications(true)} />}
+
+      {!isAuthenticated ? (
+        <Routes>
+          <Route path="/login" element={<Login setAuth={setIsAuthenticated} setUserInfo={setUserInfo} />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      ) : (
+        <>
+          {location.pathname === '/scan' ? <ScanPage /> : (
+            <Routes>
+              {/* If somehow landed on /login while authenticated → go home */}
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/"             element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
+              <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage /></PageWrapper>} />
+              <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
+              <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom /></PageWrapper>} />
+              <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
+              <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor /></PageWrapper>} />
+              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing /></PageWrapper>} />
+              <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart /></PageWrapper>} />
+              <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
+              <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
+              <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy /></PageWrapper>} />
+              <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR /></PageWrapper>} />
+              <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews /></PageWrapper>} />
+              <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare /></PageWrapper>} />
+              <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP /></PageWrapper>} />
+              <Route path="*"             element={<Navigate to="/" replace />} />
+            </Routes>
+          )}
+          {showFooter && <FooterNav />}
+        </>
+      )}
+
+      <ChatBot containerRef={appRef} />
+      {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
+    </div>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════
+//  ENTRY POINT
+// ══════════════════════════════════════════════════════════════════
+export default function WrappedApp() {
+  return <Router><App /></Router>;
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  STYLE TOKENS
+// ══════════════════════════════════════════════════════════════════
+const S = {
+  splash: {
+    root:  { height:'100vh', width:'100vw', display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', background:'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 55%,#3d2a8a 100%)', position:'fixed', top:0, left:0, zIndex:9999 },
+    ring:  { width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'2px solid rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:22, animation:'splashPulse 2.4s ease-in-out infinite', boxShadow:'0 0 40px rgba(130,90,255,.45)' },
+    logo:  { width:72, height:72, objectFit:'contain' },
+    title: { color:'#fff', fontSize:30, fontWeight:800, margin:0, letterSpacing:1.5, animation:'fadeSlideUp .6s ease both' },
+    sub:   { color:'#a89bc9', fontSize:13, marginTop:8, animation:'fadeSlideUp .6s .18s ease both' },
+    dots:  { display:'flex', gap:7, marginTop:36 },
+    dot:   { display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#a89bc9', animation:'splashBounce 1.4s ease-in-out infinite' },
+  },
+  login: {
+    page:        { minHeight:'100vh', width:'100%', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 50%,#3d2a8a 100%)', padding:20, position:'relative', overflow:'hidden' },
+    blobTR:      { position:'absolute', top:-140, right:-140, width:320, height:320, borderRadius:'50%', background:'rgba(120,80,255,.14)', filter:'blur(70px)', pointerEvents:'none' },
+    blobBL:      { position:'absolute', bottom:-120, left:-120, width:280, height:280, borderRadius:'50%', background:'rgba(40,120,255,.12)', filter:'blur(65px)', pointerEvents:'none' },
+    card:        { position:'relative', zIndex:2, background:'#fff', borderRadius:24, padding:'44px 32px 36px', width:'100%', maxWidth:380, boxShadow:'0 24px 80px rgba(0,0,0,.36)', display:'flex', flexDirection:'column', alignItems:'center', animation:'cardIn .55s cubic-bezier(.22,1,.36,1) both' },
+    iconWrap:    { display:'flex', justifyContent:'center', marginBottom:20 },
+    iconRing:    { width:100, height:100, borderRadius:'50%', background:'linear-gradient(135deg,#2b1d62,#5a3faa)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 10px 32px rgba(43,29,98,.38)' },
+    iconImg:     { width:58, height:58, objectFit:'contain' },
+    appName:     { fontSize:27, fontWeight:800, color:'#2b1d62', margin:'0 0 4px', letterSpacing:.5 },
+    tagline:     { fontSize:13, color:'#7c6fa0', margin:'0 0 20px' },
+    divider:     { width:'100%', height:1, background:'#ede9f6', margin:'2px 0 20px' },
+    instruction: { fontSize:14, color:'#555', textAlign:'center', marginBottom:22, lineHeight:1.65 },
+    errorBox:    { width:'100%', padding:'10px 14px', borderRadius:8, background:'#fff1f0', border:'1px solid #ffd6d6', color:'#c0392b', fontSize:13, marginBottom:14, textAlign:'center' },
+    msBtn:       { display:'flex', alignItems:'center', justifyContent:'center', gap:12, width:'100%', padding:'14px 20px', background:'#fff', color:'#3c3c3c', border:'1.5px solid #d1d5db', borderRadius:10, fontSize:15, fontWeight:600, transition:'background .18s ease, box-shadow .18s ease', boxShadow:'0 2px 6px rgba(0,0,0,.06)' },
+    spinner:     { display:'inline-block', width:18, height:18, border:'2.5px solid #ddd', borderTop:'2.5px solid #2b1d62', borderRadius:'50%', animation:'spinBtn .7s linear infinite' },
+    footerNote:  { marginTop:26, fontSize:11, color:'#aaa' },
+  },
+};
