@@ -93,9 +93,9 @@
   margin: 0 auto;
   height: 75px;
   background: white;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 80px 1fr 1fr;
   align-items: center;
-  justify-content: stretch;
   border-top: 1px solid #eee;
   z-index: 1000;
   padding-bottom: env(safe-area-inset-bottom);
@@ -110,9 +110,8 @@
   font-size: 10px;
   text-decoration: none;
   cursor: pointer;
-  flex: 1;
-  gap: 3px;
-  min-width: 0;
+  gap: 4px;
+  height: 100%;
 }
 
 .nav-item.active {
@@ -716,13 +715,12 @@
 /* ===== 底部导航 — with center ChatBot slot ===== */
 .bottom-nav-with-fab {
   padding-bottom: env(safe-area-inset-bottom);
-  position: relative;
 }
 
 .nav-chatbot-slot {
-  flex: 1;
-  height: 100%;
+  /* grid column 3 — the 80px center slot */
   pointer-events: none;
+  height: 100%;
 }
 
 .nav-chatbot-slot .chatbot-static-fab {
