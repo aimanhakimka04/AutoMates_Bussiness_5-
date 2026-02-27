@@ -1,0 +1,152 @@
+{
+  "name": "C5-Ticketing-Sub",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f53d695-79b5-48b4-ad3f-0341835f7c67",
+              "name": "=User_Info",
+              "value": "=\"id\": \"\", \n\"email\": \"\", \n\"level\": \"\", \n\"facility\": \"\", \n\"zone\": \"\", \n\"issue_type\":\"\",\n\"description\":\"\",\n\"remarks\":\"\"",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8792246f-d569-4095-859a-817c8bfd19f1",
+      "name": "User info",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        896,
+        288
+      ],
+      "id": "86a7f4ae-5e39-41e2-a2fe-9ded0c7b3583",
+      "name": "Send a message",
+      "webhookId": "952ea979-b363-4e04-ba0a-8da68ee8b5eb",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "EpcbZaG3zflLa2yQ",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f53d695-79b5-48b4-ad3f-0341835f7c67",
+              "name": "=attachment",
+              "value": "=\"photo\":\"\",\n\"document\":\"\"",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "611fc496-16d2-4b25-a778-f28ad55bf345",
+      "name": "attachment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        192
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        288
+      ],
+      "id": "28b5b789-7507-4af1-86b5-b62185057cd7",
+      "name": "Merge"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "User info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User info": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "attachment": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "96dd3874-ec98-42b0-a2bf-371895c761f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"
+  },
+  "id": "AEEdK1tVcQV6bRbY",
+  "tags": []
+}

@@ -1,0 +1,1087 @@
+{
+  "name": "Customer ai agent",
+  "nodes": [
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "hours"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1024,
+        256
+      ],
+      "id": "4d09e32d-a84d-4dd1-87aa-5974e0b72f4c",
+      "name": "Wait",
+      "webhookId": "4e60d1f7-617b-4634-821e-16da51a16b7f"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ecb831a-87f9-4eb5-8777-2079e10f79fa",
+              "leftValue": "{{ $json.output }}",
+              "rightValue": "troubleshooting",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "b4cfa237-ec03-459e-8ee7-568e75085a84",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "clarifying",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        576,
+        256
+      ],
+      "id": "fc9c5d83-9cce-4367-8a83-d8f33a96297d",
+      "name": "issue"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ecb831a-87f9-4eb5-8777-2079e10f79fa",
+              "leftValue": "={{ $json.output}}",
+              "rightValue": "success",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "b4cfa237-ec03-459e-8ee7-568e75085a84",
+              "leftValue": "={{ $json.output}}",
+              "rightValue": "fixing",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        720,
+        464
+      ],
+      "id": "a1de7f87-7020-4138-a2fd-226151523aba",
+      "name": "resolve?"
+    },
+    {
+      "parameters": {
+        "content": "Issue Handle",
+        "height": 201,
+        "width": 651,
+        "color": 2
+      },
+      "id": "50ea1221-6aa1-46a7-9ddf-d05bb746c96a",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        512,
+        208
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "gpt-5.2-chat",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        352,
+        880
+      ],
+      "id": "603878b6-c636-4f7c-9ca6-a38e46201e31",
+      "name": "Azure OpenAI Chat Model1",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "BdwOECmNXrVTjQjr",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Agent List",
+        "height": 745,
+        "width": 667,
+        "color": 7
+      },
+      "id": "3a92d5e9-3ec4-4847-a865-fd10b7a6654a",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -32,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "Normal Question Handle",
+        "height": 201,
+        "width": 331,
+        "color": 2
+      },
+      "id": "05094e3b-dc1d-4773-a10c-d1bafdb074f2",
+      "name": "Sticky Note8",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        688,
+        0
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "inquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "f0cc6b42-4962-4fd3-8c86-a37e9b2bd0bd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Normal"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "aff2cd8e-c7a4-473e-b955-e22530d1acda",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Issue",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "issue"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e4a4c5b6-b8e6-4757-8f62-ddce462a1df7",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Resolve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "resolve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4f73291c-8a06-4652-95ae-0ccca59db60b",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "negative",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "negative"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c78645a0-f61b-4a01-9145-13b08793ba89",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "Request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Request"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        32,
+        432
+      ],
+      "id": "f813b8cb-fdb2-4a76-90fe-a1e5bc861fd3",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ecb831a-87f9-4eb5-8777-2079e10f79fa",
+              "leftValue": "{{ $json.output }}",
+              "rightValue": "auto-log",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "b4cfa237-ec03-459e-8ee7-568e75085a84",
+              "leftValue": "={{ $json.output }}",
+              "rightValue": "follow-up",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        800,
+        240
+      ],
+      "id": "82dc6522-f4c4-41cf-ade0-cbda07bd1aa3",
+      "name": "troubleshooting"
+    },
+    {
+      "parameters": {
+        "content": "Follow up && Resolve Check",
+        "height": 185,
+        "width": 475,
+        "color": 2
+      },
+      "id": "ea63e394-35ea-484d-9aa5-1ce51bd1103c",
+      "name": "Sticky Note9",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        688,
+        416
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "options": {
+          "systemMessage": "=remove emotion type.\nGoal:\n\nAsk whether problem is resolved.\n\nDecide escalation or closure.\n\nRules:\n\nfollow_up_type must be one of:\n\n\"problem_fix_success\"\n\n\"problem_fixing\"\n\nIf problem resolved → congratulate user and close case.\n\nIf problem not resolved OR user tone negative → escalate to human agent.\n\nOnce resolved → do NOT continue follow-up again.\n\nJSON schema:\n\n{\n\"intent\": \"follow_up_resolution\",\n\"follow_up_type\": \"\",\n\"escalate_to_human\": false,\n\"close_ticket\": false,\n\"action_plan\": {\n\"action\": \"\",\n\"parameters\": {},\n\"summary\": \"\"\n}\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        464
+      ],
+      "id": "94c445a9-508c-4d4e-a5ec-ccf1ca3e0a14",
+      "name": "Follow-Up"
+    },
+    {
+      "parameters": {
+        "content": "Agent announcement (human)",
+        "height": 217,
+        "width": 251,
+        "color": 2
+      },
+      "id": "564cba34-0a01-44d3-b78e-37857de49e34",
+      "name": "Sticky Note10",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        912,
+        608
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "toRecipients": "employee@gmail.com",
+        "subject": "={{ $json.final_plan.parameters.subject }}",
+        "bodyContent": "={{ $json.final_plan.parameters.content }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        976,
+        672
+      ],
+      "id": "7cd2826a-5802-40b1-b1f0-cd3852851f69",
+      "name": "Send a message1",
+      "webhookId": "5ad042d6-91cd-4ba8-9a51-a6fdfea31273",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "EpcbZaG3zflLa2yQ",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "version 2 \none ai agent handle text assign and emotion detect\n",
+        "height": 201,
+        "width": 315,
+        "color": 6
+      },
+      "id": "74ec3c90-ae7a-4c6a-a408-4fae9824fac3",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -416,
+        416
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.context.request.text }} ",
+        "options": {
+          "systemMessage": "=You are a Customer Support AI Agent for an enterprise support system. Output must strictly follow the defined JSON schema.\n\nGoal:\nAssign question_type.\nDetect user_emotion.\n\nRules:\nquestion_type must be one of:\n\"Issue\"\n\"Resolved\"\n\"Require\"\n\"inquiry\"\n\nuser_emotion must be one of:\n\"positive\"\n\"neutral\"\n\"negative\"\n\ncheck if question is issue type, is it assign to troubleshooting or clarifying, if troubleshooting assign it to auto-log or follow-up-long-up\nFinal:\nJSON schema:\n{\n\"intent\": \"classify_issue\",\n\"question_type\": \"\",\n\"troubleshooting\": \"\",\n\"auto-log\": \"\",\n\"follow-up-long-time\": \"\",\n\"clarifying\": \"\",\n\"store\": \"\",\n\"user_emotion\": \"\",\n\"user_question\": \"\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -384,
+        480
+      ],
+      "id": "7f38f134-def6-4604-848b-86e8d6c6bb2e",
+      "name": "Question Preprocess1"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/customer-service-assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7104ef65-f8bd-4e7b-9a50-4f34df531bb2",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -928,
+        480
+      ],
+      "webhookId": "4e0dc8fa-09b3-49f4-ba64-7ad7412fcb1c"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items || items.length === 0) {\n  return [{ json: { error: 'Tiada data diterima', token_valid: false } }];\n}\n\n// Ambil header dengan selamat\nconst firstItem = items[0].json;\nconst authHeader = firstItem.headers?.authorization || firstItem.headers?.Authorization;\n\nif (!authHeader || !authHeader.startsWith('Bearer ')) {\n  return [{ json: { error: 'Missing or invalid Authorization header', token_valid: false } }];\n}\n\ntry {\n  const token = authHeader.substring(7);\n  const parts = token.split('.');\n  \n  if (parts.length !== 3) {\n    throw new Error('Format JWT tidak sah');\n  }\n\n  let payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');\n  \n  // Tambah padding supaya format base64 sempurna\n  while (payloadBase64.length % 4 !== 0) {\n      payloadBase64 += '=';\n  }\n  \n  const payloadString = Buffer.from(payloadBase64, 'base64').toString('utf-8');\n  const decoded = JSON.parse(payloadString);\n\n  // Berjaya: Kembalikan data pekerja berserta flag token_valid = true\n  return [{\n    json: {\n      user_id: decoded.sub || 'user123',\n      email: decoded.upn || 'pekerja@chinhin.com',\n      roles: decoded.roles || ['employee'],\n      tenant_id: decoded.tenant_id || 'chinhin_hq',\n      token_valid: true\n    }\n  }];\n\n} catch (error) {\n  // Gagal: Kembalikan error berserta flag token_valid = false\n  return [{\n    json: {\n      error: error.message,\n      token_valid: false\n    }\n  }];\n}"
+      },
+      "id": "8607378a-16a1-42bc-884c-acd03680fd13",
+      "name": "VerifyTempToken",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "enableResponseOutput": true,
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $json.output } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "78d76c68-02a8-4908-b3e9-673f7cfaa88c",
+      "name": "Respond Receipt2",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        944,
+        448
+      ]
+    },
+    {
+      "parameters": {
+        "enableResponseOutput": true,
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $json.output } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ac7c9312-42a6-4120-ac7e-6f3add4771ce",
+      "name": "Respond Receipt3",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        800,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "context",
+              "value": "={{ ({ user: { id: $json.user_id, upn: $json.email, \nroles: $json.roles, tenant_id: $json.tenant_id }, \nrequest: { text: $('Webhook Trigger').item.json.body.message, input_type: $('Webhook Trigger').item.json.body.input_type, state: $('Webhook Trigger').item.json.body.state, \nconfirm: $('Webhook Trigger').item.json.body.confirm, edited_plan: $('Webhook Trigger').item.json.body.edited_plan, client_request_id: $('Webhook Trigger').item.json.body.client_request_id, \ngraph_access_token: $('Webhook Trigger').item.json.body.graph_access_token } }) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "536d08b3-3e83-46eb-97bb-c0f9ad4971a7",
+      "name": "BuildContext",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -608,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "use a custome email, now use employee@gmail for test, not real one",
+        "height": 80,
+        "width": 310,
+        "color": 2
+      },
+      "id": "9ff3d620-e112-48a1-8bbb-e7f4c99c807f",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        896,
+        832
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "options": {
+          "systemMessage": "=You are a Customer Support AI Agent responsible for transforming user text into structured JSON and determining the next step.\n\nYour job:\nRemove emotion type, troubleshooting, only keep the type and user question\nRead the user's text.\n\nConvert it into structured JSON.\n\nDecide the next_step.\n\nIf clarification is required, generate ONE clarification question.\n\nOutput ONLY valid JSON. No markdown. No extra text.\n\nRules:\n\nDo not interpret beyond structural transformation.\n\nPreserve original meaning.\n\nnext_step must be one of:\n\n\"store_data\"\n\n\"ask_clarifying_question\"\n\nAsk ONLY ONE clarification question.\n\nAsk the MINIMUM missing information needed.\n\nIf essential information is missing or ambiguous → next_step = \"ask_clarifying_question\".\n\nIf structured data is complete and meaningful → next_step = \"store_data\".\n\nIf next_step = \"store_data\", clarification_question must be null.\n\nIf next_step = \"ask_clarifying_question\", clarification_question must contain exactly ONE question.\n\nJSON schema:\n\n{\n\"intent\": \"transform_to_json\",\n\"structured_data\": {},\n\"next_step\": \"\",\n\"clarification_question\": null\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        224
+      ],
+      "id": "0f40dd23-e57c-4db7-b3a5-90faeea0427b",
+      "name": "Store data || Clarifying question1"
+    },
+    {
+      "parameters": {
+        "content": "Version 2,  store case in database for backup || Clarifying Question",
+        "height": 377,
+        "width": 1195,
+        "color": 2
+      },
+      "id": "ccd1954a-5cd1-4791-a1e4-646b8c6df591",
+      "name": "Sticky Note12",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1184,
+        192
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.context.user }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -288,
+        688
+      ],
+      "id": "a29967a6-b8e9-4511-a46a-eaeabd014d2a",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "4BUCaUQ0XbiZJDY7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.output }}",
+        "options": {
+          "systemMessage": "=Output must strictly follow the defined JSON schema. Remove emotion type.\nAsk user have what require, with great behavior\n\nJSON schema:\n\n{\n  \"response\":\"\"\n}\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        48
+      ],
+      "id": "1e14dd42-3c6f-4e67-a744-861578e1926c",
+      "name": "Inquiry"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.context.user }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        1456,
+        416
+      ],
+      "id": "36ebc917-b422-4ac7-834c-90fc1bae81ae",
+      "name": "Postgres Chat Memory1",
+      "credentials": {
+        "postgres": {
+          "id": "4BUCaUQ0XbiZJDY7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combineBySql",
+        "query": "SELECT * FROM input2 LEFT JOIN input1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1136,
+        -112
+      ],
+      "id": "da1def4c-c67d-4b55-b410-01f193e3ad4a",
+      "name": "merge for user id"
+    },
+    {
+      "parameters": {
+        "resource": "blob",
+        "operation": "create",
+        "container": {
+          "__rl": true,
+          "value": "eb0d335d-c1e4-406f-a054-2c71e241219a-azureml",
+          "mode": "list",
+          "cachedResultName": "eb0d335d-c1e4-406f-a054-2c71e241219a-azureml"
+        },
+        "blobCreate": "={{$binary.data.fileName}}",
+        "binaryPropertyName": "=data",
+        "options": {},
+        "requestOptions": {}
+      },
+      "type": "n8n-nodes-base.azureStorage",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        208
+      ],
+      "id": "0fff2e4e-6ea7-4d38-a23d-247aa1c526b4",
+      "name": "Create blob",
+      "credentials": {
+        "azureStorageSharedKeyApi": {
+          "id": "u5wPzdq6PgNG7U11",
+          "name": "Azure Storage account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "log",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "f0cc6b42-4962-4fd3-8c86-a37e9b2bd0bd"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "log"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "aff2cd8e-c7a4-473e-b955-e22530d1acda",
+                    "leftValue": "={{ $json.output }}",
+                    "rightValue": "clarifying",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "clarifying"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1728,
+        224
+      ],
+      "id": "2aa5c219-569d-481c-b795-27ac00ef3012",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get all incoming items\nconst items = $input.all();\n\n// Generate ISO timestamp once\nconst now = new Date().toISOString();\n\n// Convert each item to structured log line\nconst logLines = items.map(item => {\n  const payload = JSON.stringify(item.json);\n  return `[${now}] ${payload}`;\n});\n\n// Combine into single text content\nconst finalLog = logLines.join('\\n');\n\n// Generate unique file name\nconst fileName = `log_${Date.now()}.txt`;\n\nreturn [\n  {\n    binary: {\n      data: {\n        data: Buffer.from(finalLog, 'utf8'),\n        mimeType: 'text/plain',\n        fileName: fileName,\n      }\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1952,
+        208
+      ],
+      "id": "807d1198-aaaa-44a3-8be5-7b0d78889a69",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "enableResponseOutput": true,
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $json.output } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "643f06ae-9fa7-4000-8011-e48f15869a41",
+      "name": "Respond Receipt",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1952,
+        368
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Follow-Up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "issue": {
+      "main": [
+        [
+          {
+            "node": "troubleshooting",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "merge for user id",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "resolve?": {
+      "main": [
+        [
+          {
+            "node": "Respond Receipt2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Inquiry",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Follow-Up",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Question Preprocess1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Store data || Clarifying question1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Inquiry",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "issue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Follow-Up",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Inquiry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "troubleshooting": {
+      "main": [
+        [
+          {
+            "node": "merge for user id",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Follow-Up": {
+      "main": [
+        [
+          {
+            "node": "resolve?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "VerifyTempToken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VerifyTempToken": {
+      "main": [
+        [
+          {
+            "node": "BuildContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question Preprocess1": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildContext": {
+      "main": [
+        [
+          {
+            "node": "Question Preprocess1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "merge for user id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store data || Clarifying question1": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Question Preprocess1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inquiry": {
+      "main": [
+        [
+          {
+            "node": "Respond Receipt3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Store data || Clarifying question1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "merge for user id": {
+      "main": [
+        [
+          {
+            "node": "Store data || Clarifying question1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Receipt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create blob",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  },
+  "versionId": "3a833264-e0a0-49f9-a20e-f19af873e4d8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"
+  },
+  "id": "bPvTHJE8mLZP6JAf",
+  "tags": []
+}

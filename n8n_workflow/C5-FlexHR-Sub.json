@@ -1,0 +1,161 @@
+{
+  "name": "C5-FlexHR-Sub",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c055762a-8fe7-4141-a639-df2372f30060",
+      "typeVersion": 1.1,
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f53d695-79b5-48b4-ad3f-0341835f7c67",
+              "name": "=User_Info",
+              "value": "=\"id\": \"\", \n\"name\": \"\", \n\"leave_type\": \"\",\n\"from_date\": \"\", \n\"to_Date\": \"\",\n\"remarks\": \"\"\n",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa91a570-b71a-4375-8f21-8182f008e5ab",
+      "name": "User info1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        464,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        352
+      ],
+      "id": "e8f0c55a-40c5-4486-aee1-dddae0e347c3",
+      "name": "Insert or update rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "4BUCaUQ0XbiZJDY7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        896,
+        272
+      ],
+      "id": "2de86ab7-cfd1-4b2e-b471-eb46e85b4402",
+      "name": "HR",
+      "webhookId": "b5b06d78-12e4-415a-a053-8996bdc0688e",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "EpcbZaG3zflLa2yQ",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2,
+      "position": [
+        896,
+        432
+      ],
+      "id": "1b9e2dd3-b84e-4b18-be34-b6cac1e52f85",
+      "name": "User",
+      "webhookId": "b5b06d78-12e4-415a-a053-8996bdc0688e",
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "EpcbZaG3zflLa2yQ",
+          "name": "Microsoft Outlook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "User info1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User info1": {
+      "main": [
+        [
+          {
+            "node": "Insert or update rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [
+        [
+          {
+            "node": "HR",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "c0baf406-3216-464c-bec4-a41565b80eda",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"
+  },
+  "id": "PoK1FacYlLjfXcQx",
+  "tags": []
+}
