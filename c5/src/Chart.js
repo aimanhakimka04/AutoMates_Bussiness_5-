@@ -15,8 +15,11 @@ const Chart = () => {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
+  // 外部学习申请表单的状态管理
+  const [requestForm, setRequestForm] = useState({ title: '', dateTime: '', venue: '' });
+
   //----------------------------for mock data----------------//
-  const [myPrograms] = useState([
+  const [myPrograms, setMyPrograms] = useState([
     { 
       id: "P001", 
       title: "Leadership Excellence 101", 
@@ -41,10 +44,17 @@ const Chart = () => {
     }
   ]);
 
-  // 修复：确保该数组在 "Learning Programs" 视图中被正确引用
   const availablePrograms = [
-    { id: "A001", title: "Effective Communication", duration: "1 Day", trainer: "Jane Doe", category: "Soft Skills", date: "2026-03-10", time: "09:00 - 17:00", location: "Grand Hall, Level 1" },
-    { id: "A002", title: "Python for Data Science", duration: "3 Days", trainer: "John Wick", category: "Technical", date: "2026-03-15", time: "10:00 - 16:00", location: "Training Room B" }
+    { 
+      id: "A001", title: "Effective Communication", duration: "1 Day", trainer: "Jane Doe", 
+      category: "Soft Skills", date: "2026-03-10", startTime: "09:00", endTime: "17:00", 
+      location: "Grand Hall, Level 1", desc: "Learn to communicate effectively in the modern workplace." 
+    },
+    { 
+      id: "A002", title: "Python for Data Science", duration: "3 Days", trainer: "John Wick", 
+      category: "Technical", date: "2026-03-15", startTime: "10:00", endTime: "16:00", 
+      location: "Training Room B", desc: "Comprehensive introduction to data manipulation and visualization." 
+    }
   ];
   //-------------------end of mock data -------------------------//
 
@@ -130,6 +140,44 @@ const Chart = () => {
     );
   };
   //-------------------end of subpage learning calendar logic -------------------------//
+
+  // 处理报名确认逻辑
+  const handleConfirmSignUp = () => {
+    if (selectedEvent) {
+      // 1. 将新课程添加到“我的课程”数组中，状态设为 Pending
+      const newProgram = {
+        id: `P${Date.now()}`, // 生成唯一ID
+        title: selectedEvent.title,
+        date: selectedEvent.date,
+        startTime: selectedEvent.startTime,
+        endTime: selectedEvent.endTime,
+        location: selectedEvent.location,
+        trainer: selectedEvent.trainer,
+        status: "Pending HR Approval",
+        desc: selectedEvent.desc
+      };
+      setMyPrograms([...myPrograms, newProgram]);
+      
+      // 2. 提示成功并关闭所有弹窗
+      alert('Sign up request submitted successfully!'); 
+      setShowConfirm(false); 
+      setSelectedEvent(null); // 【修复 Bug】：清空事件，防止错乱弹窗
+      
+      // 3. 跳转到“我的课程”页面查看结果
+      setView('upcoming'); 
+    }
+  };
+
+  // 处理外部学习表单提交
+  const handleRequestSubmit = () => {
+    if (!requestForm.title || !requestForm.dateTime || !requestForm.venue) {
+      alert("Please fill in all required fields!");
+      return;
+    }
+    alert('External Learning Request Submitted!'); 
+    setRequestForm({ title: '', dateTime: '', venue: '' }); // 提交后清空表单
+    setView('main'); 
+  };
 
   return (
     <div className="chart-page-container">
@@ -218,10 +266,15 @@ const Chart = () => {
         {/*----------------------------for subpage upcoming trainings----------------//*/}
         {view === 'upcoming' && (
           <div className="chart-subpage-view">
-            <h4 className="section-title">Confirmed Trainings</h4>
+            <h4 className="section-title">Confirmed & Pending Trainings</h4>
             {myPrograms.map(p => (
               <div key={p.id} className="training-detail-card" onClick={() => setSelectedEvent(p)}>
-                <div className="card-top"><h4>{p.title}</h4> <span className="s-badge">{p.status}</span></div>
+                <div className="card-top">
+                  <h4>{p.title}</h4> 
+                  <span className="s-badge" style={{ backgroundColor: p.status === 'Confirmed' ? '#e8f5e9' : '#fff3e0', color: p.status === 'Confirmed' ? '#2e7d32' : '#e65100' }}>
+                    {p.status}
+                  </span>
+                </div>
                 <div className="card-info-row"><CalendarIcon size={14} /> <span>{p.date}</span></div>
                 <div className="card-info-row"><Clock size={14} /> <span>{p.startTime} - {p.endTime}</span></div>
                 <div className="card-info-row"><MapPin size={14} /> <span>{p.location}</span></div>
@@ -254,10 +307,23 @@ const Chart = () => {
             <div className="request-form-card">
               <h4 className="section-title">External Learning Request</h4>
               <p className="hint-text">For non-HR provided programs.</p>
-              <div className="form-group"><label>Program Title *</label><input type="text" className="c-input" /></div>
-              <div className="form-group"><label>Date & Time *</label><input type="text" placeholder="e.g. 2026-05-10 09:00" className="c-input" /></div>
-              <div className="form-group"><label>Address / Venue *</label><input type="text" className="c-input" /></div>
-              <button className="submit-req-btn" onClick={() => { alert('Submitted!'); setView('main'); }}>Submit Request</button>
+              
+              <div className="form-group">
+                <label>Program Title *</label>
+                <input type="text" className="c-input" value={requestForm.title} onChange={e => setRequestForm({...requestForm, title: e.target.value})} />
+              </div>
+              
+              <div className="form-group">
+                <label>Date & Time *</label>
+                <input type="text" placeholder="e.g. 2026-05-10 09:00" className="c-input" value={requestForm.dateTime} onChange={e => setRequestForm({...requestForm, dateTime: e.target.value})} />
+              </div>
+              
+              <div className="form-group">
+                <label>Address / Venue *</label>
+                <input type="text" className="c-input" value={requestForm.venue} onChange={e => setRequestForm({...requestForm, venue: e.target.value})} />
+              </div>
+              
+              <button className="submit-req-btn" onClick={handleRequestSubmit}>Submit Request</button>
             </div>
           </div>
         )}
@@ -265,11 +331,12 @@ const Chart = () => {
       </div>
 
       {/*----------------------------for all modals implementation----------------//*/}
+      
       {/* 1. Activity Detail Modal */}
       {selectedEvent && !showConfirm && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal">
-            <div className="modal-top"><h3>Activity Details</h3><X size={24} onClick={() => setSelectedEvent(null)} /></div>
+            <div className="modal-top"><h3>Activity Details</h3><X size={24} onClick={() => setSelectedEvent(null)} style={{cursor: 'pointer'}} /></div>
             <div className="modal-main">
               <h2 className="m-title">{selectedEvent.title}</h2>
               <div className="m-row"><CalendarIcon size={16} color="#00a8ff" /> <span>{selectedEvent.date || "N/A"}</span></div>
@@ -287,7 +354,7 @@ const Chart = () => {
       {showAboutModal && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal about-modal">
-            <div className="modal-top"><h3>About CHART</h3><X size={24} onClick={() => setShowAboutModal(false)} /></div>
+            <div className="modal-top"><h3>About CHART</h3><X size={24} onClick={() => setShowAboutModal(false)} style={{cursor: 'pointer'}} /></div>
             <div className="modal-main">
               <p>CHART (Chin Hin Academy for Reskilling & Transformation) is dedicated to fostering a culture of continuous learning.</p>
               <p>Our mission is to equip our employees with future-ready skills through structured training, workshops, and transformation programs.</p>
@@ -305,8 +372,8 @@ const Chart = () => {
             <h3>Enroll in Program?</h3>
             <p>Are you sure you want to sign up for <strong>{selectedEvent.title}</strong>?</p>
             <div className="confirm-actions">
-              <button className="cancel-btn" onClick={() => setShowConfirm(false)}>Cancel</button>
-              <button className="confirm-btn" onClick={() => { alert('Sign up successful!'); setShowConfirm(false); setView('upcoming'); }}>Confirm</button>
+              <button className="cancel-btn" onClick={() => { setShowConfirm(false); setSelectedEvent(null); }}>Cancel</button>
+              <button className="confirm-btn" onClick={handleConfirmSignUp}>Confirm</button>
             </div>
           </div>
         </div>

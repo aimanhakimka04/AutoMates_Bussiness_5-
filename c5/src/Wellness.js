@@ -10,13 +10,13 @@ import './Wellness.css';
 
 const Wellness = () => {
   const navigate = useNavigate();
-  // 视图控制：menu, fitness, nursing, tcm, tcm-*, physio, physio-*, ...
+  // View Controller
   const [view, setView] = useState('menu');
   const [selectedTrainer, setSelectedTrainer] = useState(null);
   const [selectedPackage, setSelectedPackage] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null); 
   const [selectedTcmAppointment, setSelectedTcmAppointment] = useState(null);
-  const [selectedPhysioAppointment, setSelectedPhysioAppointment] = useState(null); // 新增：选中的 Physio 预约
+  const [selectedPhysioAppointment, setSelectedPhysioAppointment] = useState(null); 
   const [showConfirm, setShowConfirm] = useState(false);
   
   const [nursingModal, setNursingModal] = useState(null);
@@ -61,12 +61,12 @@ const Wellness = () => {
       };
     });
   };
-  //-------------------end of Form State -------------------------//
 
   const [expanded, setExpanded] = useState({
     basic: true, goals: true, lifestyle: true, prefs: true, motivation: true
   });
   const toggleSection = (sec) => setExpanded(prev => ({ ...prev, [sec]: !prev[sec] }));
+  //-------------------end of Form State -------------------------//
 
   const timetableStatus = 0; 
 
@@ -123,7 +123,7 @@ const Wellness = () => {
     }
   ];
 
-  // --- TCM 数据定义 ---
+  // --- TCM Data ---
   const [tcmAppointments, setTcmAppointments] = useState([
     { id: "T1", title: "Acupuncture Session", provider: "Wellness TCM", date: "22 Feb 2026", time: "14:00 - 15:00", location: "TCM Room, Level 19", status: "Confirmed" }
   ]);
@@ -133,7 +133,7 @@ const Wellness = () => {
     { id: 102, name: "Premium Tui Na Therapy", detail: "10 Sessions (60 mins each)", fee: "RM 880", desc: "Deep tissue Chinese massage to improve circulation and muscle recovery." }
   ];
 
-  // --- Physiotherapy 数据定义 ---
+  // --- Physiotherapy Data ---
   const [physioAppointments, setPhysioAppointments] = useState([
     { id: "P1", title: "Sports Massage", provider: "Wellness Physio", date: "23 Feb 2026", time: "09:00 - 10:00", location: "Physio Room, Level 19", status: "Confirmed" }
   ]);
@@ -156,7 +156,6 @@ const Wellness = () => {
     }
   ];
 
-  // 映射 TCM 菜单项到视图
   const tcmViewMap = {
     "About TCM": "tcm-about",
     "Purchase TCM Session": "tcm-purchase",
@@ -164,7 +163,6 @@ const Wellness = () => {
     "View My Appointment": "tcm-view"
   };
 
-  // 映射 Physio 菜单项到视图
   const physioViewMap = {
     "About Physiotherapy": "physio-about",
     "Purchase Physio Session": "physio-purchase",
@@ -185,14 +183,9 @@ const Wellness = () => {
     else if (view === 'trainer-profile') setView('trainers');
     else if (view === 'wellness-profile') setView('membership-detail');
     else if (view === 'membership-detail') {
-      // 根据套餐类型返回对应的购买列表页
-      if (selectedPackage?.coachPricing) {
-        setView('membership-list');      // 健身套餐返回健身套餐列表
-      } else if (selectedPackage?.id >= 200) { // Physio 套餐 ID 从 200 开始
-        setView('physio-purchase');
-      } else {
-        setView('tcm-purchase');          // TCM 套餐返回 TCM 购买页
-      }
+      if (selectedPackage?.coachPricing) setView('membership-list');      
+      else if (selectedPackage?.id >= 200) setView('physio-purchase'); 
+      else setView('tcm-purchase');          
     }
     else if (view === 'booking-detail') setView('my-bookings'); 
     else if (['timetable', 'trainers', 'membership-list', 'my-bookings'].includes(view)) setView('fitness');
@@ -217,7 +210,6 @@ const Wellness = () => {
     return 'Wellness';
   };
 
-  // 处理 TCM 预约：创建新预约
   const handleBookTcmAppointment = () => {
     const newAppointment = {
       id: `T${Date.now()}`,
@@ -232,13 +224,11 @@ const Wellness = () => {
     setView('tcm-view');
   };
 
-  // 删除 TCM 预约
   const handleDeleteTcmAppointment = (id) => {
     setTcmAppointments(prev => prev.filter(app => app.id !== id));
     setView('tcm-view');
   };
 
-  // 处理 Physio 预约：创建新预约
   const handleBookPhysioAppointment = () => {
     const newAppointment = {
       id: `P${Date.now()}`,
@@ -253,10 +243,14 @@ const Wellness = () => {
     setView('physio-view');
   };
 
-  // 删除 Physio 预约
   const handleDeletePhysioAppointment = (id) => {
     setPhysioAppointments(prev => prev.filter(app => app.id !== id));
     setView('physio-view');
+  };
+
+  const handleProfileSubmit = () => {
+    alert("Profile form submitted successfully! A coach will be in touch with you.");
+    setView('fitness');
   };
 
   return (
@@ -267,7 +261,7 @@ const Wellness = () => {
       </nav>
 
       <div className="wellness-scroll-content">
-        {/* --- 1. 主菜单 --- */}
+        {/* --- 1. Main Menu --- */}
         {view === 'menu' && (
           <div className="wellness-main-menu">
             <div className="wellness-card-grid">
@@ -280,7 +274,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 2. Fitness Studio 菜单 --- */}
+        {/* --- 2. Fitness Studio Menu --- */}
         {view === 'fitness' && (
           <div className="fitness-view">
             <div className="fitness-banner">
@@ -300,7 +294,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 3. Timetable 视图 --- */}
+        {/* --- 3. Timetable View --- */}
         {view === 'timetable' && (
           <div className="timetable-page-container">
             {timetableStatus === 1 ? (
@@ -374,7 +368,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 5. TCM 主菜单 --- */}
+        {/* --- 5. TCM Main Menu --- */}
         {view === 'tcm' && (
           <div className="tcm-view">
             <div className="tcm-banner">
@@ -400,7 +394,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 6. TCM 子页面: About --- */}
+        {/* --- 6. TCM Sub: About --- */}
         {view === 'tcm-about' && (
           <div className="nursing-view">
             <div className="nursing-top-spacer"></div>
@@ -425,7 +419,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 7. TCM 子页面: Purchase --- */}
+        {/* --- 7. TCM Sub: Purchase --- */}
         {view === 'tcm-purchase' && (
           <div className="membership-view">
             <h3 className="section-title">TCM Treatment Packages</h3>
@@ -443,7 +437,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 8. TCM 子页面: View Appointments --- */}
+        {/* --- 8. TCM Sub: View Appointments --- */}
         {view === 'tcm-view' && (
           <div className="bookings-view">
             <h3 className="section-title">Upcoming TCM Sessions</h3>
@@ -474,7 +468,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 9. TCM 子页面: Schedule --- */}
+        {/* --- 9. TCM Sub: Schedule --- */}
         {view === 'tcm-schedule' && (
           <div className="timetable-view-list">
              <div className="timetable-section">
@@ -489,7 +483,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 10. TCM 预约详情页 --- */}
+        {/* --- 10. TCM Appointment Detail --- */}
         {view === 'tcm-appointment-detail' && selectedTcmAppointment && (
           <div className="booking-detail-view">
             <div className="booking-hero-img"></div>
@@ -520,9 +514,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* ========== 新增：Physiotherapy 部分 ========== */}
-
-        {/* --- 11. Physiotherapy 主菜单 --- */}
+        {/* --- 11. Physiotherapy Main Menu --- */}
         {view === 'physio' && (
           <div className="tcm-view">
             <div className="tcm-banner">
@@ -548,7 +540,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 12. Physiotherapy 子页面: About --- */}
+        {/* --- 12. Physiotherapy Sub: About --- */}
         {view === 'physio-about' && (
           <div className="nursing-view">
             <div className="nursing-top-spacer"></div>
@@ -573,7 +565,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 13. Physiotherapy 子页面: Purchase --- */}
+        {/* --- 13. Physiotherapy Sub: Purchase --- */}
         {view === 'physio-purchase' && (
           <div className="membership-view">
             <h3 className="section-title">Physiotherapy Packages</h3>
@@ -591,7 +583,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 14. Physiotherapy 子页面: View Appointments --- */}
+        {/* --- 14. Physiotherapy Sub: View Appointments --- */}
         {view === 'physio-view' && (
           <div className="bookings-view">
             <h3 className="section-title">Upcoming Physiotherapy Sessions</h3>
@@ -622,7 +614,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 15. Physiotherapy 子页面: Schedule --- */}
+        {/* --- 15. Physiotherapy Sub: Schedule --- */}
         {view === 'physio-schedule' && (
           <div className="timetable-view-list">
              <div className="timetable-section">
@@ -641,7 +633,7 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 16. Physiotherapy 预约详情页 --- */}
+        {/* --- 16. Physiotherapy Appointment Detail --- */}
         {view === 'physio-appointment-detail' && selectedPhysioAppointment && (
           <div className="booking-detail-view">
             <div className="booking-hero-img"></div>
@@ -716,14 +708,13 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 20. Membership Detail (兼容 Fitness / TCM / Physio 套餐) --- */}
+        {/* --- 20. Membership Detail --- */}
         {view === 'membership-detail' && selectedPackage && (
           <div className="pkg-detail-view">
             <h2 className="pkg-title">{selectedPackage.name}</h2>
             <p className="pkg-sub-detail">{selectedPackage.detail}</p>
             <p className="pkg-main-desc">{selectedPackage.desc}</p>
             {selectedPackage.coachPricing ? (
-              // Fitness package
               <>
                 <div className="coach-pricing-box">
                   {selectedPackage.coachPricing.map((p, idx) => (
@@ -736,20 +727,18 @@ const Wellness = () => {
                 </div>
               </>
             ) : (
-              // TCM or Physio package
               <div className="pkg-meta-info">
                 <div className="meta-block"><label>Package Fee </label><strong>{selectedPackage.fee}</strong></div>
               </div>
             )}
-            {/* 根据套餐类型跳转到不同预约页面 */}
             <button 
               className="interest-btn" 
               onClick={() => {
                 if (selectedPackage.coachPricing) {
-                  setView('wellness-profile'); // 健身套餐去个人信息表
-                } else if (selectedPackage.id >= 200) { // Physio 套餐
+                  setView('wellness-profile'); 
+                } else if (selectedPackage.id >= 200) { 
                   setView('physio-schedule');
-                } else { // TCM 套餐
+                } else { 
                   setView('tcm-schedule');
                 }
               }}
@@ -759,11 +748,97 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 21. Interactive Wellness Profile Form --- */}
+        {/* --- 21. Interactive Wellness Profile Form (Restored) --- */}
         {view === 'wellness-profile' && (
-          <div className="profile-form-view">
-            {/* 表单内容保持不变，此处省略以节省篇幅，实际使用时保留原样 */}
-            <div>Wellness Profile Form (内容同前)</div>
+          <div className="profile-form-view" style={{ padding: '20px' }}>
+            <h3 className="section-title">Wellness Profile Questionnaire</h3>
+            <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>Help us understand your goals to serve you better.</p>
+
+            {/* Basic Info */}
+            <div className="form-section-card" style={{ background: '#fff', borderRadius: '8px', padding: '15px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => toggleSection('basic')}
+              >
+                <h4 style={{ margin: 0, color: '#2b1d62' }}>Basic Information</h4>
+                {expanded.basic ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+              </div>
+              {expanded.basic && (
+                <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Full Name</label>
+                    <input type="text" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Email</label>
+                    <input type="email" value={profileData.email} onChange={(e) => handleInputChange('email', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Phone</label>
+                    <input type="tel" value={profileData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Age</label>
+                      <input type="number" value={profileData.age} onChange={(e) => handleInputChange('age', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Gender</label>
+                      <select value={profileData.gender} onChange={(e) => handleInputChange('gender', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff' }}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Emergency Contact Name</label>
+                    <input type="text" value={profileData.emergencyName} onChange={(e) => handleInputChange('emergencyName', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Emergency Contact Phone</label>
+                    <input type="tel" value={profileData.emergencyPhone} onChange={(e) => handleInputChange('emergencyPhone', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Goals */}
+            <div className="form-section-card" style={{ background: '#fff', borderRadius: '8px', padding: '15px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+              <div 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => toggleSection('goals')}
+              >
+                <h4 style={{ margin: 0, color: '#2b1d62' }}>Fitness Goals</h4>
+                {expanded.goals ? <ChevronUp size={20}/> : <ChevronDown size={20}/>}
+              </div>
+              {expanded.goals && (
+                <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Primary Goal</label>
+                    <select value={profileData.primaryGoal} onChange={(e) => handleInputChange('primaryGoal', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff' }}>
+                      <option value="">Select...</option>
+                      <option value="Weight Loss">Weight Loss</option>
+                      <option value="Muscle Gain">Muscle Gain</option>
+                      <option value="Endurance">Improve Endurance</option>
+                      <option value="General Health">General Health / Wellness</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Timeline to achieve goal</label>
+                    <input type="text" placeholder="e.g., 3 months" value={profileData.timeline} onChange={(e) => handleInputChange('timeline', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button 
+              className="interest-btn" 
+              style={{ width: '100%', marginTop: '10px' }} 
+              onClick={handleProfileSubmit}
+            >
+              Submit Profile
+            </button>
           </div>
         )}
 
@@ -813,7 +888,7 @@ const Wellness = () => {
         )}
       </div>
 
-      {/* --- 全局确认弹窗 (用于 Timetable 预约) --- */}
+      {/* --- Global Confirm Modal --- */}
       {showConfirm && (
         <div className="chart-modal-overlay">
           <div className="confirm-dialog">
@@ -827,7 +902,7 @@ const Wellness = () => {
         </div>
       )}
 
-      {/* --- Nursing 专用小视窗 --- */}
+      {/* --- Nursing Modal --- */}
       {nursingModal && (
         <div className="chart-modal-overlay">
           <div className="nursing-detail-modal">
