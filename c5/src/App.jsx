@@ -3,13 +3,22 @@ import {
   BrowserRouter as Router, Routes, Route, Link,
   useNavigate, useLocation, Navigate
 } from 'react-router-dom';
-import { PublicClientApplication } from '@azure/msal-browser';
 import {
   Calendar, Scan, Bell, ChevronLeft,
   Zap, X,
   Home as HomeIcon, LayoutDashboard, Info as InfoIcon, UserCircle,
   LogOut, Lock, User, ChevronRight, MapPin
 } from 'lucide-react';
+
+import {
+  isMobile,
+  handleWebRedirect,
+  webLogin,
+  getWebAccounts,
+  doLogin,
+  mobileLogout,
+  getMobileSession,
+} from './MicrosoftAuth';
 
 import MeetingRoom from './MeetingRoom';
 import Transport   from './Transport';
@@ -25,38 +34,6 @@ import Childcare   from './Childcare';
 import EPP         from './EPP';
 import ChatBot     from './ChatBot';
 import './App.css';
-
-// ══════════════════════════════════════════════════════════════════
-//  MICROSOFT OAUTH2 CONFIG  (matches your n8n credential exactly)
-//  Client ID    : c21063b3-e6df-4a0e-980a-eb69cb6bdd01
-//  Auth URL     : https://login.microsoftonline.com/common/oauth2/v2.0/authorize
-//  Token URL    : https://login.microsoftonline.com/common/oauth2/v2.0/token
-// ══════════════════════════════════════════════════════════════════
-const msalConfig = {
-  auth: {
-    clientId:              'c21063b3-e6df-4a0e-980a-eb69cb6bdd01',
-    authority:             'https://login.microsoftonline.com/common',
-    redirectUri:           'http://localhost:3000/login',
-    postLogoutRedirectUri: window.location.origin + '/login',
-    navigateToLoginRequestUrl: false,
-  },
-  cache: {
-    cacheLocation:          'sessionStorage',
-    storeAuthStateInCookie: true,
-  },
-  system: {
-    allowNativeBroker: false,
-  },
-};
-
-const msalInstance = new PublicClientApplication(msalConfig);
-let _msalReady = false;
-const ensureMsal = async () => {
-  if (!_msalReady) {
-    await msalInstance.initialize();
-    _msalReady = true;
-  }
-};
 
 // ══════════════════════════════════════════════════════════════════
 //  0. SPLASH SCREEN
@@ -82,36 +59,31 @@ const SplashScreen = () => (
 );
 
 // ══════════════════════════════════════════════════════════════════
-//  1. LOGIN  — centered icon + Microsoft popup
+//  1. LOGIN
 // ══════════════════════════════════════════════════════════════════
 const Login = ({ setAuth, setUserInfo }) => {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
+  // Redirect handled once in App root via handleWebRedirect()
+
   const handleMicrosoftLogin = async () => {
     setLoading(true);
     setError('');
-    try {
-      await ensureMsal();
-
-      // Use loginRedirect — Microsoft is clearly using redirect flow
-      await msalInstance.loginRedirect({
-        scopes: ['openid', 'profile', 'email'],
-        prompt: 'select_account',
-        redirectUri: 'http://localhost:3000/login',
-      });
-      // ⚠️ Code below this line won't run — page will redirect to Microsoft
-      // When it comes back, handleRedirectPromise() in App useEffect catches it
-
-    } catch (err) {
-      console.error('MSAL error:', err);
-      if (err.errorCode === 'user_cancelled' || err.errorCode === 'access_denied') {
-        setError('Sign-in was cancelled.');
-      } else {
-        setError('Sign-in failed: ' + (err.errorCode || err.message || 'Unknown error'));
+    if (isMobile()) {
+      doLogin(
+        (info) => { setUserInfo(info); setAuth(true); setLoading(false); },
+        (err)  => { setError('Sign-in failed: ' + err); setLoading(false); }
+      );
+    } else {
+      try {
+        await webLogin(); // page redirects — nothing runs after this
+      } catch (err) {
+        if (err.errorCode !== 'user_cancelled' && err.errorCode !== 'access_denied') {
+          setError('Sign-in failed: ' + (err.errorCode || err.message || 'Unknown error'));
+        }
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -121,7 +93,7 @@ const Login = ({ setAuth, setUserInfo }) => {
       <div style={S.login.blobBL} />
       <div style={S.login.card}>
 
-        {/* ── Centered App Icon ─────────────────────── */}
+        {/* ── App Icon ── */}
         <div style={S.login.iconWrap}>
           <div style={S.login.iconRing}>
             <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.login.iconImg} />
@@ -131,13 +103,11 @@ const Login = ({ setAuth, setUserInfo }) => {
         <h1 style={S.login.appName}>FlexHR</h1>
         <p  style={S.login.tagline}>Your Intelligent Workplace Portal</p>
         <div style={S.login.divider} />
-        <p  style={S.login.instruction}>
-          Sign in with your Microsoft account to continue.
-        </p>
+        <p  style={S.login.instruction}>Sign in with your Microsoft account to continue.</p>
 
         {error && <div style={S.login.errorBox}>{error}</div>}
 
-        {/* ── Microsoft Sign-in Button ──────────────── */}
+        {/* ── Microsoft Button ── */}
         <button
           onClick={handleMicrosoftLogin}
           disabled={loading}
@@ -306,17 +276,23 @@ const InfoPage = () => {
 // ══════════════════════════════════════════════════════════════════
 const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
+
   const handleLogout = async () => {
-    try {
-      await ensureMsal();
-      const accounts = msalInstance.getAllAccounts();
-      if (accounts.length > 0) {
-        await msalInstance.logoutPopup({ account: accounts[0] });
-      }
-    } catch { /* skip if MSAL not ready */ }
+    if (isMobile()) {
+      mobileLogout();
+    } else {
+      try {
+        const accounts = await getWebAccounts();
+        if (accounts.length > 0) {
+          const { msalInstance: msal } = await import('./MicrosoftAuth');
+          if (msal) await msal.logoutPopup({ account: accounts[0] });
+        }
+      } catch { /* skip */ }
+    }
     setAuth(false);
     navigate('/login');
   };
+
   return (
     <>
       <div className="profile-section">
@@ -333,7 +309,7 @@ const ProfilePage = ({ setAuth, userInfo }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  7. HOME  – fancy redesigned grid menu
+//  7. HOME
 // ══════════════════════════════════════════════════════════════════
 const Home = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -381,7 +357,6 @@ const Home = () => {
 
   return (
     <div className="home-page">
-      {/* ── Hero Banner ─────────────────────── */}
       <div className="home-hero">
         <div className="home-hero-bg" />
         <div className="home-hero-orb home-hero-orb1" />
@@ -402,17 +377,13 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ── Live Alert Strip ─────────────────── */}
       <div className="home-alert-strip">
-        <div className="home-alert-icon">
-          <Calendar size={13} color="#2b1d62" />
-        </div>
+        <div className="home-alert-icon"><Calendar size={13} color="#2b1d62" /></div>
         <div className="home-alert-marquee">
           <span className="home-alert-text">⚠ CAUTION — LIVE / PRODUCTION ENVIRONMENT &nbsp;&nbsp;•&nbsp;&nbsp; USE WITH CARE &nbsp;&nbsp;•&nbsp;&nbsp; ALL ACTIONS ARE REAL &nbsp;&nbsp;•&nbsp;&nbsp;</span>
         </div>
       </div>
 
-      {/* ── Menu Groups ──────────────────────── */}
       <div className="home-menu-body">
         {menuGroups.map((group, gi) => (
           <div key={gi} className="home-section">
@@ -481,10 +452,8 @@ const ScanPage = () => {
   );
 };
 
-// ChatBot is now in ./ChatBot.jsx — imported at top of file
-
 // ══════════════════════════════════════════════════════════════════
-//  10. PAGE WRAPPER
+//  9. PAGE WRAPPER
 // ══════════════════════════════════════════════════════════════════
 const PageWrapper = ({ children, showTopBar }) => (
   <div className="page-content" style={{ paddingTop: showTopBar ? '80px' : '0' }}>
@@ -493,9 +462,9 @@ const PageWrapper = ({ children, showTopBar }) => (
 );
 
 // ══════════════════════════════════════════════════════════════════
-//  11. BOTTOM NAV  — 4 items + center ChatBot FAB
+//  10. BOTTOM NAV
 // ══════════════════════════════════════════════════════════════════
-const FooterNav = () => {
+const FooterNav = ({ userInfo }) => {
   const location = useLocation();
   const left  = [
     { label: 'Home',      path: '/',          icon: <HomeIcon        size={22} /> },
@@ -512,12 +481,9 @@ const FooterNav = () => {
           {n.icon}<span>{n.label}</span>
         </Link>
       ))}
-
-      {/* Center ChatBot FAB slot — component handles its own elevated state */}
       <div className="nav-chatbot-slot">
-        <ChatBot />
+        <ChatBot userInfo={userInfo} />
       </div>
-
       {right.map(n => (
         <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
           {n.icon}<span>{n.label}</span>
@@ -528,69 +494,61 @@ const FooterNav = () => {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  12. ROOT APP
+//  11. ROOT APP
 // ══════════════════════════════════════════════════════════════════
 function App() {
   const [isAppLoading,      setIsAppLoading]      = useState(true);
-  const [authChecked,       setAuthChecked]       = useState(false);
   const [isAuthenticated,   setIsAuthenticated]   = useState(false);
   const [userInfo,          setUserInfo]          = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
 
-  // Run splash timer AND auth check in parallel — hide splash when BOTH done
   useEffect(() => {
-    let splashDone  = false;
-    let authDone    = false;
-    const tryHide   = () => { if (splashDone && authDone) setIsAppLoading(false); };
+    let splashDone = false;
+    let authDone   = false;
+    const tryHide  = () => { if (splashDone && authDone) setIsAppLoading(false); };
 
     // Splash timer
     const t = setTimeout(() => { splashDone = true; tryHide(); }, 2000);
 
-    // Auth check — handles redirect result (#code= in URL) AND session restore
     const checkAuth = async () => {
       try {
-        await ensureMsal();
-
-        // ✅ CRITICAL: process the #code= token Microsoft put in the URL
-        const redirectResult = await msalInstance.handleRedirectPromise();
-        if (redirectResult && redirectResult.account) {
-          const acct = redirectResult.account;
-          console.log('✅ Redirect login success:', acct.username);
-          setUserInfo({ name: acct.name || acct.username, email: acct.username });
-          setIsAuthenticated(true);
-          // Clean up the ugly #code= from the URL
-          window.history.replaceState({}, document.title, '/');
-          return;
-        }
-
-        // Check existing session (page refresh)
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          const acct = accounts[0];
-          console.log('✅ Session found:', acct.username);
-          setUserInfo({ name: acct.name || acct.username, email: acct.username });
-          setIsAuthenticated(true);
+        if (isMobile()) {
+          const session = getMobileSession();
+          if (session) { setUserInfo(session); setIsAuthenticated(true); }
+        } else {
+          const redirectResult = await handleWebRedirect();
+          if (redirectResult?.account) {
+            const acct = redirectResult.account;
+            setUserInfo({ name: acct.name || acct.username, email: acct.username });
+            setIsAuthenticated(true);
+            window.history.replaceState({}, document.title, '/');
+            return;
+          }
+          const accounts = await getWebAccounts();
+          if (accounts.length > 0) {
+            const acct = accounts[0];
+            setUserInfo({ name: acct.name || acct.username, email: acct.username });
+            setIsAuthenticated(true);
+          }
         }
       } catch (err) {
         console.warn('Auth check error:', err.message);
       } finally {
         authDone = true;
-        setAuthChecked(true);
         tryHide();
       }
     };
-    checkAuth();
 
+    checkAuth();
     return () => clearTimeout(t);
   }, []);
 
-  const hiddenPaths = ['/scan', '/login', '/signup'];
+  const hiddenPaths = ['/scan', '/login'];
   const topBarPaths = ['/', '/dashboard', '/info', '/profile'];
   const showFooter  = isAuthenticated && !hiddenPaths.includes(location.pathname);
   const showTopBar  = showFooter && topBarPaths.includes(location.pathname);
 
-  // Show splash until both auth check and splash timer are done
   if (isAppLoading) return <SplashScreen />;
 
   return (
@@ -600,14 +558,13 @@ function App() {
       {!isAuthenticated ? (
         <Routes>
           <Route path="/login" element={<Login setAuth={setIsAuthenticated} setUserInfo={setUserInfo} />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*"      element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
         <>
           {location.pathname === '/scan' ? <ScanPage /> : (
             <Routes>
-              {/* If somehow landed on /login while authenticated → go home */}
-              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/login"        element={<Navigate to="/" replace />} />
               <Route path="/"             element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
               <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage /></PageWrapper>} />
               <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
@@ -627,7 +584,7 @@ function App() {
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
           )}
-          {showFooter && <FooterNav />}
+          {showFooter && <FooterNav userInfo={userInfo} />}
         </>
       )}
 

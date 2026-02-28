@@ -1,0 +1,2 @@
+"use strict";(self.webpackChunkmy_app=self.webpackChunkmy_app||[]).push([[842],{842(s,n,e){e.d(n,{BrowserWeb:()=>o});var l=e(403);class o extends l.E_{constructor(){super(),this._lastWindow=null}async open(s){this._lastWindow=window.open(s.url,s.windowName||"_blank")}async close(){return new Promise((s,n)=>{null!=this._lastWindow?(this._lastWindow.close(),this._lastWindow=null,s()):n("No active window to close!")})}}new o}}]);
+//# sourceMappingURL=842.6c300d7d.chunk.js.map

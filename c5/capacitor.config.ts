@@ -1,14 +1,17 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.aimanhakimka.employeeapp',
-  appName: 'Employee App',
+  appId: 'com.chinhin.connect',
+  appName: 'ChinHin Connect',
   webDir: 'build',
-  server: {
-    url: 'http://10.0.2.2:3000',
-    cleartext: true
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000
+    }
   }
 };
 
 export default config;
- 

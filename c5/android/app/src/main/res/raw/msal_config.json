@@ -1,0 +1,13 @@
+{
+  "client_id": "c21063b3-e6df-4a0e-980a-eb69cb6bdd01",
+  "authorization_user_agent": "DEFAULT_BROWSER",
+  "redirect_uri": "msauth://com.chinhin.connect/callback",
+  "authorities": [
+    {
+      "type": "AAD",
+      "audience": {
+        "type": "AzureADandPersonalMicrosoftAccount"
+      }
+    }
+  ]
+}
