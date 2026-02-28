@@ -740,3 +740,85 @@ select:disabled {
   cursor: pointer; 
 }
 
+
+/* --- Part 10: n8n Integration UI --- */
+
+/* Submit result banners */
+.submit-result-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.submit-result-banner.success {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.submit-result-banner.error {
+  background: #fff3f3;
+  color: #c62828;
+  border: 1px solid #ffcdd2;
+}
+
+/* Spinner for loading button */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+/* Week tab */
+.tab { cursor: pointer; }
+
+/* --- Part 11: Availability Check UI --- */
+.clash-warning, .clash-clear, .clash-checking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+.clash-warning {
+  background: #fff8e1;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+.clash-clear {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+.clash-checking {
+  background: #f5f5f5;
+  color: #888;
+  border: 1px solid #e0e0e0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.submit-result-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+.submit-result-banner.success { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+.submit-result-banner.error   { background: #fff3f3; color: #c62828; border: 1px solid #ffcdd2; }

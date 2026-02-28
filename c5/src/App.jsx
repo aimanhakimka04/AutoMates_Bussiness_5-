@@ -11,10 +11,9 @@ import {
 } from 'lucide-react';
 
 import {
-  isMobile,
-  handleWebRedirect,
-  webLogin,
-  getWebAccounts,
+  IS_MOBILE,
+  msalInstance,
+  ensureMsal,
   doLogin,
   mobileLogout,
   getMobileSession,
@@ -65,19 +64,56 @@ const Login = ({ setAuth, setUserInfo }) => {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState('');
 
-  // Redirect handled once in App root via handleWebRedirect()
+  useEffect(() => {
+    if (IS_MOBILE) return;
+
+    const handleRedirect = async () => {
+      await ensureMsal();
+      const response = await msalInstance.handleRedirectPromise();
+
+      if (response) {
+        const account = response.account;
+
+        const info = {
+          name: account.name,
+          email: account.username,
+        };
+
+        setUserInfo(info);
+        setAuth(true);
+      }
+    };
+
+    handleRedirect();
+  }, []);
 
   const handleMicrosoftLogin = async () => {
     setLoading(true);
     setError('');
-    if (isMobile()) {
+
+    if (IS_MOBILE) {
+      // ── APK flow — Capacitor Browser ──────────────────────────
       doLogin(
-        (info) => { setUserInfo(info); setAuth(true); setLoading(false); },
-        (err)  => { setError('Sign-in failed: ' + err); setLoading(false); }
+        (info) => {
+          setUserInfo(info);
+          setAuth(true);
+          setLoading(false);
+        },
+        (err) => {
+          setError('Sign-in failed: ' + err);
+          setLoading(false);
+        }
       );
     } else {
+      // ── Web flow — MSAL redirect ───────────────────────────────
       try {
-        await webLogin(); // page redirects — nothing runs after this
+        await ensureMsal();
+        await msalInstance.loginRedirect({
+          scopes:      ['openid', 'profile', 'email'],
+          prompt:      'select_account',
+          //redirectUri: 'http://localhost:3000/login',
+        });
+        // Page redirects — code below won't run
       } catch (err) {
         if (err.errorCode !== 'user_cancelled' && err.errorCode !== 'access_denied') {
           setError('Sign-in failed: ' + (err.errorCode || err.message || 'Unknown error'));
@@ -278,14 +314,16 @@ const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    if (isMobile()) {
+    if (IS_MOBILE) {
+      // APK — clear session storage
       mobileLogout();
     } else {
+      // Web — MSAL logout
       try {
-        const accounts = await getWebAccounts();
+        await ensureMsal();
+        const accounts = msalInstance.getAllAccounts();
         if (accounts.length > 0) {
-          const { msalInstance: msal } = await import('./MicrosoftAuth');
-          if (msal) await msal.logoutPopup({ account: accounts[0] });
+          await msalInstance.logoutPopup({ account: accounts[0] });
         }
       } catch { /* skip */ }
     }
@@ -464,7 +502,7 @@ const PageWrapper = ({ children, showTopBar }) => (
 // ══════════════════════════════════════════════════════════════════
 //  10. BOTTOM NAV
 // ══════════════════════════════════════════════════════════════════
-const FooterNav = ({ userInfo }) => {
+const FooterNav = () => {
   const location = useLocation();
   const left  = [
     { label: 'Home',      path: '/',          icon: <HomeIcon        size={22} /> },
@@ -482,7 +520,7 @@ const FooterNav = ({ userInfo }) => {
         </Link>
       ))}
       <div className="nav-chatbot-slot">
-        <ChatBot userInfo={userInfo} />
+        <ChatBot />
       </div>
       {right.map(n => (
         <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
@@ -513,19 +551,27 @@ function App() {
 
     const checkAuth = async () => {
       try {
-        if (isMobile()) {
+        if (IS_MOBILE) {
+          // ── APK — restore from sessionStorage ─────────────────
           const session = getMobileSession();
-          if (session) { setUserInfo(session); setIsAuthenticated(true); }
+          if (session) {
+            setUserInfo(session);
+            setIsAuthenticated(true);
+          }
         } else {
-          const redirectResult = await handleWebRedirect();
-          if (redirectResult?.account) {
+          // ── Web — MSAL redirect promise + session restore ──────
+          await ensureMsal();
+
+          const redirectResult = await msalInstance.handleRedirectPromise();
+          if (redirectResult && redirectResult.account) {
             const acct = redirectResult.account;
             setUserInfo({ name: acct.name || acct.username, email: acct.username });
             setIsAuthenticated(true);
             window.history.replaceState({}, document.title, '/');
             return;
           }
-          const accounts = await getWebAccounts();
+
+          const accounts = msalInstance.getAllAccounts();
           if (accounts.length > 0) {
             const acct = accounts[0];
             setUserInfo({ name: acct.name || acct.username, email: acct.username });
@@ -569,7 +615,7 @@ function App() {
               <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage /></PageWrapper>} />
               <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
               <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom /></PageWrapper>} />
+              <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
               <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
               <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor /></PageWrapper>} />
               <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing /></PageWrapper>} />
@@ -584,7 +630,7 @@ function App() {
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
           )}
-          {showFooter && <FooterNav userInfo={userInfo} />}
+          {showFooter && <FooterNav />}
         </>
       )}
 

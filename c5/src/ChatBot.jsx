@@ -4,9 +4,10 @@ import { useLocation } from 'react-router-dom';
 import './ChatBot.css';
 
 // ── CONFIG ────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook-test/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
 const TENANT_ID       = 'chinhin_hq';
-const ELEVATED_PATHS  = ['/dashboard', '/info'];
+const ELEVATED_PATHS       = ['/dashboard', '/info'];
+const SESSION_TIMEOUT_MS   = 2 * 60 * 60 * 1000; // 2 jam inactivity → auto reset
 
 // ── SESSION ID ────────────────────────────────────────────────────
 // A new session_id is generated when the user sends their first
@@ -51,7 +52,7 @@ const getSessionUser = () => {
 };
 
 // ── NATIVE SPEECH (Android) ───────────────────────────────────────
-const nativeSpeech = { 
+const nativeSpeech = {
   async requestPermission() {
     try {
       const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
@@ -197,8 +198,9 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
   const [convState,   setConvState]   = useState({});
   const [voiceError,  setVoiceError]  = useState('');
 
-  const messagesEndRef  = useRef(null);
-  const pendingFinalRef = useRef('');
+  const messagesEndRef   = useRef(null);
+  const pendingFinalRef  = useRef('');
+  const sessionTimerRef  = useRef(null);  // auto-reset timer
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -208,8 +210,36 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
     return () => {
       if (isMobile()) { nativeSpeech.stopListening(); nativeSpeech.stopSpeaking(); }
       else { webSpeech.stopListening(); webSpeech.stopSpeaking(); }
+      clearTimeout(sessionTimerRef.current);
     };
   }, []);
+
+  // ── Session inactivity timeout ─────────────────────────────────
+  // Reset setiap kali user hantar message. Kalau 2 jam tak ada
+  // activity, auto close session dan notify user.
+  const resetSessionTimer = useCallback((sid) => {
+    clearTimeout(sessionTimerRef.current);
+    if (!sid) return;
+    sessionTimerRef.current = setTimeout(async () => {
+      // Auto-expire: notify n8n then reset frontend
+      try {
+        await sendToN8n({
+          text: 'session_timeout', eventType: 'session_close',
+          sessionId: sid, user: currentUser, convState: {},
+        });
+      } catch (_) {}
+      setSessionId(null);
+      setConvState({});
+      addMsg('bot', 'text',
+        '⏱️ Session ended due to 2 hours of inactivity. Send a message to start a new session.');
+    }, SESSION_TIMEOUT_MS);
+  }, [currentUser]);
+
+  // Start/restart timer whenever sessionId changes
+  useEffect(() => {
+    resetSessionTimer(sessionId);
+    return () => clearTimeout(sessionTimerRef.current);
+  }, [sessionId, resetSessionTimer]);
 
   const addMsg = (sender, msgType, text, extra = {}) =>
     setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender, msgType, text, ...extra }]);
@@ -287,6 +317,7 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
     if (!trimmed && !confirmData) return;
 
     const sid = getOrCreateSession();
+    resetSessionTimer(sid); // restart 2-hour inactivity clock
 
     if (!confirmData) {
       addMsg('user', 'text', trimmed);
