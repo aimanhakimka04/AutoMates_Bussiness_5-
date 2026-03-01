@@ -105,7 +105,22 @@ const callN8n = async (body, user) => {
 
 // Fetch the user's real room bookings from Microsoft Graph (via n8n)
 const fetchMyBookings = (user) =>
-  callN8n({ text: 'get_bookings', input_type: 'form', state: {}, event_type: 'get_bookings' }, user);
+  callN8n({
+    text:        'get_bookings',
+    input_type:  'form',
+    confirm:     true,
+    state:       {},
+    session_id:  `getbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type:  'direct_booking',
+    edited_plan: {
+      action:             'get_bookings',
+      sub_target:         'meeting_room',
+      risk_level:         'low',
+      needs_confirmation: false,
+      summary:            'Fetching room bookings',
+      parameters:         {},
+    },
+  }, user);
 
 // Book a room — confirm:true bypasses AI, goes straight to Graph Create
 const bookRoomViaN8n = async ({ roomName, startISO, endISO, subject, appointmentType, participants, user }) => {
@@ -206,7 +221,8 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   const [isFetching,      setIsFetching]      = useState(true);
   const [fetchError,      setFetchError]      = useState('');
 
-  // ── Booking async states ─────────────────────────────────────────
+  // ── Local bookings cache (correct times, not affected by timezone bug) ──
+  const [localBookings, setLocalBookings] = useState([]);
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [submitResult,  setSubmitResult]  = useState(null);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -242,7 +258,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       if (result.type === 'bookings_list') {
         setMeetingsData(result.bookings || []);
       } else if (result.type === 'empty') {
-        setFetchError('Import the updated workflow JSON to enable booking list.');
+        // n8n returned empty body - treat as no bookings found
         setMeetingsData([]);
       } else {
         console.warn('[MeetingRoom] loadBookings unexpected response:', result);
@@ -374,25 +390,36 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   // ── CONFLICT CHECK ────────────────────────────────────────────────
   const hasConflict = (roomName, dateStr, startTime, endTime) => {
     const parseTime = (t) => {
-      if (!t) return 0;
-      const [time, period] = t.trim().split(' ');
+      if (!t) return -1;
+      const parts = t.trim().split(' ');
+      if (parts.length < 2) return -1;
+      const [time, period] = parts;
       let [h, m] = time.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return -1;
       if (period === 'PM' && h !== 12) h += 12;
       if (period === 'AM' && h === 12) h = 0;
       return h * 60 + m;
     };
+    const normRoom = (r) => (r || '').toLowerCase().replace(/\s/g, '');
     const newStart = parseTime(startTime);
     const newEnd   = parseTime(endTime);
-    return meetingsData.some(m => {
-      if (m.room?.toLowerCase() !== roomName.toLowerCase()) return false;
+    if (newStart < 0 || newEnd < 0) return false;
+
+    const checkList = (list) => list.some(m => {
+      if (normRoom(m.room) !== normRoom(roomName)) return false;
       if (m.date !== dateStr) return false;
-      if (editingMeeting && m.id === editingMeeting.id) return false; // skip self when editing
-      const [mStart, mEnd] = (m.time || '').split(' - ');
-      const eStart = parseTime(mStart);
-      const eEnd   = parseTime(mEnd);
-      // Overlap if new starts before existing ends AND new ends after existing starts
+      if (editingMeeting && m.id === editingMeeting.id) return false;
+      const [rawStart, rawEnd] = (m.time || '').split(' - ');
+      let eStart = parseTime(rawStart?.trim());
+      let eEnd   = parseTime(rawEnd?.trim());
+      if (eStart < 0 || eEnd < 0) return false;
+      // Skip corrupted server entries (timezone bug) — eEnd <= eStart means wrong data
+      if (eEnd <= eStart) return false;
       return newStart < eEnd && newEnd > eStart;
     });
+
+    // Check against server data (may be corrupted) AND local cache (always correct)
+    return checkList(meetingsData) || checkList(localBookings);
   };
 
   // ── CONFIRM BOOKING ───────────────────────────────────────────────
@@ -467,10 +494,11 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
           n8nRef:    result.reference_id || result.event_details?.id,
         };
         setMeetingsData(prev => [newBooking, ...prev]);
+        setLocalBookings(prev => [...prev, newBooking]);
         setSubmitResult('success');
         setSubmitMessage(result.summary || `${roomName} booked successfully! ✓`);
-        // Reload from server after 3s to get real event IDs from Graph
         setTimeout(() => { setView('list'); setSubmitResult(null); loadBookings(); }, 2500);
+        setTimeout(() => loadBookings(), 8000);
 
       } else if (result.type === 'confirm') {
         // n8n is asking for confirmation again (shouldn't happen but handle gracefully)
@@ -500,10 +528,11 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
           n8nRef:    null,
         };
         setMeetingsData(prev => [newBooking, ...prev]);
+        setLocalBookings(prev => [...prev, newBooking]);
         setSubmitResult('success');
         setSubmitMessage(`Idea Lab ${selectedRoom} booked successfully! ✓`);
-        // Reload from server to get real event ID so cancel will work
         setTimeout(() => { setView('list'); setSubmitResult(null); loadBookings(); }, 2500);
+        setTimeout(() => loadBookings(), 8000);
 
       } else {
         // Unknown response type — log and show error
@@ -519,7 +548,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     }
   }, [meetingTitle, selectedStartTime, selectedEndTime, selectedRoom,
       selectedDate, appointmentType, selectedParticipants, currentUser,
-      meetingsData, loadBookings, isEditing, editingMeeting]);
+      meetingsData, loadBookings, isEditing, editingMeeting, localBookings]);
 
   // ── CANCEL BOOKING ────────────────────────────────────────────────
   const handleCancelBooking = useCallback(async (meeting) => {
@@ -537,7 +566,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       await cancelBookingViaN8n(meeting.n8nRef, meeting.title, currentUser);
       // Optimistically remove from UI
       setMeetingsData(prev => prev.filter(m => m.id !== meeting.id));
-      // Then reload from server to confirm it's really gone from the calendar
+      setLocalBookings(prev => prev.filter(m => m.id !== meeting.id));
       setTimeout(() => loadBookings(), 1500);
     } catch (err) {
       alert(`Cancel failed: ${err.message}`);

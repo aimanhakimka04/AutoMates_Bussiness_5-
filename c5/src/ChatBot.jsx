@@ -166,8 +166,21 @@ const sendToN8n = async ({ text, inputType, convState, confirm, editedPlan,
     },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  // Safe parse -- n8n sometimes returns 200 with empty body (e.g. after update/cancel)
+  const rawText = await res.text();
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { msg = JSON.parse(rawText)?.message || msg; } catch(_) {}
+    throw new Error(msg);
+  }
+  if (!rawText || !rawText.trim()) {
+    return { type: 'receipt', summary: 'Action completed successfully.' };
+  }
+  try {
+    return JSON.parse(rawText);
+  } catch(_) {
+    throw new Error('Invalid response from server. Please try again.');
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -336,7 +349,7 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
         confirm:    !!confirmData,
         editedPlan: confirmData?.plan || null,
         sessionId:  sid,
-        eventType:  'message',
+        eventType:  confirmData ? 'direct_booking' : 'message',
         user:       currentUser,
       });
       processResponse(data, inputType);
@@ -486,7 +499,7 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
           <div className="chat-messages">
             {messages.map(m => (
               <MessageBubble key={m.id} message={m}
-                onConfirm={()     => sendMessage(null, 'text', m)}
+                onConfirm={()     => sendMessage(null, 'confirm', m)}
                 onCancel={()      => addMsg('bot', 'text', 'Action cancelled.')}
                 onSessionYes={handleSessionYes}
                 onSessionNo={handleSessionNo}
