@@ -618,7 +618,7 @@ function App() {
               <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
               <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
               <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor /></PageWrapper>} />
-              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing /></PageWrapper>} />
+              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing userInfo={userInfo} /></PageWrapper>} />
               <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart /></PageWrapper>} />
               <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
               <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
