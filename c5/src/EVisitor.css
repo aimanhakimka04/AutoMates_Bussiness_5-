@@ -1,6 +1,7 @@
+/* --- 基础容器布局 --- */
 .evisitor-container {
-  background-color: #e3f2fd; /* 截图中的浅蓝色背景 */
-  height: 100vh;
+  background-color: #e3f2fd;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -34,9 +35,10 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
+  overflow-y: auto; /* 允许长内容滚动 */
 }
 
-/* 卡片布局 */
+/* --- 主菜单卡片 --- */
 .evisitor-card-row {
   display: flex;
   gap: 15px;
@@ -68,83 +70,7 @@
   line-height: 1.2;
 }
 
-/* 插画区域 */
-.evisitor-illustration-section {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.illustration-wrapper {
-  width: 100%;
-  max-width: 320px;
-}
-
-.hero-illustration {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-.evisitor-container {
-  background-color: #e3f2fd;
-  height: 100%; /* 允许底部导航栏显示 */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.evisitor-container {
-  background-color: #e3f2fd;
-  height: 100%; /* 关键：改为 100% 以适配 App 的 Footer 布局 */
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.evisitor-top-nav {
-  background-color: #2b1d62;
-  color: #ffffff;
-  height: 7vh;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  flex-shrink: 0;
-}
-
-.evisitor-top-nav .nav-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-.evisitor-main-content {
-  flex: 1; /* 占据剩余的所有中间空间 */
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  overflow-y: auto;
-}
-
-.evisitor-card-row {
-  display: flex;
-  gap: 15px;
-  margin-bottom: 30px;
-}
-
-.evisitor-card {
-  flex: 1;
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 20px 10px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  text-align: center;
-}
-
+/* --- 插画区域 --- */
 .evisitor-illustration-section {
   flex: 1;
   display: flex;
@@ -159,33 +85,7 @@
   object-fit: contain;
 }
 
-.evisitor-container {
-  background-color: #e3f2fd;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.evisitor-top-nav {
-  background-color: #2b1d62;
-  color: #ffffff;
-  height: 7vh;
-  display: flex;
-  align-items: center;
-  padding: 0 15px;
-  flex-shrink: 0;
-}
-
-.evisitor-main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  overflow-y: auto; /* 允许表单长内容滚动 */
-}
-
-/* 登记表单容器 */
+/* --- 登记表单样式 --- */
 .evisitor-form-container {
   background: white;
   padding: 20px;
@@ -194,7 +94,6 @@
   margin-bottom: 20px;
 }
 
-/* 日期框设计 (image_f13c12) */
 .ev-date-row {
   display: flex;
   gap: 15px;
@@ -203,95 +102,15 @@
 
 .ev-date-box {
   flex: 1;
-  height: 100px;
-  border: 1px solid #eee;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #666;
-  font-size: 14px;
-  background-color: #fff;
-}
-
-/* 通用表单项 */
-.ev-form-group {
-  margin-bottom: 15px;
-}
-
-.ev-form-group label {
-  display: block;
-  font-size: 13px;
-  color: #333;
-  font-weight: 500;
-  margin-bottom: 6px;
-}
-
-.ev-input {
-  width: 90%;
-  height: 40px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0 10px;
-  outline: none;
-  font-size: 14px;
-}
-
-.ev-select-box {
-  width: 90%;
-  height: 40px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #f9f9f9;
-  font-size: 14px;
-  color: #333;
-}
-
-.ev-select-box .placeholder {
-  color: #999;
-}
-
-/* 注册按钮 (image_f13bda) */
-.ev-register-btn {
-  width: 100%;
-  height: 48px;
-  background-color: #2b1d62; /* 深蓝色 */
-  color: white;
-  border: none;
-  border-radius: 24px; /* 胶囊形状 */
-  font-size: 16px;
-  font-weight: 600;
-  margin-top: 20px;
-  cursor: pointer;
-}
-
-.ev-register-btn:active {
-  opacity: 0.9;
-}
-
-/* 原有的主菜单样式保持不变 */
-.evisitor-card-row { display: flex; gap: 15px; margin-bottom: 30px; }
-.evisitor-card { flex: 1; background: #ffffff; border-radius: 12px; padding: 20px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
-.evisitor-illustration-section { flex: 1; display: flex; align-items: center; justify-content: center; }
-.hero-illustration { width: 100%; max-width: 300px; height: auto; object-fit: contain; }
-
-/* 日期选择框样式优化 */
-.ev-date-box {
-  flex: 1;
   height: 80px;
   border: 1px solid #ddd;
   border-radius: 12px;
   display: flex;
-  flex-direction: column; /* 改为纵向布局 */
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   background-color: #fff;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .date-label {
@@ -306,42 +125,79 @@
   color: #2b1d62;
 }
 
-.ev-date-box:active {
-  background-color: #f0f7ff;
+/* --- 输入框与下拉框核心修复 --- */
+.ev-form-group {
+  margin-bottom: 15px;
 }
 
-/* 确保 EVisitor 页面能使用 App.css 定义的全局日历样式 */
-/* 如果日历不显示，请确保以下基础样式已存在 */
-.calendar-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
+.ev-form-group label {
+  display: block;
+  font-size: 13px;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 6px;
 }
 
-.calendar-modal {
-  width: 90%;
-  max-width: 360px;
-  background: white;
-  border-radius: 15px;
-  padding: 20px;
+.ev-input {
+  width: 100%; /* 改为100%以填满容器 */
+  height: 40px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0 10px;
+  box-sizing: border-box; /* 确保padding不撑大宽度 */
+  font-size: 14px;
+  outline: none;
 }
 
-.calendar-day.past {
-  color: #d1d1d1 !important;
-  pointer-events: none;
+.ev-select-box {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  box-sizing: border-box;
 }
 
-.calendar-day.selected {
-  background-color: #2b1d62 !important;
-  color: white !important;
-  border-radius: 50%;
+/* 核心修复：原生 Select 样式 */
+.ev-select-native {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0 10px;
+  background: #ffffff;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  outline: none;
+  
+  /* 隐藏原生箭头 */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
 }
 
-/* --- Appointment Listing 专属样式 --- */
+/* 右侧图标样式 */
+.ev-select-box .lucide-chevron-down {
+  position: absolute;
+  right: 10px;
+  top: 11px;
+  /* 关键：让点击动作穿透图标，直接点到下面的 select 上 */
+  pointer-events: none; 
+}
+
+.ev-register-btn {
+  width: 100%;
+  height: 48px;
+  background-color: #2b1d62;
+  color: white;
+  border: none;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 20px;
+  cursor: pointer;
+}
+
+/* --- Appointment Listing 列表样式 --- */
 .ev-tabs {
   display: flex;
   gap: 10px;
@@ -367,22 +223,6 @@
   border-color: #2b1d62;
 }
 
-.ev-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  margin-top: 50px;
-  color: #999;
-}
-
-.ev-empty-state img {
-  width: 250px;
-  opacity: 0.6;
-  margin-bottom: 15px;
-}
-
-/* 预约卡片样式 */
 .ev-cards-container {
   display: flex;
   flex-direction: column;
@@ -408,7 +248,6 @@
   font-size: 16px;
   font-weight: 700;
   color: #333;
-  display: block;
 }
 
 .status-badge {
@@ -423,7 +262,6 @@
 .status-badge.approved { color: #27ae60; }
 .status-badge.pending { color: #f39c12; }
 
-/* 下拉菜单样式 */
 .ev-more-wrapper { position: relative; }
 .ev-more-btn { background: none; border: none; padding: 5px; cursor: pointer; }
 
@@ -466,41 +304,32 @@
   color: #666;
 }
 
-/* 选择框容器 */
-.ev-select-box {
-  position: relative; /* 必须，为了让内部的 native select 绝对定位 */
-  width: 90%;
-  height: 40px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0 10px;
+/* --- 全局日历样式 --- */
+.calendar-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  background: #ffffff; /* 保持与输入框一致的白色背景 */
-  font-size: 14px;
-  color: #333;
+  justify-content: center;
+  z-index: 10000;
 }
 
-/* 隐藏的原生下拉框，但撑满整个盒子以响应点击 */
-.ev-select-native {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  opacity: 0; /* 关键：完全透明 */
-  cursor: pointer;
-  z-index: 2; /* 确保在文字和图标上方 */
-  appearance: none;
+.calendar-modal {
+  width: 90%;
+  max-width: 360px;
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
 }
 
-/* 提示文字颜色 */
-.ev-select-box .placeholder {
-  color: #999;
+.calendar-day.past {
+  color: #d1d1d1 !important;
+  pointer-events: none;
 }
 
-/* 简单的点击反馈 */
-.ev-select-box:active {
-  background-color: #f5f5f5;
+.calendar-day.selected {
+  background-color: #2b1d62 !important;
+  color: white !important;
+  border-radius: 50%;
 }
