@@ -74,7 +74,9 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  max-height: 855px;
 }
+
 
 .transport-empty-state {
   margin: auto; /* 水平垂直居中 */

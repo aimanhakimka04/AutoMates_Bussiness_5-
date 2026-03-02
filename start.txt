@@ -3,6 +3,10 @@ npm start
 
 //paste in cmd
 
+cd c5
+npm start
+
+
 
 ------------------------------------------------------
 Lucide React (它的图标全是这种简约的线条风格)。 lib 图标
