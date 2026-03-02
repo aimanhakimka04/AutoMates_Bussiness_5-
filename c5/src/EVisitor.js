@@ -82,6 +82,15 @@ const EVisitor = () => {
 
   // --- 提交登记 (新增或保存编辑) ---
   const handleRegister = () => {
+
+    // 检查所有必填项
+  const { visitor, idNo, contact, email, company, purpose, location } = formData;
+
+  if (!visitor || !idNo || !contact || !email || !company || !purpose || !location || !fromDate || !toDate) {
+    alert("Please fill in all required fields and select dates!");
+    return;
+  }
+  
     if (!formData.visitor || !fromDate) {
       alert("Please fill in Name and Date!");
       return;
@@ -207,11 +216,11 @@ const EVisitor = () => {
               </div>
             </div>
 
-            <div className="ev-form-group"><label>Name *</label><input type="text" className="ev-input" value={formData.visitor} onChange={(e)=>setFormData({...formData, visitor: e.target.value})} /></div>
-            <div className="ev-form-group"><label>Identity No. *</label><input type="text" className="ev-input" value={formData.idNo} onChange={(e)=>setFormData({...formData, idNo: e.target.value})} /></div>
-            <div className="ev-form-group"><label>Contact *</label><input type="text" className="ev-input" value={formData.contact} onChange={(e)=>setFormData({...formData, contact: e.target.value})} /></div>
-            <div className="ev-form-group"><label>Email *</label><input type="email" className="ev-input" value={formData.email} onChange={(e)=>setFormData({...formData, email: e.target.value})} /></div>
-            <div className="ev-form-group"><label>Company *</label><input type="text" className="ev-input" value={formData.company} onChange={(e)=>setFormData({...formData, company: e.target.value})} /></div>
+            <div className="ev-form-group"><label>Name *</label><input required type="text" className="ev-input" value={formData.visitor} onChange={(e)=>setFormData({...formData, visitor: e.target.value})} /></div>
+            <div className="ev-form-group"><label>Identity No. *</label><input required type="text" className="ev-input" value={formData.idNo} onChange={(e)=>setFormData({...formData, idNo: e.target.value})} /></div>
+            <div className="ev-form-group"><label>Contact *</label><input required type="text" className="ev-input" value={formData.contact} onChange={(e)=>setFormData({...formData, contact: e.target.value})} /></div>
+            <div className="ev-form-group"><label>Email *</label><input required type="email" className="ev-input" value={formData.email} onChange={(e)=>setFormData({...formData, email: e.target.value})} /></div>
+            <div className="ev-form-group"><label>Company *</label><input required type="text" className="ev-input" value={formData.company} onChange={(e)=>setFormData({...formData, company: e.target.value})} /></div>
             
             {/* 2. 下拉菜单使用定义好的选项 */}
             <div className="ev-form-group">
