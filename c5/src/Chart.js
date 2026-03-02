@@ -1,10 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Calendar as CalendarIcon, BookOpen, Book, ChevronRight, AlertCircle, 
   Clock, MapPin, X, Info, ChevronLeftCircle, ChevronRightCircle, CheckCircle2, User
 } from 'lucide-react';
 import './Chart.css';
+
+// Default programs used when there is nothing in localStorage
+const DEFAULT_PROGRAMS = [
+  { 
+    id: "P001", 
+    title: "Leadership Excellence 101", 
+    date: "2026-02-15", 
+    startTime: "10:00", 
+    endTime: "12:00",
+    location: "Level 17, Meeting Room A", 
+    trainer: "Dr. Alan Smith",
+    status: "Confirmed",
+    desc: "Advanced leadership strategies for management teams focusing on transformation."
+  },
+  { 
+    id: "P002", 
+    title: "Digital Transformation", 
+    date: "2026-02-15", 
+    startTime: "14:00", 
+    endTime: "16:30",
+    location: "Level 8, Idea Lab 5", 
+    trainer: "Ms. Jane Doe",
+    status: "Confirmed",
+    desc: "Exploring digital workflows, automation tools and business reskilling."
+  }
+];
+
+// Helper to load initial state from localStorage (or use defaults)
+const loadInitialPrograms = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = window.localStorage.getItem('chart_myPrograms');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      // ignore JSON errors and fall back to defaults
+    }
+  }
+  return DEFAULT_PROGRAMS;
+};
 
 const Chart = () => {
   const navigate = useNavigate();
@@ -19,30 +63,7 @@ const Chart = () => {
   const [requestForm, setRequestForm] = useState({ title: '', dateTime: '', venue: '' });
 
   //----------------------------for mock data----------------//
-  const [myPrograms, setMyPrograms] = useState([
-    { 
-      id: "P001", 
-      title: "Leadership Excellence 101", 
-      date: "2026-02-15", 
-      startTime: "10:00", 
-      endTime: "12:00",
-      location: "Level 17, Meeting Room A", 
-      trainer: "Dr. Alan Smith",
-      status: "Confirmed",
-      desc: "Advanced leadership strategies for management teams focusing on transformation."
-    },
-    { 
-      id: "P002", 
-      title: "Digital Transformation", 
-      date: "2026-02-15", 
-      startTime: "14:00", 
-      endTime: "16:30",
-      location: "Level 8, Idea Lab 5", 
-      trainer: "Ms. Jane Doe",
-      status: "Confirmed",
-      desc: "Exploring digital workflows, automation tools and business reskilling."
-    }
-  ]);
+  const [myPrograms, setMyPrograms] = useState(loadInitialPrograms);
 
   const availablePrograms = [
     { 
@@ -57,6 +78,13 @@ const Chart = () => {
     }
   ];
   //-------------------end of mock data -------------------------//
+
+  // Persist myPrograms whenever it changes so sign-ups survive refresh/navigation
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('chart_myPrograms', JSON.stringify(myPrograms));
+    }
+  }, [myPrograms]);
 
   //----------------------------for back navigation logic----------------//
   const handleBack = () => {
@@ -144,6 +172,18 @@ const Chart = () => {
   // 处理报名确认逻辑
   const handleConfirmSignUp = () => {
     if (selectedEvent) {
+      // If user already signed up for this program (same title + date), show message
+      const alreadyExist = myPrograms.some(
+        p => p.title === selectedEvent.title && p.date === selectedEvent.date
+      );
+
+      if (alreadyExist) {
+        alert('You have already signed up for this program.');
+        setShowConfirm(false);
+        setSelectedEvent(null);
+        return;
+      }
+
       // 1. 将新课程添加到“我的课程”数组中，状态设为 Pending
       const newProgram = {
         id: `P${Date.now()}`, // 生成唯一ID
@@ -156,12 +196,12 @@ const Chart = () => {
         status: "Pending HR Approval",
         desc: selectedEvent.desc
       };
-      setMyPrograms([...myPrograms, newProgram]);
+      setMyPrograms(prev => [...prev, newProgram]);
       
       // 2. 提示成功并关闭所有弹窗
-      alert('Sign up request submitted successfully!'); 
+      alert('Sign up request submitted successfully!');
       setShowConfirm(false); 
-      setSelectedEvent(null); // 【修复 Bug】：清空事件，防止错乱弹窗
+      setSelectedEvent(null);
       
       // 3. 跳转到“我的课程”页面查看结果
       setView('upcoming'); 
@@ -271,7 +311,13 @@ const Chart = () => {
               <div key={p.id} className="training-detail-card" onClick={() => setSelectedEvent(p)}>
                 <div className="card-top">
                   <h4>{p.title}</h4> 
-                  <span className="s-badge" style={{ backgroundColor: p.status === 'Confirmed' ? '#e8f5e9' : '#fff3e0', color: p.status === 'Confirmed' ? '#2e7d32' : '#e65100' }}>
+                  <span
+                    className="s-badge"
+                    style={{
+                      backgroundColor: p.status === 'Confirmed' ? '#e8f5e9' : '#fff3e0',
+                      color: p.status === 'Confirmed' ? '#2e7d32' : '#e65100'
+                    }}
+                  >
                     {p.status}
                   </span>
                 </div>
@@ -288,15 +334,42 @@ const Chart = () => {
         {view === 'programs' && (
           <div className="chart-subpage-view">
             <h4 className="section-title">Open for Registration</h4>
-            {availablePrograms.map(p => (
-              <div key={p.id} className="available-program-card" onClick={() => setSelectedEvent(p)}>
-                <div className="p-card-content">
-                  <h4>{p.title}</h4>
-                  <p>Duration: {p.duration}</p>
+            {availablePrograms.map(p => {
+              const isSignedUp = myPrograms.some(
+                prog => prog.title === p.title && prog.date === p.date
+              );
+
+              return (
+                <div
+                  key={p.id}
+                  className="available-program-card"
+                  onClick={() => setSelectedEvent(p)}
+                >
+                  <div className="p-card-content">
+                    <h4>{p.title}</h4>
+                    <p>Duration: {p.duration}</p>
+                    {isSignedUp && (
+                      <span className="signed-badge">Already signed up</span>
+                    )}
+                  </div>
+                  <button
+                    className={`signup-btn ${isSignedUp ? 'disabled' : ''}`}
+                    disabled={isSignedUp}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (isSignedUp) {
+                        alert('You have already signed up for this program.');
+                        return;
+                      }
+                      setSelectedEvent(p);
+                      setShowConfirm(true);
+                    }}
+                  >
+                    {isSignedUp ? 'Signed Up' : 'Sign Up'}
+                  </button>
                 </div>
-                <button className="signup-btn" onClick={(e) => { e.stopPropagation(); setSelectedEvent(p); setShowConfirm(true); }}>Sign Up</button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         {/*-------------------end of subpage learning programs -------------------------//*/}
@@ -310,17 +383,33 @@ const Chart = () => {
               
               <div className="form-group">
                 <label>Program Title *</label>
-                <input type="text" className="c-input" value={requestForm.title} onChange={e => setRequestForm({...requestForm, title: e.target.value})} />
+                <input
+                  type="text"
+                  className="c-input"
+                  value={requestForm.title}
+                  onChange={e => setRequestForm({...requestForm, title: e.target.value})}
+                />
               </div>
               
               <div className="form-group">
                 <label>Date & Time *</label>
-                <input type="text" placeholder="e.g. 2026-05-10 09:00" className="c-input" value={requestForm.dateTime} onChange={e => setRequestForm({...requestForm, dateTime: e.target.value})} />
+                <input
+                  type="text"
+                  placeholder="e.g. 2026-05-10 09:00"
+                  className="c-input"
+                  value={requestForm.dateTime}
+                  onChange={e => setRequestForm({...requestForm, dateTime: e.target.value})}
+                />
               </div>
               
               <div className="form-group">
                 <label>Address / Venue *</label>
-                <input type="text" className="c-input" value={requestForm.venue} onChange={e => setRequestForm({...requestForm, venue: e.target.value})} />
+                <input
+                  type="text"
+                  className="c-input"
+                  value={requestForm.venue}
+                  onChange={e => setRequestForm({...requestForm, venue: e.target.value})}
+                />
               </div>
               
               <button className="submit-req-btn" onClick={handleRequestSubmit}>Submit Request</button>
@@ -336,14 +425,27 @@ const Chart = () => {
       {selectedEvent && !showConfirm && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal">
-            <div className="modal-top"><h3>Activity Details</h3><X size={24} onClick={() => setSelectedEvent(null)} style={{cursor: 'pointer'}} /></div>
+            <div className="modal-top">
+              <h3>Activity Details</h3>
+              <X size={24} onClick={() => setSelectedEvent(null)} style={{cursor: 'pointer'}} />
+            </div>
             <div className="modal-main">
               <h2 className="m-title">{selectedEvent.title}</h2>
               <div className="m-row"><CalendarIcon size={16} color="#00a8ff" /> <span>{selectedEvent.date || "N/A"}</span></div>
-              <div className="m-row"><Clock size={16} color="#00a8ff" /> <span>{selectedEvent.startTime ? `${selectedEvent.startTime} - ${selectedEvent.endTime}` : (selectedEvent.time || "N/A")}</span></div>
+              <div className="m-row">
+                <Clock size={16} color="#00a8ff" />{" "}
+                <span>
+                  {selectedEvent.startTime
+                    ? `${selectedEvent.startTime} - ${selectedEvent.endTime}`
+                    : (selectedEvent.time || "N/A")}
+                </span>
+              </div>
               <div className="m-row"><User size={16} color="#00a8ff" /> <span>Trainer: {selectedEvent.trainer}</span></div>
               <div className="m-row"><MapPin size={16} color="#00a8ff" /> <span>{selectedEvent.location || "N/A"}</span></div>
-              <div className="m-desc-box"><h4>Description</h4><p>{selectedEvent.desc || "No description available for this program."}</p></div>
+              <div className="m-desc-box">
+                <h4>Description</h4>
+                <p>{selectedEvent.desc || "No description available for this program."}</p>
+              </div>
             </div>
             <button className="m-close-btn" onClick={() => setSelectedEvent(null)}>Done</button>
           </div>
@@ -354,7 +456,10 @@ const Chart = () => {
       {showAboutModal && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal about-modal">
-            <div className="modal-top"><h3>About CHART</h3><X size={24} onClick={() => setShowAboutModal(false)} style={{cursor: 'pointer'}} /></div>
+            <div className="modal-top">
+              <h3>About CHART</h3>
+              <X size={24} onClick={() => setShowAboutModal(false)} style={{cursor: 'pointer'}} />
+            </div>
             <div className="modal-main">
               <p>CHART (Chin Hin Academy for Reskilling & Transformation) is dedicated to fostering a culture of continuous learning.</p>
               <p>Our mission is to equip our employees with future-ready skills through structured training, workshops, and transformation programs.</p>

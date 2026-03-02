@@ -18,8 +18,10 @@ const Wellness = () => {
   const [selectedTcmAppointment, setSelectedTcmAppointment] = useState(null);
   const [selectedPhysioAppointment, setSelectedPhysioAppointment] = useState(null); 
   const [showConfirm, setShowConfirm] = useState(false);
-  
   const [nursingModal, setNursingModal] = useState(null);
+
+  // Which timetable class is being booked
+  const [pendingClass, setPendingClass] = useState(null);
 
   //----------------------------Interactive Form State----------------//
   const [profileData, setProfileData] = useState({
@@ -42,12 +44,24 @@ const Wellness = () => {
     motivations: []
   });
 
+  const [errors, setErrors] = useState({
+    email: '',
+    phone: '',
+    emergencyPhone: ''
+  });
+
   const handleInputChange = (field, value) => {
     if (field === 'age') {
       const val = parseInt(value);
       if (val < 0) value = 0;
       if (val > 100) value = 100;
     }
+
+    // Only allow digits for phone numbers
+    if (field === 'phone' || field === 'emergencyPhone') {
+      value = value.replace(/\D/g, '');
+    }
+
     setProfileData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -143,7 +157,8 @@ const Wellness = () => {
     { id: 202, name: "Rehabilitation Program", detail: "10 Sessions with assessment", fee: "RM 1200", desc: "Personalized rehab plan for injury recovery and prevention." }
   ];
 
-  const myBookings = [
+  // My Bookings as state
+  const [myBookings, setMyBookings] = useState([
     {
       id: "B1",
       title: "13/1 Zumba | Group Training",
@@ -154,7 +169,7 @@ const Wellness = () => {
       location: "Fitness Studio, Level 19, Menara Chin Hin",
       desc: "High-energy cardio session combined with Latin-inspired dance moves."
     }
-  ];
+  ]);
 
   const tcmViewMap = {
     "About TCM": "tcm-about",
@@ -220,6 +235,19 @@ const Wellness = () => {
       location: "TCM Room, Level 19",
       status: "Confirmed"
     };
+
+    const alreadyBooked = tcmAppointments.some(
+      app =>
+        app.title === newAppointment.title &&
+        app.date === newAppointment.date &&
+        app.time === newAppointment.time
+    );
+
+    if (alreadyBooked) {
+      alert('You have already booked this TCM session.');
+      return;
+    }
+
     setTcmAppointments(prev => [...prev, newAppointment]);
     setView('tcm-view');
   };
@@ -229,16 +257,30 @@ const Wellness = () => {
     setView('tcm-view');
   };
 
-  const handleBookPhysioAppointment = () => {
+  // Accepts a slot so Rehabilitation Exercise is correct
+  const handleBookPhysioAppointment = (slot) => {
     const newAppointment = {
       id: `P${Date.now()}`,
-      title: "Sports Massage",
+      title: slot.title,
       provider: "Wellness Physio",
-      date: "Tomorrow",
-      time: "09:00 - 10:00",
-      location: "Physio Room, Level 19",
+      date: slot.date,
+      time: slot.time,
+      location: slot.location,
       status: "Confirmed"
     };
+
+    const alreadyBooked = physioAppointments.some(
+      app =>
+        app.title === newAppointment.title &&
+        app.date === newAppointment.date &&
+        app.time === newAppointment.time
+    );
+
+    if (alreadyBooked) {
+      alert('You have already booked this physiotherapy session.');
+      return;
+    }
+
     setPhysioAppointments(prev => [...prev, newAppointment]);
     setView('physio-view');
   };
@@ -249,6 +291,35 @@ const Wellness = () => {
   };
 
   const handleProfileSubmit = () => {
+    const newErrors = { email: '', phone: '', emergencyPhone: '' };
+
+    // Email required + basic format check
+    if (!profileData.email) {
+      newErrors.email = 'Email is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
+      newErrors.email = 'Please enter a valid email address.';
+    }
+
+    // Phone required + digits-only
+    if (!profileData.phone) {
+      newErrors.phone = 'Phone number is required.';
+    } else if (!/^[0-9]+$/.test(profileData.phone)) {
+      newErrors.phone = 'Phone number should contain digits only.';
+    }
+
+    // Emergency phone required + digits-only
+    if (!profileData.emergencyPhone) {
+      newErrors.emergencyPhone = 'Emergency contact phone is required.';
+    } else if (!/^[0-9]+$/.test(profileData.emergencyPhone)) {
+      newErrors.emergencyPhone = 'Emergency contact phone should contain digits only.';
+    }
+
+    setErrors(newErrors);
+
+    if (newErrors.email || newErrors.phone || newErrors.emergencyPhone) {
+      return;
+    }
+
     alert("Profile form submitted successfully! A coach will be in touch with you.");
     setView('fitness');
   };
@@ -256,7 +327,9 @@ const Wellness = () => {
   return (
     <div className="wellness-container">
       <nav className="wellness-top-nav">
-        <div className="back-arrow" onClick={handleBack}><ChevronLeft size={24} color="#ffffff" strokeWidth={2.5} /></div>
+        <div className="back-arrow" onClick={handleBack}>
+          <ChevronLeft size={24} color="#ffffff" strokeWidth={2.5} />
+        </div>
         <span className="nav-title">{getNavTitle()}</span>
       </nav>
 
@@ -265,12 +338,22 @@ const Wellness = () => {
         {view === 'menu' && (
           <div className="wellness-main-menu">
             <div className="wellness-card-grid">
-              <div className="wellness-card" onClick={() => setView('fitness')}><Dumbbell size={30} color="#333" /><span>Fitness Studio</span></div>
-              <div className="wellness-card" onClick={() => setView('physio')}><Stethoscope size={30} color="#333" /><span>Physiotherapy</span></div>
-              <div className="wellness-card" onClick={() => setView('nursing')}><User2 size={30} color="#333" /><span>Nursing</span></div>
-              <div className="wellness-card" onClick={() => setView('tcm')}><BookOpen size={30} color="#333" /><span>TCM</span></div>
+              <div className="wellness-card" onClick={() => setView('fitness')}>
+                <Dumbbell size={30} color="#333" /><span>Fitness Studio</span>
+              </div>
+              <div className="wellness-card" onClick={() => setView('physio')}>
+                <Stethoscope size={30} color="#333" /><span>Physiotherapy</span>
+              </div>
+              <div className="wellness-card" onClick={() => setView('nursing')}>
+                <User2 size={30} color="#333" /><span>Nursing</span>
+              </div>
+              <div className="wellness-card" onClick={() => setView('tcm')}>
+                <BookOpen size={30} color="#333" /><span>TCM</span>
+              </div>
             </div>
-            <div className="wellness-hero-illustration"><img src="/icon_img/wellnesspage.png" alt="Wellness" /></div>
+            <div className="wellness-hero-illustration">
+              <img src="/icon_img/wellnesspage.png" alt="Wellness" />
+            </div>
           </div>
         )}
 
@@ -283,13 +366,39 @@ const Wellness = () => {
                 <p>Kickstart your fitness journey with a complimentary trial session!</p>
                 <button className="free-trial-btn">Free Trial</button>
               </div>
-              <div className="banner-right-img"><img src="/icon_img/studio.png" alt="Studio" /></div>
+              <div className="banner-right-img">
+                <img src="/icon_img/studio.png" alt="Studio" />
+              </div>
             </div>
             <div className="list-menu">
-              <div className="list-item" onClick={() => setView('timetable')}><div className="item-content"><Calendar size={20}/><div><h4>Timetable Class</h4><p>Schedule your class</p></div></div><ChevronRight size={20} color="#ccc" /></div>
-              <div className="list-item" onClick={() => setView('trainers')}><div className="item-content"><UserCheck size={20}/><div><h4>Personal Trainer Profile</h4><p>Discover detailed profiles</p></div></div><ChevronRight size={20} color="#ccc" /></div>
-              <div className="list-item" onClick={() => setView('membership-list')}><div className="item-content"><Dumbbell size={20}/><div><h4>Buy Membership</h4><p>Your fitness partner starts here</p></div></div><ChevronRight size={20} color="#ccc" /></div>
-              <div className="list-item" onClick={() => setView('my-bookings')}><div className="item-content"><Calendar size={20}/><div><h4>My Bookings</h4><p>Manage your bookings</p></div></div><ChevronRight size={20} color="#ccc" /></div>
+              <div className="list-item" onClick={() => setView('timetable')}>
+                <div className="item-content">
+                  <Calendar size={20}/>
+                  <div><h4>Timetable Class</h4><p>Schedule your class</p></div>
+                </div>
+                <ChevronRight size={20} color="#ccc" />
+              </div>
+              <div className="list-item" onClick={() => setView('trainers')}>
+                <div className="item-content">
+                  <UserCheck size={20}/>
+                  <div><h4>Personal Trainer Profile</h4><p>Discover detailed profiles</p></div>
+                </div>
+                <ChevronRight size={20} color="#ccc" />
+              </div>
+              <div className="list-item" onClick={() => setView('membership-list')}>
+                <div className="item-content">
+                  <Dumbbell size={20}/>
+                  <div><h4>Buy Membership</h4><p>Your fitness partner starts here</p></div>
+                </div>
+                <ChevronRight size={20} color="#ccc" />
+              </div>
+              <div className="list-item" onClick={() => setView('my-bookings')}>
+                <div className="item-content">
+                  <Calendar size={20}/>
+                  <div><h4>My Bookings</h4><p>Manage your bookings</p></div>
+                </div>
+                <ChevronRight size={20} color="#ccc" />
+              </div>
             </div>
           </div>
         )}
@@ -299,8 +408,17 @@ const Wellness = () => {
           <div className="timetable-page-container">
             {timetableStatus === 1 ? (
               <div className="timetable-view-empty">
-                <div className="timetable-section"><h3 className="timetable-header">Book Your Class</h3><p className="timetable-subtext">No classes available at the moment.</p></div>
-                <div className="timetable-section"><h3 className="timetable-header">Book Your Personal Trainer</h3><div className="no-data-wrapper"><img src="/icon_img/empty.png" alt="No data" className="no-data-img" /><h4 className="no-data-title">No sessions yet.</h4></div></div>
+                <div className="timetable-section">
+                  <h3 className="timetable-header">Book Your Class</h3>
+                  <p className="timetable-subtext">No classes available at the moment.</p>
+                </div>
+                <div className="timetable-section">
+                  <h3 className="timetable-header">Book Your Personal Trainer</h3>
+                  <div className="no-data-wrapper">
+                    <img src="/icon_img/empty.png" alt="No data" className="no-data-img" />
+                    <h4 className="no-data-title">No sessions yet.</h4>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="timetable-view-list">
@@ -309,8 +427,20 @@ const Wellness = () => {
                   <div className="class-list">
                     {classes.map(c => (
                       <div key={c.id} className="class-card-item">
-                        <div className="class-info-left"><h4>{c.name}</h4><p><Clock size={12}/> {c.time} | {c.date}</p><p><MapPin size={12}/> {c.location}</p></div>
-                        <button className="book-now-btn" onClick={() => setShowConfirm(true)}>Book</button>
+                        <div className="class-info-left">
+                          <h4>{c.name}</h4>
+                          <p><Clock size={12}/> {c.time} | {c.date}</p>
+                          <p><MapPin size={12}/> {c.location}</p>
+                        </div>
+                        <button
+                          className="book-now-btn"
+                          onClick={() => {
+                            setPendingClass(c);
+                            setShowConfirm(true);
+                          }}
+                        >
+                          Book
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -319,9 +449,16 @@ const Wellness = () => {
                   <h3 className="section-title">Book Your Personal Trainer</h3>
                   <div className="trainer-list-mini">
                     {trainers.map((t, i) => (
-                      <div key={i} className="mini-trainer-card" onClick={() => { setSelectedTrainer(t); setView('trainer-profile'); }}>
+                      <div
+                        key={i}
+                        className="mini-trainer-card"
+                        onClick={() => { setSelectedTrainer(t); setView('trainer-profile'); }}
+                      >
                         <div className="trainer-card-img-placeholder"></div>
-                        <div className="trainer-card-info"><h4>{t.name}</h4><p>Experience: {t.exp}</p></div>
+                        <div className="trainer-card-info">
+                          <h4>{t.name}</h4>
+                          <p>Experience: {t.exp}</p>
+                        </div>
                         <ChevronRight size={18} color="#ccc" className="mini-arrow" />
                       </div>
                     ))}
@@ -338,7 +475,13 @@ const Wellness = () => {
             <div className="nursing-top-spacer"></div>
             <div className="nursing-info-box">
               <h3>Nursing Room</h3>
-              <div className="loc-row"><MapPin size={18} color="#666" /> <div><strong>Location</strong><p>Nursing Room, Level 19, Menara Chin Hin</p></div></div>
+              <div className="loc-row">
+                <MapPin size={18} color="#666" />
+                <div>
+                  <strong>Location</strong>
+                  <p>Nursing Room, Level 19, Menara Chin Hin</p>
+                </div>
+              </div>
               
               <button className="blue-cap-btn" onClick={() => setNursingModal('support')}>
                 How Do We Support You?
@@ -372,7 +515,10 @@ const Wellness = () => {
         {view === 'tcm' && (
           <div className="tcm-view">
             <div className="tcm-banner">
-              <div className="tcm-text"><h3>TCM</h3><p>Traditional Chinese Medicine (TCM) services at Chin Hin.</p></div>
+              <div className="tcm-text">
+                <h3>TCM</h3>
+                <p>Traditional Chinese Medicine (TCM) services at Chin Hin.</p>
+              </div>
               <img src="/icon_img/tcm.png" alt="TCM" className="tcm-banner-img" />
             </div>
             <div className="list-menu">
@@ -383,9 +529,14 @@ const Wellness = () => {
                     {label === "Purchase TCM Session" && <Monitor size={22} color="#666" strokeWidth={1.5} />}
                     {label === "Schedule My Appointment" && <CalendarCheck size={22} color="#666" strokeWidth={1.5} />}
                     {label === "View My Appointment" && <CalendarDays size={22} color="#666" strokeWidth={1.5} />}
-                    <div><h4>{label}</h4><p>{label === "About TCM" ? "Overview and How it Works" : 
+                    <div>
+                      <h4>{label}</h4>
+                      <p>
+                        {label === "About TCM" ? "Overview and How it Works" : 
                          label === "Purchase TCM Session" ? "Unlock treatment plans" :
-                         label === "Schedule My Appointment" ? "Manage your sessions" : "Manage your bookings"}</p></div>
+                         label === "Schedule My Appointment" ? "Manage your sessions" : "Manage your bookings"}
+                      </p>
+                    </div>
                   </div>
                   <ChevronRight size={20} color="#ccc" />
                 </div>
@@ -400,11 +551,19 @@ const Wellness = () => {
             <div className="nursing-top-spacer"></div>
             <div className="nursing-info-box">
               <h3>Traditional Chinese Medicine</h3>
-              <div className="loc-row"><MapPin size={18} color="#666" /> <div><strong>Location</strong><p>TCM Consultation Room, Level 19</p></div></div>
+              <div className="loc-row">
+                <MapPin size={18} color="#666" />
+                <div>
+                  <strong>Location</strong>
+                  <p>TCM Consultation Room, Level 19</p>
+                </div>
+              </div>
               
               <div className="nursing-extra-content">
                 <h4 className="extra-section-title">About</h4>
-                <p className="extra-description">Our TCM services provide holistic health care through traditional diagnostic methods and natural treatments, focusing on restoring internal balance and long-term wellness.</p>
+                <p className="extra-description">
+                  Our TCM services provide holistic health care through traditional diagnostic methods and natural treatments, focusing on restoring internal balance and long-term wellness.
+                </p>
                 
                 <h4 className="extra-section-title">How It Works</h4>
                 <div className="extra-how-works-card">
@@ -424,7 +583,11 @@ const Wellness = () => {
           <div className="membership-view">
             <h3 className="section-title">TCM Treatment Packages</h3>
             {tcmPackages.map(pkg => (
-              <div key={pkg.id} className="mini-trainer-card" onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}>
+              <div
+                key={pkg.id}
+                className="mini-trainer-card"
+                onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}
+              >
                 <div className="trainer-card-img-placeholder"></div>
                 <div className="trainer-card-info">
                   <h4>{pkg.name}</h4>
@@ -475,7 +638,10 @@ const Wellness = () => {
                 <h3 className="section-title">Select Available Slot</h3>
                 <div className="class-list">
                   <div className="class-card-item">
-                    <div className="class-info-left"><h4>Pulse Diagnosis & Consultation</h4><p><Clock size={12}/> 10:00 - 10:30 | Tomorrow</p></div>
+                    <div className="class-info-left">
+                      <h4>Pulse Diagnosis & Consultation</h4>
+                      <p><Clock size={12}/> 10:00 - 10:30 | Tomorrow</p>
+                    </div>
                     <button className="book-now-btn" onClick={handleBookTcmAppointment}>Book</button>
                   </div>
                 </div>
@@ -492,10 +658,22 @@ const Wellness = () => {
               <p className="detail-provider">Organized by {selectedTcmAppointment.provider}</p>
               
               <div className="detail-meta-list">
-                <div className="meta-item-row"><Calendar size={18} color="#2b1d62"/> <div><strong>Date</strong><p>{selectedTcmAppointment.date}</p></div></div>
-                <div className="meta-item-row"><Clock size={18} color="#2b1d62"/> <div><strong>Time</strong><p>{selectedTcmAppointment.time}</p></div></div>
-                <div className="meta-item-row"><MapPin size={18} color="#2b1d62"/> <div><strong>Location</strong><p>{selectedTcmAppointment.location}</p></div></div>
-                <div className="meta-item-row"><Info size={18} color="#2b1d62"/> <div><strong>Status</strong><p style={{color: '#27ae60'}}>{selectedTcmAppointment.status}</p></div></div>
+                <div className="meta-item-row">
+                  <Calendar size={18} color="#2b1d62"/>
+                  <div><strong>Date</strong><p>{selectedTcmAppointment.date}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <Clock size={18} color="#2b1d62"/>
+                  <div><strong>Time</strong><p>{selectedTcmAppointment.time}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <MapPin size={18} color="#2b1d62"/>
+                  <div><strong>Location</strong><p>{selectedTcmAppointment.location}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <Info size={18} color="#2b1d62"/>
+                  <div><strong>Status</strong><p style={{color: '#27ae60'}}>{selectedTcmAppointment.status}</p></div>
+                </div>
               </div>
 
               <div className="detail-desc-section">
@@ -518,7 +696,10 @@ const Wellness = () => {
         {view === 'physio' && (
           <div className="tcm-view">
             <div className="tcm-banner">
-              <div className="tcm-text"><h3>Physiotherapy</h3><p>Professional physiotherapy services for recovery and wellness.</p></div>
+              <div className="tcm-text">
+                <h3>Physiotherapy</h3>
+                <p>Professional physiotherapy services for recovery and wellness.</p>
+              </div>
               <img src="/icon_img/physiotherapy.png" alt="Physiotherapy" className="tcm-banner-img" />
             </div>
             <div className="list-menu">
@@ -529,9 +710,14 @@ const Wellness = () => {
                     {label === "Purchase Physio Session" && <Monitor size={22} color="#666" strokeWidth={1.5} />}
                     {label === "Schedule My Appointment" && <CalendarCheck size={22} color="#666" strokeWidth={1.5} />}
                     {label === "View My Appointment" && <CalendarDays size={22} color="#666" strokeWidth={1.5} />}
-                    <div><h4>{label}</h4><p>{label === "About Physiotherapy" ? "Overview and How it Works" : 
+                    <div>
+                      <h4>{label}</h4>
+                      <p>
+                        {label === "About Physiotherapy" ? "Overview and How it Works" : 
                          label === "Purchase Physio Session" ? "Unlock treatment plans" :
-                         label === "Schedule My Appointment" ? "Manage your sessions" : "Manage your bookings"}</p></div>
+                         label === "Schedule My Appointment" ? "Manage your sessions" : "Manage your bookings"}
+                      </p>
+                    </div>
                   </div>
                   <ChevronRight size={20} color="#ccc" />
                 </div>
@@ -546,11 +732,19 @@ const Wellness = () => {
             <div className="nursing-top-spacer"></div>
             <div className="nursing-info-box">
               <h3>Physiotherapy</h3>
-              <div className="loc-row"><MapPin size={18} color="#666" /> <div><strong>Location</strong><p>Physio Room, Level 19</p></div></div>
+              <div className="loc-row">
+                <MapPin size={18} color="#666" />
+                <div>
+                  <strong>Location</strong>
+                  <p>Physio Room, Level 19</p>
+                </div>
+              </div>
               
               <div className="nursing-extra-content">
                 <h4 className="extra-section-title">About</h4>
-                <p className="extra-description">Our physiotherapy services focus on restoring movement and function through evidence-based techniques, manual therapy, and personalized exercise programs.</p>
+                <p className="extra-description">
+                  Our physiotherapy services focus on restoring movement and function through evidence-based techniques, manual therapy, and personalized exercise programs.
+                </p>
                 
                 <h4 className="extra-section-title">How It Works</h4>
                 <div className="extra-how-works-card">
@@ -570,7 +764,11 @@ const Wellness = () => {
           <div className="membership-view">
             <h3 className="section-title">Physiotherapy Packages</h3>
             {physioPackages.map(pkg => (
-              <div key={pkg.id} className="mini-trainer-card" onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}>
+              <div
+                key={pkg.id}
+                className="mini-trainer-card"
+                onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}
+              >
                 <div className="trainer-card-img-placeholder"></div>
                 <div className="trainer-card-info">
                   <h4>{pkg.name}</h4>
@@ -621,12 +819,42 @@ const Wellness = () => {
                 <h3 className="section-title">Select Available Slot</h3>
                 <div className="class-list">
                   <div className="class-card-item">
-                    <div className="class-info-left"><h4>Sports Massage</h4><p><Clock size={12}/> 09:00 - 10:00 | Tomorrow</p></div>
-                    <button className="book-now-btn" onClick={handleBookPhysioAppointment}>Book</button>
+                    <div className="class-info-left">
+                      <h4>Sports Massage</h4>
+                      <p><Clock size={12}/> 09:00 - 10:00 | Tomorrow</p>
+                    </div>
+                    <button
+                      className="book-now-btn"
+                      onClick={() =>
+                        handleBookPhysioAppointment({
+                          title: "Sports Massage",
+                          date: "Tomorrow",
+                          time: "09:00 - 10:00",
+                          location: "Physio Room, Level 19"
+                        })
+                      }
+                    >
+                      Book
+                    </button>
                   </div>
                   <div className="class-card-item">
-                    <div className="class-info-left"><h4>Rehabilitation Exercise</h4><p><Clock size={12}/> 11:00 - 12:00 | Tomorrow</p></div>
-                    <button className="book-now-btn" onClick={handleBookPhysioAppointment}>Book</button>
+                    <div className="class-info-left">
+                      <h4>Rehabilitation Exercise</h4>
+                      <p><Clock size={12}/> 11:00 - 12:00 | Tomorrow</p>
+                    </div>
+                    <button
+                      className="book-now-btn"
+                      onClick={() =>
+                        handleBookPhysioAppointment({
+                          title: "Rehabilitation Exercise",
+                          date: "Tomorrow",
+                          time: "11:00 - 12:00",
+                          location: "Physio Room, Level 19"
+                        })
+                      }
+                    >
+                      Book
+                    </button>
                   </div>
                 </div>
              </div>
@@ -642,10 +870,22 @@ const Wellness = () => {
               <p className="detail-provider">Organized by {selectedPhysioAppointment.provider}</p>
               
               <div className="detail-meta-list">
-                <div className="meta-item-row"><Calendar size={18} color="#2b1d62"/> <div><strong>Date</strong><p>{selectedPhysioAppointment.date}</p></div></div>
-                <div className="meta-item-row"><Clock size={18} color="#2b1d62"/> <div><strong>Time</strong><p>{selectedPhysioAppointment.time}</p></div></div>
-                <div className="meta-item-row"><MapPin size={18} color="#2b1d62"/> <div><strong>Location</strong><p>{selectedPhysioAppointment.location}</p></div></div>
-                <div className="meta-item-row"><Info size={18} color="#2b1d62"/> <div><strong>Status</strong><p style={{color: '#27ae60'}}>{selectedPhysioAppointment.status}</p></div></div>
+                <div className="meta-item-row">
+                  <Calendar size={18} color="#2b1d62"/>
+                  <div><strong>Date</strong><p>{selectedPhysioAppointment.date}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <Clock size={18} color="#2b1d62"/>
+                  <div><strong>Time</strong><p>{selectedPhysioAppointment.time}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <MapPin size={18} color="#2b1d62"/>
+                  <div><strong>Location</strong><p>{selectedPhysioAppointment.location}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <Info size={18} color="#2b1d62"/>
+                  <div><strong>Status</strong><p style={{color: '#27ae60'}}>{selectedPhysioAppointment.status}</p></div>
+                </div>
               </div>
 
               <div className="detail-desc-section">
@@ -669,9 +909,16 @@ const Wellness = () => {
           <div className="trainer-list-view">
             <h3 className="section-title">Personal Trainers</h3>
             {trainers.map((t, i) => (
-              <div key={i} className="mini-trainer-card trainer-page-card" onClick={() => { setSelectedTrainer(t); setView('trainer-profile'); }}>
+              <div
+                key={i}
+                className="mini-trainer-card trainer-page-card"
+                onClick={() => { setSelectedTrainer(t); setView('trainer-profile'); }}
+              >
                 <div className="trainer-card-img-placeholder"></div>
-                <div className="trainer-card-info"><h4>{t.name}</h4><p>Coaching Experience: {t.exp}</p></div>
+                <div className="trainer-card-info">
+                  <h4>{t.name}</h4>
+                  <p>Coaching Experience: {t.exp}</p>
+                </div>
                 <ChevronRight size={20} color="#ccc" />
               </div>
             ))}
@@ -686,7 +933,9 @@ const Wellness = () => {
               <h3>{selectedTrainer.name}</h3>
               <p className="exp-label">Coaching Experience: {selectedTrainer.exp}</p>
               <h4>Specialties</h4>
-              <ul className="specialties-list">{selectedTrainer.specs.map((s, i) => <li key={i}>• {s}</li>)}</ul>
+              <ul className="specialties-list">
+                {selectedTrainer.specs.map((s, i) => <li key={i}>• {s}</li>)}
+              </ul>
             </div>
           </div>
         )}
@@ -696,7 +945,11 @@ const Wellness = () => {
           <div className="membership-view">
             <h3 className="section-title">Memberships (Personal Trainer)</h3>
             {memberships.map(pkg => (
-              <div key={pkg.id} className="mini-trainer-card" onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}>
+              <div
+                key={pkg.id}
+                className="mini-trainer-card"
+                onClick={() => { setSelectedPackage(pkg); setView('membership-detail'); }}
+              >
                 <div className="trainer-card-img-placeholder"></div>
                 <div className="trainer-card-info">
                   <h4>{pkg.name}</h4>
@@ -718,17 +971,28 @@ const Wellness = () => {
               <>
                 <div className="coach-pricing-box">
                   {selectedPackage.coachPricing.map((p, idx) => (
-                    <div key={idx} className="price-row">{p.level} : <strong>{p.total}</strong> ({p.rate})</div>
+                    <div key={idx} className="price-row">
+                      {p.level} : <strong>{p.total}</strong> ({p.rate})
+                    </div>
                   ))}
                 </div>
                 <div className="pkg-meta-info">
-                  <div className="meta-block"><label>Validity Period </label><strong>{selectedPackage.validity}</strong></div>
-                  <div className="meta-block" style={{marginTop: '20px'}}><label>Membership Fee </label><strong>{selectedPackage.fee}</strong></div>
+                  <div className="meta-block">
+                    <label>Validity Period </label>
+                    <strong>{selectedPackage.validity}</strong>
+                  </div>
+                  <div className="meta-block" style={{marginTop: '20px'}}>
+                    <label>Membership Fee </label>
+                    <strong>{selectedPackage.fee}</strong>
+                  </div>
                 </div>
               </>
             ) : (
               <div className="pkg-meta-info">
-                <div className="meta-block"><label>Package Fee </label><strong>{selectedPackage.fee}</strong></div>
+                <div className="meta-block">
+                  <label>Package Fee </label>
+                  <strong>{selectedPackage.fee}</strong>
+                </div>
               </div>
             )}
             <button 
@@ -748,14 +1012,25 @@ const Wellness = () => {
           </div>
         )}
 
-        {/* --- 21. Interactive Wellness Profile Form (Restored) --- */}
+        {/* --- 21. Interactive Wellness Profile Form --- */}
         {view === 'wellness-profile' && (
           <div className="profile-form-view" style={{ padding: '20px' }}>
             <h3 className="section-title">Wellness Profile Questionnaire</h3>
-            <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>Help us understand your goals to serve you better.</p>
+            <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+              Help us understand your goals to serve you better.
+            </p>
 
             {/* Basic Info */}
-            <div className="form-section-card" style={{ background: '#fff', borderRadius: '8px', padding: '15px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <div
+              className="form-section-card"
+              style={{
+                background: '#fff',
+                borderRadius: '8px',
+                padding: '15px',
+                marginBottom: '15px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}
+            >
               <div 
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                 onClick={() => toggleSection('basic')}
@@ -766,25 +1041,87 @@ const Wellness = () => {
               {expanded.basic && (
                 <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Full Name</label>
-                    <input type="text" value={profileData.fullName} onChange={(e) => handleInputChange('fullName', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Full Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.fullName}
+                      onChange={(e) => handleInputChange('fullName', e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Email</label>
-                    <input type="email" value={profileData.email} onChange={(e) => handleInputChange('email', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={profileData.email}
+                      onChange={(e) => handleInputChange('email', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: errors.email ? '1px solid #e74c3c' : '1px solid #ddd'
+                      }}
+                    />
+                    {errors.email && (
+                      <p style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>
+                        {errors.email}
+                      </p>
+                    )}
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Phone</label>
-                    <input type="tel" value={profileData.phone} onChange={(e) => handleInputChange('phone', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={profileData.phone}
+                      onChange={(e) => handleInputChange('phone', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: errors.phone ? '1px solid #e74c3c' : '1px solid #ddd'
+                      }}
+                    />
+                    {errors.phone && (
+                      <p style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>
+                        {errors.phone}
+                      </p>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Age</label>
-                      <input type="number" value={profileData.age} onChange={(e) => handleInputChange('age', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                        Age
+                      </label>
+                      <input
+                        type="number"
+                        value={profileData.age}
+                        onChange={(e) => handleInputChange('age', e.target.value)}
+                        style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                      />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Gender</label>
-                      <select value={profileData.gender} onChange={(e) => handleInputChange('gender', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff' }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                        Gender
+                      </label>
+                      <select
+                        value={profileData.gender}
+                        onChange={(e) => handleInputChange('gender', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: '1px solid #ddd',
+                          backgroundColor: '#fff'
+                        }}
+                      >
                         <option value="">Select...</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
@@ -792,19 +1129,54 @@ const Wellness = () => {
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Emergency Contact Name</label>
-                    <input type="text" value={profileData.emergencyName} onChange={(e) => handleInputChange('emergencyName', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Emergency Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profileData.emergencyName}
+                      onChange={(e) => handleInputChange('emergencyName', e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                    />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Emergency Contact Phone</label>
-                    <input type="tel" value={profileData.emergencyPhone} onChange={(e) => handleInputChange('emergencyPhone', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Emergency Contact Phone
+                    </label>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={profileData.emergencyPhone}
+                      onChange={(e) => handleInputChange('emergencyPhone', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: errors.emergencyPhone ? '1px solid #e74c3c' : '1px solid #ddd'
+                      }}
+                    />
+                    {errors.emergencyPhone && (
+                      <p style={{ color: '#e74c3c', fontSize: '12px', marginTop: '4px' }}>
+                        {errors.emergencyPhone}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
             {/* Goals */}
-            <div className="form-section-card" style={{ background: '#fff', borderRadius: '8px', padding: '15px', marginBottom: '15px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <div
+              className="form-section-card"
+              style={{
+                background: '#fff',
+                borderRadius: '8px',
+                padding: '15px',
+                marginBottom: '15px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+              }}
+            >
               <div 
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
                 onClick={() => toggleSection('goals')}
@@ -815,8 +1187,20 @@ const Wellness = () => {
               {expanded.goals && (
                 <div style={{ marginTop: '15px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Primary Goal</label>
-                    <select value={profileData.primaryGoal} onChange={(e) => handleInputChange('primaryGoal', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd', backgroundColor: '#fff' }}>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Primary Goal
+                    </label>
+                    <select
+                      value={profileData.primaryGoal}
+                      onChange={(e) => handleInputChange('primaryGoal', e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        backgroundColor: '#fff'
+                      }}
+                    >
                       <option value="">Select...</option>
                       <option value="Weight Loss">Weight Loss</option>
                       <option value="Muscle Gain">Muscle Gain</option>
@@ -825,8 +1209,16 @@ const Wellness = () => {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Timeline to achieve goal</label>
-                    <input type="text" placeholder="e.g., 3 months" value={profileData.timeline} onChange={(e) => handleInputChange('timeline', e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }} />
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>
+                      Timeline to achieve goal
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., 3 months"
+                      value={profileData.timeline}
+                      onChange={(e) => handleInputChange('timeline', e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #ddd' }}
+                    />
                   </div>
                 </div>
               )}
@@ -847,7 +1239,11 @@ const Wellness = () => {
           <div className="bookings-view">
             <h3 className="section-title">My Bookings</h3>
             {myBookings.map((b) => (
-              <div key={b.id} className="booking-card" onClick={() => { setSelectedBooking(b); setView('booking-detail'); }}>
+              <div
+                key={b.id}
+                className="booking-card"
+                onClick={() => { setSelectedBooking(b); setView('booking-detail'); }}
+              >
                 <div className="booking-img-box"></div>
                 <div className="booking-details">
                   <h4>{b.title}</h4>
@@ -871,10 +1267,22 @@ const Wellness = () => {
               <p className="detail-provider">Organized by {selectedBooking.provider}</p>
               
               <div className="detail-meta-list">
-                <div className="meta-item-row"><Calendar size={18} color="#2b1d62"/> <div><strong>Date</strong><p>{selectedBooking.date}</p></div></div>
-                <div className="meta-item-row"><Clock size={18} color="#2b1d62"/> <div><strong>Time</strong><p>{selectedBooking.time}</p></div></div>
-                <div className="meta-item-row"><MapPin size={18} color="#2b1d62"/> <div><strong>Location</strong><p>{selectedBooking.location}</p></div></div>
-                <div className="meta-item-row"><UserCircle size={18} color="#2b1d62"/> <div><strong>Availability</strong><p>{selectedBooking.spots}</p></div></div>
+                <div className="meta-item-row">
+                  <Calendar size={18} color="#2b1d62"/>
+                  <div><strong>Date</strong><p>{selectedBooking.date}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <Clock size={18} color="#2b1d62"/>
+                  <div><strong>Time</strong><p>{selectedBooking.time}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <MapPin size={18} color="#2b1d62"/>
+                  <div><strong>Location</strong><p>{selectedBooking.location}</p></div>
+                </div>
+                <div className="meta-item-row">
+                  <UserCircle size={18} color="#2b1d62"/>
+                  <div><strong>Availability</strong><p>{selectedBooking.spots}</p></div>
+                </div>
               </div>
 
               <div className="detail-desc-section">
@@ -882,7 +1290,12 @@ const Wellness = () => {
                 <p>{selectedBooking.desc}</p>
               </div>
 
-              <button className="cancel-booking-btn" onClick={() => alert('Request to cancel has been sent.')}>Cancel Booking</button>
+              <button
+                className="cancel-booking-btn"
+                onClick={() => alert('Request to cancel has been sent.')}
+              >
+                Cancel Booking
+              </button>
             </div>
           </div>
         )}
@@ -895,8 +1308,55 @@ const Wellness = () => {
             <AlertCircle size={40} color="#f39c12" />
             <h3>Confirm Enrollment?</h3>
             <div className="confirm-actions">
-              <button className="cancel-btn" onClick={() => setShowConfirm(false)}>Cancel</button>
-              <button className="confirm-btn" onClick={() => { setShowConfirm(false); alert('Booked Successful!'); }}>Confirm</button>
+              <button
+                className="cancel-btn"
+                onClick={() => {
+                  setShowConfirm(false);
+                  setPendingClass(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn"
+                onClick={() => {
+                  if (pendingClass) {
+                    const alreadyBooked = myBookings.some(
+                      b =>
+                        b.title === pendingClass.name &&
+                        b.date === pendingClass.date
+                    );
+
+                    if (alreadyBooked) {
+                      alert('You have already booked this class.');
+                      setPendingClass(null);
+                      setShowConfirm(false);
+                      return;
+                    }
+
+                    const newBooking = {
+                      id: `B${Date.now()}`,
+                      title: pendingClass.name,
+                      provider: "EXFORM",
+                      date: pendingClass.date,
+                      time: pendingClass.time,
+                      spots: "1/12 spots",
+                      location: pendingClass.location,
+                      desc: "Class booked via timetable."
+                    };
+
+                    setMyBookings(prev => [...prev, newBooking]);
+                    setPendingClass(null);
+                  }
+
+                  setShowConfirm(false);
+                  alert('Booked Successful!');
+                  // Optional: go straight to My Bookings
+                  // setView('my-bookings');
+                }}
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
