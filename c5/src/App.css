@@ -121,7 +121,7 @@
 /* ===== 页面内容容器（自动避开底部栏，动态控制顶部内边距）===== */
 .page-content {
   flex: 1;
-  /* overflow-y: auto;*/
+  overflow-y: auto;
   padding-bottom: 75px; /* 与底部栏高度一致 */
   box-sizing: border-box;
   height: 100%;

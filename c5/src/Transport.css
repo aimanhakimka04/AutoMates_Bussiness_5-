@@ -1,13 +1,13 @@
 /* 基础布局容器 */
 .transport-container {
   background-color: #ffffff;
-  height: 100vh;
+  height: 100vh;          /* 占据全屏高度 */
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  flex-direction: column; /* 垂直排列：Nav -> Content -> Footer */
+  overflow: hidden;       /* 容器本身禁止滚动 */
 }
 
-/* 顶部导航：沿用 MeetingRoom 的深色调 */
+/* 顶部导航：彻底固定并修正宽度 */
 .transport-top-nav {
   background-color: #2b1d62;
   color: #ffffff;
@@ -15,7 +15,10 @@
   display: flex;
   align-items: center;
   padding: 0 15px;
-  flex-shrink: 0;
+  flex-shrink: 0;         /* 关键：防止被挤压变扁 */
+  width: 100%;            /* 现在它会完美适配手机宽度 */
+  box-sizing: border-box; 
+  z-index: 2000;
 }
 
 .back-arrow {
@@ -33,10 +36,13 @@
 
 /* 主内容区布局 */
 .transport-main-content {
-  flex: 1;
+  flex: 1;                /* 自动撑开，占据中间所有空间 */
+  overflow-y: auto;       /* 只有这里可以上下滑动 */
+  background-color: #fafafa;
   display: flex;
   flex-direction: column;
-  background-color: #fafafa;
+  -webkit-overflow-scrolling: touch; /* 优化手机滚动手感 */
+  
 }
 
 /* Tab 切换逻辑：靠左对齐的关键 */
@@ -75,6 +81,7 @@
   display: flex;
   flex-direction: column;
   max-height: 855px;
+  -webkit-overflow-scrolling: touch; /* 优化移动端滚动手感 */
 }
 
 
@@ -104,15 +111,13 @@
 
 /* 底部操作按钮 */
 .transport-action-footer {
+  flex-shrink: 0;         /* 关键：防止按钮被挤压 */
   padding: 15px;
   background-color: #ffffff;
   border-top: 1px solid #eeeeee;
-
-  /* 关键修改：启用 Flex 并设置水平居中 */
   display: flex;
   justify-content: center; 
   align-items: center;
-  margin-top: -81px;
 }
 
 .new-booking-btn {
