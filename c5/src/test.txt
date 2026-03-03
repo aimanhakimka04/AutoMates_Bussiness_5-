@@ -1,0 +1,66 @@
+from flask import Flask, request, jsonify
+import subprocess
+import base64
+import os
+import requests
+
+app = Flask(__name__)
+
+# Masukkan API Key Groq awak di sini
+GROQ_API_KEY = "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"
+
+@app.route('/transcribe', methods=['POST'])
+def transcribe_audio():
+    data = request.json
+    base64_audio = data.get("audio_base64")
+    
+    if not base64_audio:
+        return jsonify({"error": "Tiada data audio"}), 400
+
+    # Bersihkan awalan Base64 jika ada
+    if "," in base64_audio:
+        base64_audio = base64_audio.split(",")[1]
+
+    temp_m4a = "temp.m4a"
+    temp_wav = "temp.wav"
+
+    try:
+        # 1. Tulis fail asal (M4A dari Android) ke dalam disk server
+        with open(temp_m4a, "wb") as f:
+            f.write(base64.b64decode(base64_audio))
+
+        # 2. Tukar M4A kepada WAV menggunakan FFmpeg (Kelajuan kilat!)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", temp_m4a, "-ar", "16000", "-ac", "1", temp_wav],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+
+        # 3. Hantar fail WAV yang bersih kepada Groq
+        with open(temp_wav, "rb") as f:
+            files = {"file": ("voice.wav", f, "audio/wav")}
+            payload = {
+                "model": "whisper-large-v3",
+                "prompt": "Malaysian employee context. Keywords: book meeting room, Idea Lab, flexhr, cuti, IT ticket."
+            }
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}"}
+            
+            response = requests.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                files=files,
+                data=payload,
+                headers=headers
+            )
+
+        # Buang fail sementara selepas siap
+        os.remove(temp_m4a)
+        os.remove(temp_wav)
+
+        return jsonify(response.json())
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    # Server akan berjalan di port 5005
+    app.run(host='0.0.0.0', port=5005)

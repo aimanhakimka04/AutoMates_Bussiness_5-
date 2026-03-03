@@ -617,8 +617,8 @@ function App() {
               <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
               <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
               <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
-              <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor /></PageWrapper>} />
-              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing /></PageWrapper>} />
+              <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing userInfo={userInfo} /></PageWrapper>} />
               <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart /></PageWrapper>} />
               <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
               <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
@@ -653,7 +653,7 @@ const S = {
   splash: {
     root:  { height:'100vh', width:'100vw', display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', background:'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 55%,#3d2a8a 100%)', position:'fixed', top:0, left:0, zIndex:9999 },
     ring:  { width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'2px solid rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:22, animation:'splashPulse 2.4s ease-in-out infinite', boxShadow:'0 0 40px rgba(130,90,255,.45)' },
-    logo:  { width:72, height:72, objectFit:'contain' },
+    logo:  { width:120, height:120, objectFit:'contain' },
     title: { color:'#fff', fontSize:30, fontWeight:800, margin:0, letterSpacing:1.5, animation:'fadeSlideUp .6s ease both' },
     sub:   { color:'#a89bc9', fontSize:13, marginTop:8, animation:'fadeSlideUp .6s .18s ease both' },
     dots:  { display:'flex', gap:7, marginTop:36 },
@@ -665,8 +665,8 @@ const S = {
     blobBL:      { position:'absolute', bottom:-120, left:-120, width:280, height:280, borderRadius:'50%', background:'rgba(40,120,255,.12)', filter:'blur(65px)', pointerEvents:'none' },
     card:        { position:'relative', zIndex:2, background:'#fff', borderRadius:24, padding:'44px 32px 36px', width:'100%', maxWidth:380, boxShadow:'0 24px 80px rgba(0,0,0,.36)', display:'flex', flexDirection:'column', alignItems:'center', animation:'cardIn .55s cubic-bezier(.22,1,.36,1) both' },
     iconWrap:    { display:'flex', justifyContent:'center', marginBottom:20 },
-    iconRing:    { width:100, height:100, borderRadius:'50%', background:'linear-gradient(135deg,#2b1d62,#5a3faa)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 10px 32px rgba(43,29,98,.38)' },
-    iconImg:     { width:58, height:58, objectFit:'contain' },
+    iconRing:    { width:120, height:120, borderRadius:'50%', background:'linear-gradient(135deg,#2b1d62,#5a3faa)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 10px 32px rgba(43,29,98,.38)' },
+    iconImg:     { width:120, height:120, objectFit:'contain' },
     appName:     { fontSize:27, fontWeight:800, color:'#2b1d62', margin:'0 0 4px', letterSpacing:.5 },
     tagline:     { fontSize:13, color:'#7c6fa0', margin:'0 0 20px' },
     divider:     { width:'100%', height:1, background:'#ede9f6', margin:'2px 0 20px' },

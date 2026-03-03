@@ -1,716 +1,605 @@
-/* 基础布局容器 */
-.transport-container {
-  background-color: #ffffff;
-  height: 100vh;
+/* ═══════════════════════════════════════════
+   Transport — Premium Design System
+   Android APK + Web Production
+   ═══════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+.tr-root {
+  height: 100%;
   display: flex;
   flex-direction: column;
+  background: #f0f2f8;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 顶部导航：沿用 MeetingRoom 的深色调 */
-.transport-top-nav {
-  background-color: #2b1d62;
-  color: #ffffff;
-  height: 7vh;
+/* ─── Nav ─── */
+.tr-nav {
+  background: linear-gradient(135deg, #1a0f3c 0%, #2b1d62 60%, #3d2a8a 100%);
+  height: 60px;
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 16px;
   flex-shrink: 0;
+  box-shadow: 0 4px 20px rgba(43,29,98,0.4);
+  z-index: 10;
 }
-
-.back-arrow {
-  cursor: pointer;
-  padding: 5px;
-  display: flex;
-  align-items: center;
-}
-
-.nav-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-left: 10px;
-}
-
-/* 主内容区布局 */
-.transport-main-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background-color: #fafafa;
-}
-
-/* Tab 切换逻辑：靠左对齐的关键 */
-.transport-tabs-container {
-  padding: 15px 20px;
-  display: flex;
-  justify-content: flex-start; /* 确保靠左 */
-}
-
-.transport-tabs-left {
-  display: flex;
-  gap: 12px;
-}
-
-.trans-tab {
-  background: none;
-  border: none;
-  padding: 8px 20px;
-  border-radius: 20px;
-  font-size: 14px;
-  color: #a0a0a0;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.trans-tab.active {
-  background-color: #2b1d62;
-  color: #ffffff;
-  font-weight: 500;
-}
-
-/* 滚动区域与空状态 */
-.transport-scroll-area {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-
-.transport-empty-state {
-  margin: auto; /* 水平垂直居中 */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding-bottom: 10vh; /* 视觉补偿 */
-}
-
-.empty-img-wrapper img {
-  width: 350px; /* 适当放大图标 */
-  height: auto;
-  opacity: 0.5;
-  /*filter: grayscale(100%); /* 增加高级感 */
-  margin-bottom: 20px;
-  margin-top:50px;
-}
-
-.empty-text {
-  color: #999;
-  font-size: 14px;
-  font-weight: 500;
-}
-
-/* 底部操作按钮 */
-.transport-action-footer {
-  padding: 15px;
-  background-color: #ffffff;
-  border-top: 1px solid #eeeeee;
-
-  /* 关键修改：启用 Flex 并设置水平居中 */
-  display: flex;
-  justify-content: center; 
-  align-items: center;
-}
-
-.new-booking-btn {
-  width: 80%;
-  height: 50px;
-  background-color: #2b1d62;
-  color: #ffffff;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  transition: transform 0.2s ease; /* 顺手帮你加个点击过渡，更专业 */
-}
-
-.new-booking-btn:active {
-  opacity: 0.9;
-  transform: scale(0.98);
-}
-
-/* 全局底部导航栏样式 (同步 App.css) */
-.transport-bottom-nav {
-  display: flex;
-  justify-content: space-around;
-  padding: 10px 0 20px;
-  border-top: 1px solid #eee;
-  background: white;
-}
-
-.transport-bottom-nav .nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  color: #8c8c8c;
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.transport-bottom-nav .nav-item img {
-  width: 20px;
-  height: 20px;
-  margin-bottom: 4px;
-  opacity: 0.5;
-}
-
-/* --- 预约表单视图专用 (New Booking View) --- */
-.booking-form-view {
-  padding: 20px 25px;
-  background-color: #ffffff;
-  height: 100%;
-  animation: fadeIn 0.3s ease-in-out; /* 增加一个温和的进入动画 */
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.form-intro-text {
-  font-size: 14px;
-  color: #1a1a1a;
-  font-weight: 500;
-  margin-bottom: 25px;
-  line-height: 1.4;
-}
-
-.transport-form-group {
-  margin-bottom: 20px;
-}
-
-.transport-form-group label {
-  display: block;
-  font-size: 13px;
-  color: #555;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-/* --- Search Van 按钮区域 --- */
-.transport-form-footer {
-  margin-top: 40px;
-  display: flex;
-  justify-content: center; /* 确保按钮在表单底部水平居中 */
-}
-
-.search-van-btn {
-  width: 90%; /* 稍微宽一点，视觉上更稳重 */
-  height: 50px;
-  background-color: #2b1d62;
-  color: #ffffff;
-  border: none;
-  border-radius: 25px; /* 严格按照图片的胶囊形状设计 */
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 10px rgba(43, 29, 98, 0.2); /* 增加一点点悬浮感 */
-}
-
-.search-van-btn:active {
-  transform: scale(0.96);
-  background-color: #1f1547;
-  box-shadow: 0 2px 5px rgba(43, 29, 98, 0.2);
-}
-
-/* --- 日历弹窗辅助样式 --- */
-.calendar-modal {
-  width: 85%;
-  max-width: 360px;
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-}
-
-.calendar-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 700;
-  color: #2b1d62;
-  margin-bottom: 20px;
-  border-bottom: 1px solid #f0f0f0;
-  padding-bottom: 10px;
-}
-
-/* 修正：确保星期表头能够平分宽度并居中 */
-.weekday-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr); /* 严格平分为7列 */
-  width: 100%;                          /* 必须撑满父容器宽度 */
-  text-align: center;
-  font-size: 13px;                      /* 稍微调大一点，看得清楚 */
-  color: #888;                          /* 稍微加深颜色，更有质感 */
-  margin-bottom: 15px;                  /* 与下方日期保持间距 */
-  font-weight: 600;                     /* 加粗，符合 UI 规范 */
-}
-
-.weekday-row span {
-  display: block;                       /* 确保 span 表现得像个盒子 */
-}
-
-/* 别忘了日期网格也要撑满宽度，否则对不齐 */
-.days-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  width: 100%;
-  gap: 5px;
-  text-align: center;
-}
-
-/* --- 搜索结果页 (Results View) --- */
-.results-view-container {
-  background-color: #ffffff;
-  height: 100%;
-}
-
-.results-summary-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.route-text {
-  font-size: 15px;
-  font-weight: 600;
-  color: #333;
-}
-
-.time-text {
-  font-size: 13px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.summary-right {
-  cursor: pointer;
-  padding: 5px;
-}
-
-/* 车辆结果卡片 */
-.results-list {
-  padding: 20px;
-}
-
-.van-result-card {
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* 截图中的阴影效果 */
-  border: 1px solid #f5f5f5;
-  display: flex;
-  padding: 15px;
-  gap: 15px;
-}
-
-.van-img-box {
-  width: 100px;
-  height: 100px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.van-info-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.van-id {
-  margin: 0;
-  font-size: 16px;
-  color: #000;
-  font-weight: bold;
-}
-
-.seats-left {
-  font-size: 14px;
-  color: #333;
-  margin: 8px 0 12px 0;
-}
-
-.mini-book-btn {
-  width: 80px;
-  height: 32px;
-  background-color: #2b1d62;
-  color: white;
-  border: none;
-  border-radius: 16px;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.mini-book-btn:active {
-  opacity: 0.8;
-}
-
-/* --- 预约预览弹窗 (Preview Modal) --- */
-.preview-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* 半透明遮罩 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.preview-modal {
-  width: 90%;
-  max-width: 380px;
-  background: #ffffff;
-  border-radius: 8px; /* 较小的圆角，显得专业 */
-  padding: 24px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-}
-
-.preview-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.preview-content-box {
-  border: 1px solid #f2f2f2; /* 浅色边框 */
-  padding: 16px;
-  border-radius: 4px;
-  margin-bottom: 24px;
-}
-
-.preview-instruction {
-  font-size: 13px;
-  color: #555;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.preview-item {
-  margin-bottom: 12px;
-}
-
-.preview-item label {
-  display: block;
-  font-size: 13px;
-  color: #888;
-  margin-bottom: 4px;
-}
-
-.preview-value {
-  font-size: 14px;
-  font-weight: 700; /* 截图中的加粗值 */
-  color: #333;
-}
-
-.preview-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-}
-
-.preview-item.half {
-  flex: 1;
-}
-
-.preview-warning {
-  font-size: 11px;
-  color: #999;
-  line-height: 1.4;
-  margin-top: 16px;
-}
-
-/* --- 底部按钮设计 --- */
-.preview-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-}
-
-.preview-cancel-btn {
-  flex: 1;
-  height: 42px;
-  background: transparent;
-  border: 1px solid #2b1d62; /* 深蓝色边框 */
-  color: #2b1d62;
-  border-radius: 21px; /* 胶囊形状 */
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+.tr-nav-back {
+  background: rgba(255,255,255,0.12);
+  border: none; border-radius: 10px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0;
   transition: background 0.2s;
 }
-
-.preview-cancel-btn:hover {
-  background: #f5f5f5;
+.tr-nav-back:active { background: rgba(255,255,255,0.25); }
+.tr-nav-title {
+  color: #fff; font-size: 17px; font-weight: 700;
+  margin-left: 12px; flex: 1; letter-spacing: 0.3px;
 }
+.tr-nav-refresh {
+  background: rgba(255,255,255,0.12);
+  border: none; border-radius: 10px;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: #fff; transition: background 0.2s;
+}
+.tr-nav-refresh:active  { background: rgba(255,255,255,0.25); }
+.tr-nav-refresh:disabled { opacity: 0.6; }
 
-.preview-confirm-btn {
+/* ─── Content scroll ─── */
+.tr-content {
   flex: 1;
-  height: 42px;
-  background: #2b1d62; /* 深蓝色背景 */
-  border: none;
-  color: #ffffff;
-  border-radius: 21px; /* 胶囊形状 */
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tr-content::-webkit-scrollbar { display: none; }
+
+/* ─── Spin ─── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.9s linear infinite; }
+
+/* ═══════════════════════
+   MAIN VIEW
+══════════════════════════ */
+.tr-main { display: flex; flex-direction: column; padding-bottom: 0; }
+
+/* Hero */
+.tr-hero {
+  background: linear-gradient(135deg, #1a0f3c 0%, #2b1d62 55%, #4a2fa0 100%);
+  padding: 28px 20px 36px;
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 12px;
+}
+.tr-hero-orb { position: absolute; border-radius: 50%; opacity: 0.15; }
+.tr-orb1 {
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, #a78bfa, transparent);
+  top: -60px; right: 60px;
+}
+.tr-orb2 {
+  width: 130px; height: 130px;
+  background: radial-gradient(circle, #60a5fa, transparent);
+  bottom: -40px; left: -30px;
+}
+.tr-hero-inner { position: relative; z-index: 2; flex: 1; }
+.tr-hero-label { color: rgba(255,255,255,0.6); font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 4px; }
+.tr-hero-title { color: #fff; font-size: 24px; font-weight: 800; margin-bottom: 3px; }
+.tr-hero-sub   { color: rgba(255,255,255,0.55); font-size: 12px; }
+.tr-hero-img {
+  position: absolute; right: 0; bottom: 0;
+  height: 110px; object-fit: contain; opacity: 0.55;
+  z-index: 1;
 }
 
-.preview-confirm-btn:hover {
-  opacity: 0.9;
+/* Tabs */
+.tr-tabs {
+  display: flex; gap: 8px;
+  padding: 16px 16px 0;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f5;
 }
-
-.preview-confirm-btn:active {
-  transform: scale(0.98);
+.tr-tab {
+  padding: 10px 20px;
+  background: none; border: none;
+  font-size: 14px; font-weight: 600;
+  color: #999; cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.2s;
 }
+.tr-tab.active { color: #2b1d62; border-bottom-color: #2b1d62; }
 
-/* --- 成功确认视图特有样式 --- */
-.status-section {
-  margin-top: 15px;
-  border-top: 1px dashed #eee;
-  padding-top: 15px;
-  text-align: left;
+/* Booking Panel */
+.tr-booking-panel { padding: 16px 16px 96px; }
+
+.tr-error-banner {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff3f3; border: 1px solid #fca5a5;
+  border-radius: 10px; padding: 10px 14px;
+  color: #dc2626; font-size: 13px; margin-bottom: 12px;
 }
-
-.status-approved {
-  font-size: 15px;
-  font-weight: 700;
-  color: #27ae60; /* 截图中的 Approved 绿色 */
-  margin-top: 5px;
+.tr-loading {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 60px 20px; color: #999; font-size: 14px;
 }
+.tr-loading svg { color: #6c47d9; }
 
-.scan-instruction {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1a73e8; /* 蓝色扫描提醒 */
-  margin-top: 8px;
+.tr-empty {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; padding: 40px 20px;
 }
+.tr-empty-img img { width: 180px; height: auto; opacity: 0.35; }
+.tr-empty p    { font-size: 15px; font-weight: 700; color: #555; margin: 8px 0 0; }
+.tr-empty span { font-size: 13px; color: #bbb; }
 
-/* 确认后的全宽 Close 按钮 */
-.confirm-close-btn {
-  width: 100%;
-  height: 42px;
-  background: #ffffff;
-  border: 1.5px solid #2b1d62;
-  color: #2b1d62;
-  border-radius: 21px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.confirm-close-btn:active {
-  background: #f0f0f5;
-}
-
-/* --- 有 Booking 时的列表样式 (image_65501e.png) --- */
-.my-bookings-container {
-  padding: 15px 20px;
-}
-
-.my-bookings-header {
-  background-color: #e3f2fd; /* 浅蓝色背景 */
-  padding: 12px 15px;
-  border-radius: 8px 8px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 600;
-  color: #333;
-  font-size: 15px;
-}
-
-.booking-card {
-  background-color: #ffffff;
-  padding: 18px;
-  border-radius: 0 0 12px 12px; /* 底部圆角 */
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  margin-bottom: 20px;
-  border: 1px solid #f0f0f0;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.tr-section-header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; color: #1a1a2e;
   margin-bottom: 12px;
 }
 
-.van-id {
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
+/* Booking Cards */
+.tr-cards { display: flex; flex-direction: column; gap: 12px; }
+
+.tr-card {
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  display: flex; overflow: hidden;
+  cursor: pointer; transition: transform 0.15s;
+}
+.tr-card:active { transform: scale(0.99); }
+.tr-card-stripe { width: 4px; flex-shrink: 0; }
+.tr-card-main   { flex: 1; padding: 14px 14px 14px 12px; }
+
+.tr-card-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.tr-card-id {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 13px; font-weight: 700; color: #2b1d62;
+}
+.tr-card-actions { display: flex; align-items: center; gap: 6px; }
+.tr-status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; padding: 3px 9px;
+  border-radius: 20px; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.tr-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+/* Route display */
+.tr-card-route { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.tr-route-point { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.tr-route-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+.tr-route-dot.origin { background: #6c47d9; box-shadow: 0 0 0 3px rgba(108,71,217,0.15); }
+.tr-route-dot.dest   { background: #2b1d62; box-shadow: 0 0 0 3px rgba(43,29,98,0.15); }
+.tr-route-line {
+  width: 2px; height: 14px; background: #e5e7eb;
+  margin-left: 4px;
 }
 
-.card-info {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.tr-card-meta {
+  display: flex; gap: 14px;
+  font-size: 11px; color: #999;
 }
+.tr-card-meta span { display: flex; align-items: center; gap: 4px; }
 
-.info-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 13px;
-  color: #666;
-}
-
-.info-row span {
-  font-weight: 500;
-}
-
-/* --- My Bookings 列表样式 (还原 image_65501e) --- */
-.bookings-list-view {
-  padding: 0 15px;
-}
-
-.my-bookings-header {
-  background-color: #e3f2fd; /* 浅蓝色块 */
-  padding: 12px 18px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 20px; /* 与卡片分开 */
-}
-
-.booking-card {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f0f0f0;
-  position: relative;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
-}
-
-.van-id { font-size: 16px; font-weight: 700; color: #333; }
-
-/* 三点菜单逻辑 */
-.more-options-wrapper { position: relative; }
-.more-btn { background: none; border: none; padding: 5px; cursor: pointer; }
-
-.card-dropdown {
-  position: absolute;
-  top: 30px;
-  right: 0;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  z-index: 50;
-  width: 140px;
-  border: 1px solid #eee;
-  overflow: hidden;
-}
-
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 15px;
-  font-size: 13px;
-  color: #333;
+/* More menu */
+.tr-more-wrap { position: relative; }
+.tr-more-btn {
+  background: none; border: none;
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
   cursor: pointer;
 }
+.tr-more-btn:hover { background: #f5f5f5; }
+.tr-dropdown {
+  position: absolute; top: 36px; right: 0;
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.14);
+  z-index: 100; width: 140px;
+  border: 1px solid #f0f0f0; overflow: hidden;
+  animation: dropIn 0.15s ease;
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+.tr-drop-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 12px 14px; font-size: 13px; font-weight: 500;
+  color: #333; cursor: pointer; transition: background 0.15s;
+}
+.tr-drop-item:hover { background: #f8f8f8; }
+.tr-drop-cancel { color: #ef4444; border-top: 1px solid #f5f5f5; }
 
-.dropdown-item.delete { color: #ff4d4f; border-top: 1px solid #eee; }
+/* Timetable */
+.tr-timetable { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.tr-tt-notice {
+  display: flex; align-items: center; gap: 6px;
+  background: #fffbeb; border: 1px solid #fde68a;
+  border-radius: 10px; padding: 10px 14px;
+  font-size: 12px; font-weight: 600; color: #92400e;
+}
+.tr-tt-card {
+  background: #fff; border-radius: 16px; padding: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+}
+.tr-tt-route {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 700; color: #1a1a2e;
+  margin-bottom: 12px; padding-bottom: 10px;
+  border-bottom: 1px solid #f0f0f5;
+}
+.tr-tt-sessions { display: flex; gap: 10px; }
+.tr-tt-session {
+  flex: 1; border-radius: 10px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.tr-tt-session.morning { background: #fef9ee; border: 1px solid #fde68a; }
+.tr-tt-session.evening { background: #eef2ff; border: 1px solid #c7d2fe; }
+.tr-tt-badge {
+  font-size: 9px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 2px;
+}
+.tr-tt-session.morning .tr-tt-badge { color: #d97706; }
+.tr-tt-session.evening .tr-tt-badge { color: #4338ca; }
+.tr-tt-session span:nth-child(2) { font-size: 11px; font-weight: 700; color: #333; }
+.tr-tt-freq { font-size: 10px; color: #999; font-weight: 500; }
 
-.card-info { display: flex; flex-direction: column; gap: 10px; }
-.info-row { display: flex; align-items: center; gap: 12px; font-size: 13px; color: #666; }
+/* Footer CTA */
+.tr-footer {
+  padding: 14px 16px;
+  background: #fff; border-top: 1px solid #f0f0f5;
+  flex-shrink: 0;
+  position: sticky; bottom: 0;
+}
+.tr-new-btn {
+  width: 100%; height: 52px;
+  background: linear-gradient(135deg, #2b1d62, #5a3faa);
+  color: #fff; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(43,29,98,0.3);
+  transition: opacity 0.2s, transform 0.15s;
+}
+.tr-new-btn:active { transform: scale(0.98); opacity: 0.9; }
 
-/* --- 时刻表样式 (还原 image_656ec0) --- */
-.timetable-view { padding: 20px; }
-.timetable-header { font-size: 13px; font-weight: 600; margin-bottom: 15px; color: #333; }
+/* ═══════════════════════
+   FORM VIEW
+══════════════════════════ */
+.tr-form-view { padding: 16px 16px 96px; }
 
-.timetable-table {
-  width: 100%;
-  border-collapse: collapse;
-  background: white;
-  border: 1px solid #eee;
-  font-size: 12px;
+.tr-form-hero {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, rgba(43,29,98,0.07), rgba(108,71,217,0.07));
+  border: 1.5px solid rgba(108,71,217,0.2);
+  border-radius: 14px; padding: 16px;
+  margin-bottom: 18px;
+}
+.tr-form-hero-title { font-size: 15px; font-weight: 800; color: #1a1a2e; }
+.tr-form-hero-sub   { font-size: 12px; color: #888; margin-top: 2px; }
+
+.tr-form-card {
+  background: #fff; border-radius: 16px; padding: 18px 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04); margin-bottom: 14px;
+}
+.tr-form-section {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+  color: #2b1d62; font-weight: 700; margin-bottom: 14px;
+}
+.tr-field { margin-bottom: 14px; }
+.tr-field:last-child { margin-bottom: 0; }
+.tr-field label {
+  display: block; font-size: 12px; font-weight: 600;
+  color: #555; margin-bottom: 6px;
+}
+.tr-req { color: #ef4444; }
+.tr-select-wrap { position: relative; }
+.tr-select-wrap select {
+  width: 100%; height: 44px;
+  border: 1.5px solid #e5e7eb; border-radius: 10px;
+  padding: 0 36px 0 12px; font-size: 14px; color: #1a1a2e;
+  background: #fafafa; appearance: none; -webkit-appearance: none;
+  outline: none; cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.tr-select-wrap select:focus {
+  border-color: #6c47d9; background: #fff;
+  box-shadow: 0 0 0 3px rgba(108,71,217,0.1);
+}
+.tr-sel-arrow { position: absolute; right: 10px; top: 14px; pointer-events: none; color: #888; }
+
+.tr-route-swap {
+  display: flex; align-items: center; gap: 10px;
+  margin: 8px 0;
+}
+.tr-route-swap-line { flex: 1; height: 1px; background: #f0f0f5; }
+.tr-route-swap-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: rgba(108,71,217,0.1);
+  display: flex; align-items: center; justify-content: center;
 }
 
-.timetable-table th, .timetable-table td {
-  border: 1px solid #ddd;
-  padding: 12px 10px;
-  text-align: left;
+.tr-date-box {
+  display: flex; align-items: center; gap: 12px;
+  background: #fafafa; border: 1.5px solid #e5e7eb;
+  border-radius: 10px; padding: 12px 14px; cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.tr-date-box:active { border-color: #6c47d9; box-shadow: 0 0 0 3px rgba(108,71,217,0.1); }
+.tr-date-text { flex: 1; display: flex; flex-direction: column; }
+.tr-date-lbl { font-size: 10px; color: #aaa; font-weight: 600; }
+.tr-date-val { font-size: 14px; font-weight: 700; color: #2b1d62; margin-top: 1px; }
+
+.tr-form-error {
+  display: flex; align-items: center; gap: 8px;
+  background: #fff3f3; border: 1px solid #fca5a5;
+  border-radius: 10px; padding: 10px 14px;
+  color: #dc2626; font-size: 13px; margin-bottom: 14px;
 }
 
-.timetable-table th { background: #f8f9fa; color: #333; }
-.timetable-table td { color: #555; line-height: 1.5; }
-
-/* 锁定过去日期的样式 */
-.calendar-day.past-day {
-  color: #d1d1d1 !important;
-  cursor: not-allowed !important;
-  pointer-events: none; /* 彻底禁止点击事件 */
+.tr-search-btn {
+  width: 100%; height: 52px;
+  background: linear-gradient(135deg, #2b1d62, #5a3faa);
+  color: #fff; border: none; border-radius: 14px;
+  font-size: 16px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 8px 24px rgba(43,29,98,0.3);
+  transition: opacity 0.2s, transform 0.15s;
 }
+.tr-search-btn:active   { transform: scale(0.98); opacity: 0.9; }
+.tr-search-btn:disabled { opacity: 0.55; pointer-events: none; }
 
-/* 即使悬停也不产生效果 */
-.calendar-day.past-day:hover {
-  background-color: transparent !important;
-}
+/* ═══════════════════════
+   RESULTS VIEW
+══════════════════════════ */
+.tr-results-view { padding: 0 0 90px; }
 
-/* 按钮禁用状态的视觉反馈 */
-.search-van-btn:disabled {
-  background-color: #cccccc !important;
-  cursor: not-allowed;
+.tr-results-bar {
+  background: #fff; padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f5;
+  display: flex; align-items: center; gap: 10px;
 }
-/* Track Ride 专属样式 */
-.track-modal {
-  max-width: 340px;
+.tr-results-route {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 700; color: #1a1a2e;
 }
-
-.van-badge {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 10px 0;
-  border-bottom: 1px dashed #eee;
+.tr-results-meta {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 12px; color: #999;
 }
-
-.van-info {
-  display: flex;
-  flex-direction: column;
+.tr-results-edit {
+  background: rgba(108,71,217,0.08); border: none;
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
 }
 
-.plate-no {
-  font-size: 18px;
-  font-weight: 800;
-  color: #2b1d62;
+.tr-session-list { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.tr-session-count { font-size: 12px; color: #999; font-weight: 600; margin-bottom: 4px; }
+
+.tr-session-card {
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,0.04);
+  padding: 16px;
+  display: flex; align-items: center; gap: 14px;
+}
+.tr-session-time {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 18px; font-weight: 800; color: #2b1d62; flex: 1;
+}
+.tr-session-info { display: flex; flex-direction: column; gap: 4px; }
+.tr-session-type  { font-size: 12px; font-weight: 600; color: #555; }
+.tr-session-seats {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; color: #10b981;
+}
+.tr-book-btn {
+  height: 38px; padding: 0 18px;
+  background: linear-gradient(135deg, #2b1d62, #5a3faa);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(43,29,98,0.3);
+  display: flex; align-items: center; justify-content: center;
+  transition: opacity 0.2s;
+}
+.tr-book-btn:active   { opacity: 0.85; }
+.tr-book-btn:disabled { opacity: 0.6; pointer-events: none; }
+
+/* ═══════════════════════
+   SUCCESS VIEW
+══════════════════════════ */
+.tr-success {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 50px 28px 40px; text-align: center;
+}
+.tr-success-ring {
+  width: 110px; height: 110px; border-radius: 50%;
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(16,185,129,0.25);
+}
+.tr-success h2 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+.tr-success p  { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 24px; }
+.tr-success-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(43,29,98,0.07); border: 1.5px solid rgba(43,29,98,0.15);
+  border-radius: 12px; padding: 10px 18px;
+  font-size: 14px; font-weight: 700; color: #2b1d62;
+  margin-bottom: 20px;
+}
+.tr-success-details {
+  width: 100%; background: #f8f9fd; border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+  margin-bottom: 28px;
+}
+.tr-success-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 600; color: #444;
+}
+.tr-success-actions { display: flex; gap: 10px; width: 100%; }
+.tr-btn-ghost {
+  flex: 1; height: 50px;
+  background: #f0eaff; color: #2b1d62;
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
 }
 
-.status-tag {
-  font-size: 12px;
-  color: #27ae60;
-  font-weight: 600;
+/* ═══════════════════════
+   DETAIL VIEW
+══════════════════════════ */
+.tr-detail { display: flex; flex-direction: column; min-height: 100%; }
+.tr-detail-banner {
+  padding: 24px 20px 28px;
+  display: flex; align-items: center; gap: 14px;
+}
+.tr-detail-bus {
+  width: 58px; height: 58px; border-radius: 16px;
+  background: rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.tr-detail-banner-info { flex: 1; }
+.tr-detail-id    { display: block; color: rgba(255,255,255,0.75); font-size: 12px; font-weight: 600; }
+.tr-detail-route { display: block; color: #fff; font-size: 16px; font-weight: 800; margin-top: 3px; }
+.tr-detail-status {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; padding: 4px 12px;
+  border-radius: 20px; text-transform: uppercase;
+}
+.tr-detail-body { padding: 16px; flex: 1; }
+.tr-detail-section { margin-bottom: 18px; }
+.tr-detail-section h4 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+  color: #2b1d62; font-weight: 700; margin-bottom: 10px;
+}
+.tr-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tr-detail-full  { grid-column: 1 / -1; }
+.tr-detail-item  {
+  background: #f8f9fd; border-radius: 10px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 3px;
+}
+.tr-dii-lbl { font-size: 10px; color: #999; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; }
+.tr-dii-val { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+
+.tr-detail-footer {
+  padding: 14px 16px;
+  background: #fff; border-top: 1px solid #f0f0f5;
+  position: sticky; bottom: 0;
+}
+.tr-cancel-ride-btn {
+  width: 100%; height: 50px;
+  background: #fff0f0; color: #ef4444;
+  border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 
-.track-content {
-  text-align: left;
+/* ═══════════════════════
+   CALENDAR MODAL
+══════════════════════════ */
+.tr-cal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,5,25,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000; backdrop-filter: blur(6px);
+  padding: 20px; animation: fadeIn 0.2s ease;
 }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.tr-cal-modal {
+  width: 100%; max-width: 360px;
+  background: #fff; border-radius: 24px;
+  padding: 20px 20px 24px;
+  animation: calPop 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes calPop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.tr-cal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 16px; font-weight: 800; color: #1a1a2e; margin-bottom: 14px;
+}
+.tr-cal-close {
+  background: #f5f5f5; border: none; border-radius: 8px;
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.tr-cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.tr-cal-arrow {
+  background: #f5f5f5; border: none; border-radius: 8px;
+  width: 36px; height: 36px; font-size: 22px; font-weight: 700; color: #2b1d62;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.tr-cal-month { font-size: 15px; font-weight: 700; color: #1a1a2e; }
+.tr-cal-weekdays {
+  display: grid; grid-template-columns: repeat(7,1fr);
+  text-align: center; margin-bottom: 6px;
+}
+.tr-cal-weekdays span { font-size: 11px; font-weight: 700; color: #aaa; padding: 4px 0; }
+.tr-cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-bottom: 18px; }
+.tr-cal-day {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 500; color: #1a1a2e;
+  border-radius: 10px; cursor: pointer; transition: background 0.15s;
+}
+.tr-cal-day:hover:not(.past) { background: rgba(108,71,217,0.12); }
+.tr-cal-day.selected {
+  background: linear-gradient(135deg, #2b1d62, #6c47d9) !important;
+  color: #fff !important; font-weight: 700;
+  box-shadow: 0 4px 12px rgba(43,29,98,0.35);
+}
+.tr-cal-day.past    { color: #d1d5db !important; pointer-events: none; }
+.tr-day-empty       { aspect-ratio: 1; }
+.tr-cal-confirm {
+  width: 100%; height: 50px;
+  background: linear-gradient(135deg, #2b1d62, #5a3faa);
+  color: #fff; border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 6px 18px rgba(43,29,98,0.35);
+}
+
+/* ═══════════════════════
+   CANCEL MODAL
+══════════════════════════ */
+.tr-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,5,25,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 10000; backdrop-filter: blur(6px);
+  padding: 20px; animation: fadeIn 0.2s ease;
+}
+.tr-cancel-modal {
+  width: 100%; max-width: 360px;
+  background: #fff; border-radius: 24px;
+  padding: 32px 24px 28px; text-align: center;
+  animation: calPop 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.tr-cancel-icon  { margin-bottom: 14px; }
+.tr-cancel-modal h3 { font-size: 19px; font-weight: 800; color: #1a1a2e; margin-bottom: 8px; }
+.tr-cancel-modal p  { font-size: 14px; color: #666; line-height: 1.5; margin-bottom: 24px; }
+.tr-cancel-actions  { display: flex; gap: 10px; }
+.tr-cancel-no {
+  flex: 1; height: 50px;
+  background: #f5f5f5; color: #333; border: none;
+  border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.tr-cancel-yes {
+  flex: 1; height: 50px;
+  background: linear-gradient(135deg, #dc2626, #ef4444);
+  color: #fff; border: none; border-radius: 12px;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 6px 18px rgba(239,68,68,0.35);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.tr-cancel-yes:disabled { opacity: 0.7; pointer-events: none; }

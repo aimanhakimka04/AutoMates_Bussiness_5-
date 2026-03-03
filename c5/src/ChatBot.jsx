@@ -1,47 +1,31 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot, X, Send, Mic, MessageSquare, MicOff, Volume2 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { VoiceRecorder } from 'capacitor-voice-recorder';
 import './ChatBot.css';
-
+import { Capacitor } from '@capacitor/core';
 // ── CONFIG ────────────────────────────────────────────────────────
 const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
 const TENANT_ID       = 'chinhin_hq';
-const ELEVATED_PATHS       = ['/dashboard', '/info'];
-const SESSION_TIMEOUT_MS   = 2 * 60 * 60 * 1000; // 2 jam inactivity → auto reset
+const ELEVATED_PATHS  = ['/dashboard', '/info'];
+const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
-// ── SESSION ID ────────────────────────────────────────────────────
-// A new session_id is generated when the user sends their first
-// message. It is sent with every message so n8n can retrieve the
-// Postgres conversation record.
-// When the user taps "No, thanks" after a completed action, we call
-// n8n with event_type='session_close' then reset sessionId to null.
-// The next message automatically starts a fresh session.
 const generateSessionId = (email) =>
   `${(email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-// ── JWT ───────────────────────────────────────────────────────────
 const buildUserJWT = (user) => {
-  const b64 = (obj) =>
-    btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const b64 = (obj) => btoa(unescape(encodeURIComponent(JSON.stringify(obj)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   const header  = b64({ alg: 'HS256', typ: 'JWT' });
   const payload = b64({
-    sub:       user?.email || '',
-    upn:       user?.email || '',
-    name:      user?.name  || '',
-    roles:     ['employee'],
-    tenant_id: TENANT_ID,
-    iat:       Math.floor(Date.now() / 1000),
-    exp:       Math.floor(Date.now() / 1000) + 3600,
+    sub: user?.email || '', upn: user?.email || '', name: user?.name || '',
+    roles: ['employee'], tenant_id: TENANT_ID,
+    iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600,
   });
   return `${header}.${payload}.local`;
 };
 
-// ── HELPERS ───────────────────────────────────────────────────────
 const isMobile = () => {
-  if (process.env.REACT_APP_PLATFORM === 'mobile') return true;
-  try { if (window.Capacitor?.isNative) return true; } catch (_) {}
-  return false;
+  return Capacitor.isNativePlatform();
 };
 
 const getSessionUser = () => {
@@ -51,111 +35,82 @@ const getSessionUser = () => {
   } catch { return null; }
 };
 
-// ── NATIVE SPEECH (Android) ───────────────────────────────────────
-const nativeSpeech = {
-  async requestPermission() {
-    try {
-      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
-      const perm = await SpeechRecognition.speechRecognition.requestPermissions();
-      return perm.speechRecognition === 'granted';
-    } catch { return false; }
-  },
-  async startListening(onPartial, onError) {
-    try {
-      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
-      const sr = SpeechRecognition.speechRecognition;
-      await sr.start({ language: 'en-US', maxResults: 1, partialResults: true, popup: false });
-      sr.addListener('partialResults', (data) => {
-        if (data.matches?.[0]) onPartial(data.matches[0]);
-      });
-    } catch (err) { onError(err.message); }
-  },
-  async stopListening() {
-    try {
-      const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
-      await SpeechRecognition.speechRecognition.stop();
-    } catch (_) {}
-  },
-  async speak(text) {
-    try {
-      const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
-      await TextToSpeech.speak({ text, lang: 'en-US', rate: 1.0, volume: 1.0 });
-    } catch (_) {}
-  },
-  async stopSpeaking() {
-    try {
-      const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
-      await TextToSpeech.stop();
-    } catch (_) {}
-  },
+// ── WEB AUDIO RECORDER ────────────────────────────────────────────
+let _mediaRecorder = null;
+let _audioChunks = [];
+
+const startWebRecording = async (onError) => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    _mediaRecorder = new MediaRecorder(stream);
+    _audioChunks = [];
+    _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
+    _mediaRecorder.start();
+  } catch (err) {
+    onError('Sila benarkan akses mikrofon di browser.');
+  }
 };
 
-// ── WEB SPEECH ────────────────────────────────────────────────────
-const webSpeech = {
-  _rec: null,
-  startListening(onPartial, onFinal, onError, onEnd) {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { onError('Voice not supported. Use Chrome.'); return; }
-    const rec = new SR();
-    rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = false;
-    rec.onstart  = () => window.speechSynthesis?.cancel();
-    rec.onresult = (e) => {
-      let interim = '', final = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript;
-        else interim += e.results[i][0].transcript;
-      }
-      if (final) onFinal(final.trim());
-      else if (interim) onPartial(interim);
+const stopWebRecording = (onComplete) => {
+  if (!_mediaRecorder) return;
+  _mediaRecorder.onstop = () => {
+    const audioBlob = new Blob(_audioChunks, { type: 'audio/webm' });
+    const reader = new FileReader();
+    reader.readAsDataURL(audioBlob);
+    reader.onloadend = () => {
+      const base64data = reader.result.split(',')[1]; // Buang prefix "data:audio/webm;base64,"
+      onComplete(base64data);
     };
-    rec.onerror = (e) => onError(e.error);
-    rec.onend   = onEnd;
-    this._rec = rec;
-    rec.start();
-  },
-  stopListening() { this._rec?.stop(); this._rec = null; },
-  speak(text) {
-    if (!('speechSynthesis' in window)) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'en-US';
-    window.speechSynthesis.speak(u);
-  },
-  stopSpeaking() { window.speechSynthesis?.cancel(); },
+  };
+  _mediaRecorder.stop();
+  _mediaRecorder.stream.getTracks().forEach(track => track.stop());
+  _mediaRecorder = null;
+};
+
+// ── TEXT TO SPEECH (TTS) ──────────────────────────────────────────
+const webSpeak = (text, onEnd) => {
+  if (!('speechSynthesis' in window)) { onEnd?.(); return; }
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-US'; u.rate = 1.0; u.pitch = 0.8;
+  u.onend = () => onEnd?.();
+  window.speechSynthesis.speak(u);
+};
+const webStopSpeak = () => window.speechSynthesis?.cancel();
+
+const androidSpeak = async (text, onEnd) => {
+  try {
+    const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
+    await TextToSpeech.speak({ text, lang: 'en-US', rate: 1.0, volume: 1.0 });
+  } catch (_) {}
+  onEnd?.();
+};
+const androidStopSpeak = async () => {
+  try {
+    const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
+    await TextToSpeech.stop();
+  } catch (_) {}
 };
 
 // ── WEBHOOK ───────────────────────────────────────────────────────
-// event_type values n8n should handle:
-//   'message'       — normal user turn
-//   'session_close' — user said No → n8n marks session done in Postgres
-//   'session_yes'   — user said Yes → n8n keeps session open in Postgres
-const sendToN8n = async ({ text, inputType, convState, confirm, editedPlan,
-                           sessionId, eventType = 'message', user }) => {
+const sendToN8n = async ({ text, audioBase64, inputType, convState, confirm, editedPlan, sessionId, eventType = 'message', user }) => {
   const body = {
-    // Message
-    text:              text       || '',
-    input_type:        inputType  || 'text',
-    state:             convState  || {},
-    confirm:           confirm    || false,
+    text:              text || '',
+    audio_base64:      audioBase64 || null,  // Field baru untuk n8n
+    input_type:        inputType || 'text',
+    state:             convState || {},
+    confirm:           confirm || false,
     edited_plan:       editedPlan || null,
     client_request_id: `req-${Date.now()}`,
-
-    // Session — THIS is what n8n uses as the Postgres memory key.
-    // Every message in the same conversation shares the same session_id.
-    // When session closes, n8n archives the record so the AI
-    // doesn't mix up past and new conversations.
-    session_id: sessionId,
-    event_type: eventType,
-
-    // User identity decoded by n8n's VerifyTempToken from the JWT
-    id:        user?.email || '',
-    upn:       user?.email || '',
-    name:      user?.name  || '',
-    roles:     ['employee'],
-    tenant_id: TENANT_ID,
-
-    platform:  isMobile() ? 'android' : 'web',
-    timestamp: new Date().toISOString(),
+    session_id:        sessionId,
+    event_type:        eventType,
+    id:                user?.email || '',
+    upn:               user?.email || '',
+    name:              user?.name || '',
+    roles:             ['employee'],
+    tenant_id:         TENANT_ID,
+    platform:          isMobile() ? 'android' : 'web',
+    timestamp:         new Date().toISOString(),
   };
 
   const res = await fetch(N8N_WEBHOOK_URL, {
@@ -166,21 +121,15 @@ const sendToN8n = async ({ text, inputType, convState, confirm, editedPlan,
     },
     body: JSON.stringify(body),
   });
-  // Safe parse -- n8n sometimes returns 200 with empty body (e.g. after update/cancel)
   const rawText = await res.text();
   if (!res.ok) {
     let msg = `HTTP ${res.status}`;
     try { msg = JSON.parse(rawText)?.message || msg; } catch(_) {}
     throw new Error(msg);
   }
-  if (!rawText || !rawText.trim()) {
-    return { type: 'receipt', summary: 'Action completed successfully.' };
-  }
-  try {
-    return JSON.parse(rawText);
-  } catch(_) {
-    throw new Error('Invalid response from server. Please try again.');
-  }
+  if (!rawText || !rawText.trim()) return { type: 'receipt', summary: 'Action completed successfully.' };
+  try { return JSON.parse(rawText); }
+  catch(_) { throw new Error('Invalid response dari server. Sila cuba lagi.'); }
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -191,10 +140,7 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
   const isElevated  = ELEVATED_PATHS.includes(location.pathname);
   const currentUser = propUserInfo || getSessionUser();
 
-  // session_id is null until first message → auto-created on send.
-  // Resets to null when session closes so next message is a new session.
   const [sessionId, setSessionId] = useState(null);
-
   const [isOpen,      setIsOpen]      = useState(false);
   const [mode,        setMode]        = useState('text');
   const [messages,    setMessages]    = useState([{
@@ -206,14 +152,15 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
   const [inputValue,  setInputValue]  = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isSpeaking,  setIsSpeaking]  = useState(false);
-  const [transcript,  setTranscript]  = useState('');
   const [isLoading,   setIsLoading]   = useState(false);
   const [convState,   setConvState]   = useState({});
   const [voiceError,  setVoiceError]  = useState('');
 
   const messagesEndRef   = useRef(null);
-  const pendingFinalRef  = useRef('');
-  const sessionTimerRef  = useRef(null);  // auto-reset timer
+  const sessionTimerRef  = useRef(null);
+  const modeRef          = useRef(mode);
+
+  useEffect(() => { modeRef.current = mode; }, [mode]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -221,34 +168,24 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
 
   useEffect(() => {
     return () => {
-      if (isMobile()) { nativeSpeech.stopListening(); nativeSpeech.stopSpeaking(); }
-      else { webSpeech.stopListening(); webSpeech.stopSpeaking(); }
+      if (isMobile()) androidStopSpeak(); else webStopSpeak();
       clearTimeout(sessionTimerRef.current);
     };
   }, []);
 
-  // ── Session inactivity timeout ─────────────────────────────────
-  // Reset setiap kali user hantar message. Kalau 2 jam tak ada
-  // activity, auto close session dan notify user.
   const resetSessionTimer = useCallback((sid) => {
     clearTimeout(sessionTimerRef.current);
     if (!sid) return;
     sessionTimerRef.current = setTimeout(async () => {
-      // Auto-expire: notify n8n then reset frontend
       try {
-        await sendToN8n({
-          text: 'session_timeout', eventType: 'session_close',
-          sessionId: sid, user: currentUser, convState: {},
-        });
+        await sendToN8n({ text: 'session_timeout', eventType: 'session_close', sessionId: sid, user: currentUser, convState: {} });
       } catch (_) {}
       setSessionId(null);
       setConvState({});
-      addMsg('bot', 'text',
-        '⏱️ Session ended due to 2 hours of inactivity. Send a message to start a new session.');
+      addMsg('bot', 'text', '⏱️ Sesi tamat kerana tiada aktiviti. Hantar mesej untuk mula sesi baru.');
     }, SESSION_TIMEOUT_MS);
   }, [currentUser]);
 
-  // Start/restart timer whenever sessionId changes
   useEffect(() => {
     resetSessionTimer(sessionId);
     return () => clearTimeout(sessionTimerRef.current);
@@ -257,7 +194,6 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
   const addMsg = (sender, msgType, text, extra = {}) =>
     setMessages(prev => [...prev, { id: Date.now() + Math.random(), sender, msgType, text, ...extra }]);
 
-  // Get or create session_id for this turn
   const getOrCreateSession = useCallback(() => {
     if (sessionId) return sessionId;
     const newId = generateSessionId(currentUser?.email);
@@ -265,7 +201,115 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
     return newId;
   }, [sessionId, currentUser]);
 
-  // ── Process n8n response ───────────────────────────────────────
+  const stopSpeaking = () => {
+    if (isMobile()) androidStopSpeak(); else webStopSpeak();
+    setIsSpeaking(false);
+  };
+
+  // Fungsi hantar mesej dikemaskini untuk terima audioBase64
+  const sendMessage = useCallback(async (text, inputType = 'text', confirmData = null, audioBase64 = null) => {
+    const trimmed = text?.trim();
+    if (inputType === 'text' && !trimmed && !confirmData) return;
+
+    const sid = getOrCreateSession();
+    resetSessionTimer(sid);
+
+    if (inputType === 'audio') {
+      addMsg('user', 'text', '🎤 [Voice Message]'); // Tunjuk indicator user hantar voice
+    } else if (!confirmData) {
+      addMsg('user', 'text', trimmed);
+      setInputValue('');
+    }
+
+    setIsLoading(true);
+    stopSpeaking();
+
+    try {
+      const data = await sendToN8n({
+        text:         confirmData ? 'User confirmed the plan' : trimmed,
+        audioBase64:  audioBase64,
+        inputType,
+        convState,
+        confirm:      !!confirmData,
+        editedPlan:   confirmData?.plan || null,
+        sessionId:    sid,
+        eventType:    confirmData ? 'direct_booking' : 'message',
+        user:         currentUser,
+      });
+      processResponse(data, inputType);
+    } catch (err) {
+      addMsg('bot', 'text', `Connection error: ${err.message}. Please try again.`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [convState, currentUser, getOrCreateSession]);
+
+  // ── VOICE RECORDER LOGIC ──────────────────────────────────────────
+  const startRecording = async () => {
+    setVoiceError('');
+    stopSpeaking();
+
+    if (isMobile()) {
+      try {
+        const check = await VoiceRecorder.hasAudioRecordingPermission();
+        if (!check.value) {
+          const perm = await VoiceRecorder.requestAudioRecordingPermission();
+          if (!perm.value) {
+            setVoiceError('Akses mikrofon ditolak.');
+            return;
+          }
+        }
+        await VoiceRecorder.startRecording();
+        setIsRecording(true);
+      } catch (err) {
+        setVoiceError('Gagal memulakan rakaman: ' + err.message);
+      }
+    } else {
+      await startWebRecording((err) => setVoiceError(err));
+      setIsRecording(true);
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!isRecording) return;
+    setIsRecording(false);
+    setIsLoading(true); // Tunjuk "Thinking..." semasa audio diproses
+
+    if (isMobile()) {
+      try {
+        const result = await VoiceRecorder.stopRecording();
+        if (result.value && result.value.recordDataBase64) {
+          sendMessage('', 'audio', null, result.value.recordDataBase64);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (err) {
+        setVoiceError('Gagal memproses rakaman.');
+        setIsLoading(false);
+      }
+    } else {
+      stopWebRecording((base64) => {
+        if (base64) sendMessage('', 'audio', null, base64);
+        else setIsLoading(false);
+      });
+    }
+  };
+
+  const switchMode = (m) => {
+    if (isRecording) stopRecording();
+    stopSpeaking();
+    setVoiceError('');
+    setMode(m);
+  };
+
+  // ── TTS & RESPONSE HANDLING ──────────────────────────────────────
+  const speakResponse = useCallback((text) => {
+    setIsSpeaking(true);
+    const onDone = () => setIsSpeaking(false);
+    if (isMobile()) androidSpeak(text, onDone);
+    else webSpeak(text, onDone);
+  }, []);
+
   const processResponse = useCallback((data, inputType) => {
     if (data.state) setConvState(data.state);
     let textToSpeak = '';
@@ -275,172 +319,42 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
         textToSpeak = data.question;
         addMsg('bot', 'text', data.question);
         break;
-
       case 'confirm':
         textToSpeak = `${data.summary}. Do you want to proceed?`;
-        addMsg('bot', 'confirm_card', data.summary, {
-          plan: data.plan, confirm_token: data.confirm_token,
-        });
+        addMsg('bot', 'confirm_card', data.summary, { plan: data.plan, confirm_token: data.confirm_token });
         break;
-
       case 'receipt':
-        // Action completed — show result then ask "Anything else?"
         textToSpeak = `Done! ${data.summary}`;
         addMsg('bot', 'text', textToSpeak);
-        setTimeout(() => {
-          addMsg('bot', 'session_prompt', 'Is there anything else I can help you with?');
-        }, 600);
+        setTimeout(() => addMsg('bot', 'session_prompt', 'Is there anything else I can help you with?'), 600);
         break;
-
       case 'error':
       case 'auth_error':
         textToSpeak = `Sorry, ${data.message || data.error || 'something went wrong.'}`;
         addMsg('bot', 'text', textToSpeak);
         break;
-
       default:
         textToSpeak = data.text || data.message || "I received a response but couldn't display it.";
         addMsg('bot', 'text', textToSpeak);
     }
 
-    if (inputType === 'voice' && textToSpeak) speakResponse(textToSpeak);
-  }, []);
+    if (modeRef.current === 'voice' && textToSpeak) speakResponse(textToSpeak);
+  }, [speakResponse]);
 
-  // ── TTS ────────────────────────────────────────────────────────
-  const speakResponse = async (text) => {
-    setIsSpeaking(true);
-    if (isMobile()) {
-      await nativeSpeech.speak(text);
-      setIsSpeaking(false);
-    } else {
-      webSpeech.speak(text);
-      setTimeout(() => setIsSpeaking(false), text.length * 60);
-    }
-  };
-
-  const stopSpeaking = () => {
-    if (isMobile()) nativeSpeech.stopSpeaking();
-    else webSpeech.stopSpeaking();
-    setIsSpeaking(false);
-  };
-
-  // ── Send message ───────────────────────────────────────────────
-  const sendMessage = useCallback(async (text, inputType = 'text', confirmData = null) => {
-    const trimmed = text?.trim();
-    if (!trimmed && !confirmData) return;
-
-    const sid = getOrCreateSession();
-    resetSessionTimer(sid); // restart 2-hour inactivity clock
-
-    if (!confirmData) {
-      addMsg('user', 'text', trimmed);
-      setInputValue('');
-      setTranscript('');
-    }
-
-    setIsLoading(true);
-    stopSpeaking();
-
-    try {
-      const data = await sendToN8n({
-        text:       confirmData ? 'User confirmed the plan' : trimmed,
-        inputType,
-        convState,
-        confirm:    !!confirmData,
-        editedPlan: confirmData?.plan || null,
-        sessionId:  sid,
-        eventType:  confirmData ? 'direct_booking' : 'message',
-        user:       currentUser,
-      });
-      processResponse(data, inputType);
-    } catch (err) {
-      addMsg('bot', 'text', `Connection error: ${err.message}. Please try again.`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [convState, currentUser, getOrCreateSession, processResponse]);
-
-  // ── YES — continue session ─────────────────────────────────────
   const handleSessionYes = useCallback(async () => {
     addMsg('user', 'text', 'Yes');
     addMsg('bot', 'text', 'Great! What else can I help you with?');
-    try {
-      await sendToN8n({
-        text: 'continue', eventType: 'session_yes',
-        sessionId, user: currentUser, convState,
-      });
-    } catch (_) {}
+    try { await sendToN8n({ text: 'continue', eventType: 'session_yes', sessionId, user: currentUser, convState }); } catch (_) {}
   }, [sessionId, currentUser, convState]);
 
-  // ── NO — close session, reset for next conversation ───────────
   const handleSessionNo = useCallback(async () => {
     const sid = sessionId;
     addMsg('user', 'text', 'No, thanks');
     addMsg('bot', 'text', 'Alright! Have a great day. 👋 Feel free to come back anytime.');
-    // Tell n8n to close the Postgres session record
-    try {
-      await sendToN8n({
-        text: 'session_close', eventType: 'session_close',
-        sessionId: sid, user: currentUser, convState,
-      });
-    } catch (_) {}
-    // Reset — next message will get a brand new session_id
+    try { await sendToN8n({ text: 'session_close', eventType: 'session_close', sessionId: sid, user: currentUser, convState }); } catch (_) {}
     setSessionId(null);
     setConvState({});
   }, [sessionId, currentUser, convState]);
-
-  // ── VOICE ──────────────────────────────────────────────────────
-  const startRecording = async () => {
-    setVoiceError('');
-    setTranscript('');
-    pendingFinalRef.current = '';
-    stopSpeaking();
-
-    if (isMobile()) {
-      const granted = await nativeSpeech.requestPermission();
-      if (!granted) { setVoiceError('Microphone permission denied. Enable in Settings.'); return; }
-      setIsRecording(true);
-      let latestText = '';
-      try {
-        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
-        const sr = SpeechRecognition.speechRecognition;
-        await sr.start({ language: 'en-US', maxResults: 1, partialResults: true, popup: false });
-        sr.addListener('partialResults', (data) => {
-          if (data.matches?.[0]) { latestText = data.matches[0]; setTranscript(latestText); }
-        });
-        pendingFinalRef.current = () => latestText;
-      } catch (err) { setVoiceError('Voice error: ' + err.message); setIsRecording(false); }
-    } else {
-      setIsRecording(true);
-      webSpeech.startListening(
-        (p) => setTranscript(p),
-        (f) => { setTranscript(f); pendingFinalRef.current = f; setIsRecording(false); sendMessage(f, 'voice'); },
-        (e) => { setVoiceError('Voice error: ' + e); setIsRecording(false); },
-        ()  => setIsRecording(false),
-      );
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!isRecording) return;
-    if (isMobile()) {
-      try {
-        const { SpeechRecognition } = await import('@capacitor-community/speech-recognition');
-        await SpeechRecognition.speechRecognition.stop();
-      } catch (_) {}
-      setIsRecording(false);
-      const getText = pendingFinalRef.current;
-      const text    = typeof getText === 'function' ? getText() : transcript;
-      if (text?.trim()) sendMessage(text.trim(), 'voice');
-    } else {
-      webSpeech.stopListening();
-      setIsRecording(false);
-      if (transcript?.trim() && !pendingFinalRef.current) sendMessage(transcript.trim(), 'voice');
-    }
-    pendingFinalRef.current = '';
-  };
-
-  const switchMode = (m) => { stopRecording(); stopSpeaking(); setTranscript(''); setVoiceError(''); setMode(m); };
 
   // ── RENDER ─────────────────────────────────────────────────────
   return (
@@ -477,8 +391,7 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               {isSpeaking && (
-                <Volume2 size={18} color="white" style={{ cursor: 'pointer', opacity: 0.8 }}
-                  onClick={stopSpeaking} title="Stop speaking" />
+                <Volume2 size={18} color="white" style={{ cursor: 'pointer', opacity: 0.8 }} onClick={stopSpeaking} title="Stop speaking" />
               )}
               {sessionId && <span className="chat-session-badge">● Active</span>}
               <X size={20} onClick={() => setIsOpen(false)} style={{ cursor: 'pointer', opacity: 0.8 }} />
@@ -535,14 +448,13 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
           {mode === 'voice' && (
             <div className="chat-voice-panel">
               {voiceError && <div className="voice-error-box">{voiceError}</div>}
+              
               <div className={`voice-transcript-box ${isRecording ? 'listening' : ''}`}>
-                {transcript
-                  ? <span className="voice-transcript-text">{transcript}</span>
-                  : <span className="voice-transcript-hint">
-                      {isRecording ? 'Listening…' : 'Tap the mic and speak'}
-                    </span>
-                }
+                <span className="voice-transcript-hint">
+                  {isRecording ? 'Rakaman sedang berjalan. Teruskan bercakap...' : 'Tekan mic untuk mula merakam'}
+                </span>
               </div>
+
               <button
                 className={`voice-mic-btn ${isRecording ? 'recording' : ''} ${isSpeaking ? 'speaking' : ''}`}
                 onClick={isRecording ? stopRecording : startRecording}
@@ -553,9 +465,8 @@ const ChatBot = ({ userInfo: propUserInfo }) => {
                   : isRecording ? <MicOff size={32} color="white" /> : <Mic size={32} color="white" />}
               </button>
               <p className="voice-mic-hint">
-                {isLoading ? 'Processing…' : isSpeaking ? 'Tap to stop' : isRecording ? 'Tap to stop & send' : 'Tap to speak'}
+                {isLoading ? 'Menghantar audio...' : isSpeaking ? 'Tekan untuk stop' : isRecording ? 'Tekan untuk hantar' : 'Tekan untuk bercakap'}
               </p>
-              {!isMobile() && <p className="voice-platform-note">Use Chrome for best voice support.</p>}
             </div>
           )}
         </div>
