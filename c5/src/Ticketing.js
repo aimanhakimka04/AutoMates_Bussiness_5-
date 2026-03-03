@@ -424,8 +424,8 @@ const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
                     <span className="tkt-stat-l">Resolved</span>
                   </div>
                   <div className="tkt-stat-div" />
-                  <div className="tkt-stat">
-                    <span className="tkt-stat-n">{tickets.length}</span>
+                  <div className="tkt-stat"> 
+                    <span className="tkt-stat-n">{tickets.filter(t => t.status === 'Open').length + tickets.filter(t => t.status === 'Closed').length}</span>
                     <span className="tkt-stat-l">Total</span>
                   </div>
                 </>
