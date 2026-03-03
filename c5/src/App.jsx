@@ -32,6 +32,7 @@ import Mynews      from './Mynews';
 import Childcare   from './Childcare';
 import EPP         from './EPP';
 import ChatBot     from './ChatBot';
+import StaffClaim  from './StaffClaim';
 import './App.css';
 
 // ══════════════════════════════════════════════════════════════════
@@ -387,10 +388,20 @@ const Home = () => {
       items: [
         { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
         { label:'flexHR',      icon:'flexhr.png',       path:'/flexhr',       accent:'#d35400' },
-        { label:'MyNews',      icon:'mynews.png',       path:'/mynews',       accent:'#c0392b' },
+        { label:'Staff Claim',  icon:'staffclaim.png',   path:'/staff-claim',  accent:'#e11d48' },
         { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
       ]
     },
+    {
+      title: 'Workplace',
+      color: '#2b1d62',
+      items: [
+        { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room', accent:'#6c47d9' },
+        { label:'Transport',    icon:'transportation.png', path:'/transport',  accent:'#4c3aa3' },
+        { label:'e-Visitor',    icon:'evisitor.png',     path:'/evisitor',     accent:'#5e35b1' },
+        { label:'Ticketing',    icon:'ticketing.png',    path:'/ticketing',    accent:'#7c4dff' },
+      ]
+    }
   ];
 
   return (
@@ -627,6 +638,7 @@ function App() {
               <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews /></PageWrapper>} />
               <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare /></PageWrapper>} />
               <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP /></PageWrapper>} />
+              <Route path="/staff-claim"  element={<PageWrapper showTopBar={false}><StaffClaim userInfo={userInfo} /></PageWrapper>} />
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
           )}
