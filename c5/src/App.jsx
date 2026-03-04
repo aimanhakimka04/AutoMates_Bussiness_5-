@@ -391,16 +391,6 @@ const Home = () => {
         { label:'Staff Claim',  icon:'staffclaim.png',   path:'/staff-claim',  accent:'#e11d48' },
         { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
       ]
-    },
-    {
-      title: 'Workplace',
-      color: '#2b1d62',
-      items: [
-        { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room', accent:'#6c47d9' },
-        { label:'Transport',    icon:'transportation.png', path:'/transport',  accent:'#4c3aa3' },
-        { label:'e-Visitor',    icon:'evisitor.png',     path:'/evisitor',     accent:'#5e35b1' },
-        { label:'Ticketing',    icon:'ticketing.png',    path:'/ticketing',    accent:'#7c4dff' },
-      ]
     }
   ];
 
