@@ -259,7 +259,12 @@
   padding: 14px 16px;
   background: #fff; border-top: 1px solid #f0f0f5;
   flex-shrink: 0;
-  position: sticky; bottom: 0;
+/* Key changes */
+  position: fixed; 
+  bottom: 74px;
+  left: 0;
+  right: 0;
+  z-index: 1000; /* Keeps it above other elements */  
 }
 .tr-new-btn {
   width: 100%; height: 52px;
