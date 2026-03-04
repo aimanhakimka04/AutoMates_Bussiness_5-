@@ -59,6 +59,63 @@ const SplashScreen = () => (
 );
 
 // ══════════════════════════════════════════════════════════════════
+//  SESSION PERSISTENCE  (localStorage — survives Android app close)
+// ══════════════════════════════════════════════════════════════════
+const SESSION_KEY = 'flexhr_user_session';
+
+const saveSession = (info) => {
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...info, savedAt: Date.now() })); } catch {}
+};
+
+const loadSession = () => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    // Expire after 30 days (ms)
+    if (Date.now() - (parsed.savedAt || 0) > 30 * 24 * 60 * 60 * 1000) {
+      localStorage.removeItem(SESSION_KEY);
+      return null;
+    }
+    return parsed;
+  } catch { return null; }
+};
+
+const clearSession = () => {
+  try { localStorage.removeItem(SESSION_KEY); } catch {}
+};
+
+// ── Sync user to DB via n8n (called once after login) ─────────────
+const N8N_WEBHOOK = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+
+const syncUserToDB = async (info, token) => {
+  if (!info?.email) return;
+  try {
+    await fetch(N8N_WEBHOOK, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token || localStorage.getItem('authToken') || ''}`,
+      },
+      body: JSON.stringify({
+        input_type: 'direct_action',
+        edited_plan: {
+          action:     'sync_user',
+          sub_target: 'flexhr',
+          user_email: info.email,
+          user_name:  info.name,
+        },
+        // Also send at body level so VerifyTempToken + Upsert can read it
+        upn:  info.email,
+        name: info.name,
+      }),
+    });
+  } catch (e) {
+    console.warn('[syncUserToDB] failed (non-blocking):', e.message);
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
 //  1. LOGIN
 // ══════════════════════════════════════════════════════════════════
 const Login = ({ setAuth, setUserInfo }) => {
@@ -74,12 +131,11 @@ const Login = ({ setAuth, setUserInfo }) => {
 
       if (response) {
         const account = response.account;
-
-        const info = {
-          name: account.name,
-          email: account.username,
-        };
-
+        const info    = { name: account.name, email: account.username };
+        const token   = response.accessToken || response.idToken || '';
+        if (token) localStorage.setItem('authToken', token);
+        saveSession(info);
+        syncUserToDB(info, token); // fire-and-forget
         setUserInfo(info);
         setAuth(true);
       }
@@ -95,7 +151,10 @@ const Login = ({ setAuth, setUserInfo }) => {
     if (IS_MOBILE) {
       // ── APK flow — Capacitor Browser ──────────────────────────
       doLogin(
-        (info) => {
+        async (info, token) => {
+          if (token) localStorage.setItem('authToken', token);
+          saveSession(info);
+          syncUserToDB(info, token); // fire-and-forget — ensures user in DB
           setUserInfo(info);
           setAuth(true);
           setLoading(false);
@@ -315,11 +374,13 @@ const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    // Always clear persisted session first
+    clearSession();
+    localStorage.removeItem('authToken');
+
     if (IS_MOBILE) {
-      // APK — clear session storage
       mobileLogout();
     } else {
-      // Web — MSAL logout
       try {
         await ensureMsal();
         const accounts = msalInstance.getAllAccounts();
@@ -553,20 +614,41 @@ function App() {
     const checkAuth = async () => {
       try {
         if (IS_MOBILE) {
-          // ── APK — restore from sessionStorage ─────────────────
+          // ── APK — restore from localStorage first (survives Android app close)
+          // then fall back to getMobileSession (sessionStorage)
+          const persisted = loadSession();
+          if (persisted) {
+            setUserInfo(persisted);
+            setIsAuthenticated(true);
+            return; // restored — no need for MSAL
+          }
+          // fallback: in-memory session from MicrosoftAuth
           const session = getMobileSession();
           if (session) {
+            saveSession(session); // migrate to localStorage for next time
             setUserInfo(session);
             setIsAuthenticated(true);
           }
         } else {
-          // ── Web — MSAL redirect promise + session restore ──────
+          // ── Web — check localStorage first, then MSAL ──────────
+          const persisted = loadSession();
+          if (persisted) {
+            setUserInfo(persisted);
+            setIsAuthenticated(true);
+            // Still run MSAL in background to refresh token silently
+          }
+
           await ensureMsal();
 
           const redirectResult = await msalInstance.handleRedirectPromise();
           if (redirectResult && redirectResult.account) {
-            const acct = redirectResult.account;
-            setUserInfo({ name: acct.name || acct.username, email: acct.username });
+            const acct  = redirectResult.account;
+            const info  = { name: acct.name || acct.username, email: acct.username };
+            const token = redirectResult.accessToken || redirectResult.idToken || '';
+            if (token) localStorage.setItem('authToken', token);
+            saveSession(info);
+            syncUserToDB(info, token); // ensure user in DB
+            setUserInfo(info);
             setIsAuthenticated(true);
             window.history.replaceState({}, document.title, '/');
             return;
@@ -575,12 +657,20 @@ function App() {
           const accounts = msalInstance.getAllAccounts();
           if (accounts.length > 0) {
             const acct = accounts[0];
-            setUserInfo({ name: acct.name || acct.username, email: acct.username });
+            const info = { name: acct.name || acct.username, email: acct.username };
+            saveSession(info); // keep localStorage fresh
+            setUserInfo(info);
             setIsAuthenticated(true);
           }
         }
       } catch (err) {
         console.warn('Auth check error:', err.message);
+        // If MSAL fails but we have a cached session, stay logged in
+        const persisted = loadSession();
+        if (persisted) {
+          setUserInfo(persisted);
+          setIsAuthenticated(true);
+        }
       } finally {
         authDone = true;
         tryHide();
@@ -624,7 +714,7 @@ function App() {
               <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
               <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
               <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy /></PageWrapper>} />
-              <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR /></PageWrapper>} />
+              <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR userInfo={userInfo} /></PageWrapper>} />
               <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews /></PageWrapper>} />
               <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare /></PageWrapper>} />
               <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP /></PageWrapper>} />

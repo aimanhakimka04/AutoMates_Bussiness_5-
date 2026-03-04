@@ -91,6 +91,7 @@ const FlexHR = ({ userInfo }) => {
   const [attErr,     setAttErr]     = useState('');
   const [isPunching, setIsPunching] = useState(false);
   const [punchErr,   setPunchErr]   = useState('');
+  const [punchOK,    setPunchOK]    = useState('');   // success message
   const [attHistory, setAttHistory] = useState([]);
 
   const fetchAtt = useCallback(async () => {
@@ -108,13 +109,40 @@ const FlexHR = ({ userInfo }) => {
   const nextPunchAct = isOnDuty ? 'punch_out' : 'punch_in';
 
   const handlePunch = async () => {
-    setIsPunching(true); setPunchErr('');
+    setIsPunching(true); setPunchErr(''); setPunchOK('');
     try {
       const p = { user_email:userEmail, user_name:userName };
       if (nextPunchAct==='punch_out' && lastEnt?.attendance_id) p.attendance_id = lastEnt.attendance_id;
       const r = await callN8N(nextPunchAct, p);
       if (r?.success===false) throw new Error(r?.message || 'Punch failed');
-      await fetchAtt();
+
+      // ── Optimistic update: inject the returned record immediately ──────
+      const rec = r?.data;
+      if (rec?.attendance_id) {
+        if (nextPunchAct === 'punch_in') {
+          // prepend new punch-in record so button flips to PUNCH OUT right away
+          setAttHistory(prev => [rec, ...prev]);
+        } else {
+          // merge clock_out_time into the matching record
+          setAttHistory(prev => prev.map(e =>
+            e.attendance_id === rec.attendance_id ? { ...e, ...rec } : e
+          ));
+        }
+      }
+
+      // Show success banner
+      const timeStr = rec?.clock_in_time
+        ? new Date(rec.clock_in_time).toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true })
+        : rec?.clock_out_time
+        ? new Date(rec.clock_out_time).toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true })
+        : new Date().toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
+      setPunchOK(nextPunchAct === 'punch_in'
+        ? `Punched In at ${timeStr}`
+        : `Punched Out at ${timeStr}`);
+      setTimeout(() => setPunchOK(''), 4000);
+
+      // Background refresh to sync full history from DB
+      fetchAtt();
     } catch(e) { setPunchErr(e.message || 'Failed. Please try again.'); }
     finally    { setIsPunching(false); }
   };
@@ -336,6 +364,13 @@ const FlexHR = ({ userInfo }) => {
               </div>
               <div className="location-pill"><MapPin size={13}/><span>GPS Location</span></div>
               {punchErr && <ErrBanner msg={punchErr}/>}
+              {punchOK  && (
+                <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:10,
+                  padding:'11px 14px',display:'flex',gap:8,alignItems:'center',margin:'10px 0'}}>
+                  <CheckCircle size={16} color="#16a34a" style={{flexShrink:0}}/>
+                  <span style={{fontSize:13,color:'#15803d',fontWeight:600}}>{punchOK}</span>
+                </div>
+              )}
             </div>
             <div className="list-header-row">
               <h4 style={{margin:0,fontSize:15,fontWeight:700,color:'#333'}}>Today's Log</h4>
