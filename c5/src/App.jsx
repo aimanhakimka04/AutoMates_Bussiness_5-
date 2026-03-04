@@ -707,17 +707,17 @@ function App() {
               <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
               <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
               <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport /></PageWrapper>} />
+              <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport userInfo={userInfo}/></PageWrapper>} />
               <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor userInfo={userInfo} /></PageWrapper>} />
               <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart /></PageWrapper>} />
-              <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness /></PageWrapper>} />
-              <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal /></PageWrapper>} />
-              <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy /></PageWrapper>} />
+              <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy userInfo={userInfo}/></PageWrapper>} />
               <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews /></PageWrapper>} />
-              <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare /></PageWrapper>} />
-              <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP /></PageWrapper>} />
+              <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP userInfo={userInfo}/></PageWrapper>} />
               <Route path="/staff-claim"  element={<PageWrapper showTopBar={false}><StaffClaim userInfo={userInfo} /></PageWrapper>} />
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
