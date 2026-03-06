@@ -448,8 +448,8 @@ const Home = () => {
       color: '#b5560a',
       items: [
         { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
-        { label:'flexHR',      icon:'flexhr.png',       path:'/flexhr',       accent:'#d35400' },
-        { label:'Staff Claim',  icon:'staffclaim.png',   path:'/staff-claim',  accent:'#e11d48' },
+        { label:'flexHR',      icon:'flexhrlogo.png',       path:'/flexhr',       accent:'#d35400' },
+        { label:'Staff Claim',  icon:'claim.png',   path:'/staff-claim',  accent:'#e11d48' },
         { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
       ]
     }
