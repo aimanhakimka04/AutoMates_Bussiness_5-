@@ -28,6 +28,7 @@ import Wellness    from './Wellness';
 import Meal        from './Meal';
 import Energy      from './Energy';
 import FlexHR      from './FlexHR';
+import HRRequestCenter from './HRRequestCenter';
 import Mynews      from './Mynews';
 import Childcare   from './Childcare';
 import EPP         from './EPP';
@@ -451,6 +452,8 @@ const Home = () => {
         { label:'flexHR',      icon:'flexhrlogo.png',       path:'/flexhr',       accent:'#d35400' },
         { label:'Staff Claim',  icon:'claim.png',   path:'/staff-claim',  accent:'#e11d48' },
         { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
+        // HR Request Center is mainly for HR; it will be shown when backend adds employee_role to userInfo.
+        { label:'Requests',    icon:'ticketing.png',    path:'/requests',     accent:'#111827' },
       ]
     }
   ];
@@ -719,6 +722,7 @@ function App() {
               <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare userInfo={userInfo}/></PageWrapper>} />
               <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP userInfo={userInfo}/></PageWrapper>} />
               <Route path="/staff-claim"  element={<PageWrapper showTopBar={false}><StaffClaim userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/requests"     element={<PageWrapper showTopBar={false}><HRRequestCenter userInfo={userInfo} /></PageWrapper>} />
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
           )}
