@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, Dumbbell, User2, BookOpen, Stethoscope, 
@@ -8,8 +8,40 @@ import {
 } from 'lucide-react';
 import './Wellness.css';
 
-const Wellness = () => {
+// ─── n8n CONFIG (same pattern as StaffClaim.js) ─────────────────────
+const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
+
+// All Wellness calls go through here
+async function callN8N(action, payload = {}) {
+  const body = {
+    input_type: 'direct_action',
+  edited_plan: {
+      action,
+      sub_target: 'wellness',
+      ...payload,
+    },
+  };
+
+  const res = await fetch(N8N_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${AUTH_TOKEN()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error(`n8n error: ${res.status}`);
+  return res.json();
+}
+
+const Wellness = ({ userInfo }) => {
   const navigate = useNavigate();
+
+  const employeeEmail = userInfo?.email || '';
+  const employeeName  = userInfo?.name  || '';
+
   // View Controller
   const [view, setView] = useState('menu');
   const [selectedTrainer, setSelectedTrainer] = useState(null);
@@ -84,18 +116,19 @@ const Wellness = () => {
 
   const timetableStatus = 0; 
 
-  const classes = [
+  // NOTE: these are initial defaults; n8n can override them
+  const [classes, setClasses] = useState([
     { id: "C1", name: "Zumba | Group Training", time: "18:00 - 20:00", date: "13 Feb 2026", location: "Fitness Studio, Level 19" },
     { id: "C2", name: "Yoga | Morning Flow", time: "08:30 - 10:00", date: "15 Feb 2026", location: "Idea Lab 2" }
-  ];
+  ]);
 
-  const trainers = [
+  const [trainers, setTrainers] = useState([
     { name: "Reiko Chye", exp: "3 Years", specs: ["Fat Loss", "Cardio Training"] },
     { name: "Edward Chuah", exp: "15 Years", specs: ["Strength Training", "Bodybuilding"] },
     { name: "Derek Koay", exp: "2 Years", specs: ["Yoga", "Flexibility"] }
-  ];
+  ]);
 
-  const memberships = [
+  const [memberships, setMemberships] = useState([
     { 
       id: 1, 
       name: "Standard Training Package", 
@@ -135,27 +168,27 @@ const Wellness = () => {
         { level: "MENTOR Coach (Level 3)", total: "RM9360", rate: "RM260/session" }
       ]
     }
-  ];
+  ]);
 
   // --- TCM Data ---
   const [tcmAppointments, setTcmAppointments] = useState([
     { id: "T1", title: "Acupuncture Session", provider: "Wellness TCM", date: "22 Feb 2026", time: "14:00 - 15:00", location: "TCM Room, Level 19", status: "Confirmed" }
   ]);
 
-  const tcmPackages = [
+  const [tcmPackages, setTcmPackages] = useState([
     { id: 101, name: "Basic Acupuncture Set", detail: "5 Sessions + Consultation", fee: "RM 450", desc: "Focuses on balancing energy flow and relieving chronic pain." },
     { id: 102, name: "Premium Tui Na Therapy", detail: "10 Sessions (60 mins each)", fee: "RM 880", desc: "Deep tissue Chinese massage to improve circulation and muscle recovery." }
-  ];
+  ]);
 
   // --- Physiotherapy Data ---
   const [physioAppointments, setPhysioAppointments] = useState([
     { id: "P1", title: "Sports Massage", provider: "Wellness Physio", date: "23 Feb 2026", time: "09:00 - 10:00", location: "Physio Room, Level 19", status: "Confirmed" }
   ]);
 
-  const physioPackages = [
+  const [physioPackages, setPhysioPackages] = useState([
     { id: 201, name: "Recovery Package", detail: "5 Sessions (60 mins each)", fee: "RM 600", desc: "Post-workout recovery and muscle relaxation through therapeutic massage." },
     { id: 202, name: "Rehabilitation Program", detail: "10 Sessions with assessment", fee: "RM 1200", desc: "Personalized rehab plan for injury recovery and prevention." }
-  ];
+  ]);
 
   // My Bookings as state
   const [myBookings, setMyBookings] = useState([
@@ -170,6 +203,46 @@ const Wellness = () => {
       desc: "High-energy cardio session combined with Latin-inspired dance moves."
     }
   ]);
+
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  // ─── Fetch data from n8n (StaffClaim-style) ─────────────────────────
+  const fetchWellnessData = useCallback(async () => {
+    if (!employeeEmail) return;
+    setLoading(true);
+    setApiError('');
+
+    try {
+      // Adjust action if your n8n workflow uses a different name
+      const res = await callN8N('get_wellness_overview', {
+        employee_email: employeeEmail,
+        employee_name: employeeName,
+      });
+
+      const root =
+        (res?.data && typeof res.data === 'object' && res.data) ||
+        (res?.result?.data && typeof res.result.data === 'object' && res.result.data) ||
+        {};
+
+      if (Array.isArray(root.classes))              setClasses(root.classes);
+      if (Array.isArray(root.trainers))             setTrainers(root.trainers);
+      if (Array.isArray(root.memberships))          setMemberships(root.memberships);
+      if (Array.isArray(root.tcm_packages))         setTcmPackages(root.tcm_packages);
+      if (Array.isArray(root.physio_packages))      setPhysioPackages(root.physio_packages);
+      if (Array.isArray(root.tcm_appointments))     setTcmAppointments(root.tcm_appointments);
+      if (Array.isArray(root.physio_appointments))  setPhysioAppointments(root.physio_appointments);
+      if (Array.isArray(root.my_bookings))          setMyBookings(root.my_bookings);
+    } catch {
+      setApiError('Unable to load wellness data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [employeeEmail, employeeName]);
+
+  useEffect(() => {
+    if (employeeEmail) fetchWellnessData();
+  }, [employeeEmail, fetchWellnessData]);
 
   const tcmViewMap = {
     "About TCM": "tcm-about",
@@ -225,7 +298,13 @@ const Wellness = () => {
     return 'Wellness';
   };
 
-  const handleBookTcmAppointment = () => {
+  // ─── TCM booking with n8n call ──────────────────────────────────────
+  const handleBookTcmAppointment = async () => {
+    if (!employeeEmail) {
+      alert('Missing user identity. Please re-login.');
+      return;
+    }
+
     const newAppointment = {
       id: `T${Date.now()}`,
       title: "Pulse Diagnosis & Consultation",
@@ -242,23 +321,51 @@ const Wellness = () => {
         app.date === newAppointment.date &&
         app.time === newAppointment.time
     );
-
     if (alreadyBooked) {
       alert('You have already booked this TCM session.');
       return;
+    }
+
+    try {
+      await callN8N('book_tcm_appointment', {
+        employee_email: employeeEmail,
+        employee_name : employeeName,
+        appointment_title: newAppointment.title,
+        date          : newAppointment.date,
+        time          : newAppointment.time,
+        location      : newAppointment.location,
+      });
+    } catch {
+      // even if API fails, you may still want to show local booking or show error
+      alert('Failed to book TCM appointment in system. Please check later.');
     }
 
     setTcmAppointments(prev => [...prev, newAppointment]);
     setView('tcm-view');
   };
 
-  const handleDeleteTcmAppointment = (id) => {
+  const handleDeleteTcmAppointment = async (id) => {
+    if (employeeEmail) {
+      try {
+        await callN8N('delete_tcm_appointment', {
+          employee_email: employeeEmail,
+          appointment_id: id,
+        });
+      } catch {
+        // ignore; still remove locally
+      }
+    }
     setTcmAppointments(prev => prev.filter(app => app.id !== id));
     setView('tcm-view');
   };
 
-  // Accepts a slot so Rehabilitation Exercise is correct
-  const handleBookPhysioAppointment = (slot) => {
+  // ─── Physio booking with n8n call ───────────────────────────────────
+  const handleBookPhysioAppointment = async (slot) => {
+    if (!employeeEmail) {
+      alert('Missing user identity. Please re-login.');
+      return;
+    }
+
     const newAppointment = {
       id: `P${Date.now()}`,
       title: slot.title,
@@ -275,39 +382,59 @@ const Wellness = () => {
         app.date === newAppointment.date &&
         app.time === newAppointment.time
     );
-
     if (alreadyBooked) {
       alert('You have already booked this physiotherapy session.');
       return;
+    }
+
+    try {
+      await callN8N('book_physio_appointment', {
+        employee_email: employeeEmail,
+        employee_name : employeeName,
+        appointment_title: newAppointment.title,
+        date          : newAppointment.date,
+        time          : newAppointment.time,
+        location      : newAppointment.location,
+      });
+    } catch {
+      alert('Failed to book physiotherapy session in system. Please check later.');
     }
 
     setPhysioAppointments(prev => [...prev, newAppointment]);
     setView('physio-view');
   };
 
-  const handleDeletePhysioAppointment = (id) => {
+  const handleDeletePhysioAppointment = async (id) => {
+    if (employeeEmail) {
+      try {
+        await callN8N('delete_physio_appointment', {
+          employee_email: employeeEmail,
+          appointment_id: id,
+        });
+      } catch {
+        // ignore; still remove locally
+      }
+    }
     setPhysioAppointments(prev => prev.filter(app => app.id !== id));
     setView('physio-view');
   };
 
-  const handleProfileSubmit = () => {
+  // ─── Profile submit with n8n call ───────────────────────────────────
+  const handleProfileSubmit = async () => {
     const newErrors = { email: '', phone: '', emergencyPhone: '' };
 
-    // Email required + basic format check
     if (!profileData.email) {
       newErrors.email = 'Email is required.';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profileData.email)) {
       newErrors.email = 'Please enter a valid email address.';
     }
 
-    // Phone required + digits-only
     if (!profileData.phone) {
       newErrors.phone = 'Phone number is required.';
     } else if (!/^[0-9]+$/.test(profileData.phone)) {
       newErrors.phone = 'Phone number should contain digits only.';
     }
 
-    // Emergency phone required + digits-only
     if (!profileData.emergencyPhone) {
       newErrors.emergencyPhone = 'Emergency contact phone is required.';
     } else if (!/^[0-9]+$/.test(profileData.emergencyPhone)) {
@@ -320,8 +447,22 @@ const Wellness = () => {
       return;
     }
 
-    alert("Profile form submitted successfully! A coach will be in touch with you.");
-    setView('fitness');
+    if (!employeeEmail) {
+      alert('Missing user identity. Please re-login.');
+      return;
+    }
+
+    try {
+      await callN8N('submit_wellness_profile', {
+        employee_email: employeeEmail,
+        employee_name : employeeName,
+        profile       : profileData,
+      });
+      alert("Profile form submitted successfully! A coach will be in touch with you.");
+      setView('fitness');
+    } catch {
+      alert('Failed to submit profile to system. Please try again later.');
+    }
   };
 
   return (
@@ -334,6 +475,16 @@ const Wellness = () => {
       </nav>
 
       <div className="wellness-scroll-content">
+        {apiError && (
+          <div className="important-note-box" style={{ marginTop: 12 }}>
+            <div className="note-header">Notice</div>
+            <div className="note-body">
+              <AlertCircle size={20} color="#444" />
+              <p>{apiError}</p>
+            </div>
+          </div>
+        )}
+
         {/* --- 1. Main Menu --- */}
         {view === 'menu' && (
           <div className="wellness-main-menu">
@@ -1301,7 +1452,7 @@ const Wellness = () => {
         )}
       </div>
 
-      {/* --- Global Confirm Modal --- */}
+      {/* --- Global Confirm Modal for class booking --- */}
       {showConfirm && (
         <div className="chart-modal-overlay">
           <div className="confirm-dialog">
@@ -1345,14 +1496,27 @@ const Wellness = () => {
                       desc: "Class booked via timetable."
                     };
 
+                    // Optional: send to n8n as well
+                    if (employeeEmail) {
+                      callN8N('book_fitness_class', {
+                        employee_email: employeeEmail,
+                        employee_name : employeeName,
+                        class_id      : pendingClass.id,
+                        class_title   : pendingClass.name,
+                        date          : pendingClass.date,
+                        time          : pendingClass.time,
+                        location      : pendingClass.location,
+                      }).catch(() => {
+                        // ignore error for UX
+                      });
+                    }
+
                     setMyBookings(prev => [...prev, newBooking]);
                     setPendingClass(null);
                   }
 
                   setShowConfirm(false);
                   alert('Booked Successful!');
-                  // Optional: go straight to My Bookings
-                  // setView('my-bookings');
                 }}
               >
                 Confirm
