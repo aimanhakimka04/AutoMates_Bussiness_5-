@@ -77,7 +77,7 @@ const HRRequestCenter = ({ userInfo }) => {
         });
         setTickets(res?.data?.tickets || []);
       } else if (tab === 'visitors') {
-        const res = await callN8NGeneric('list', 'evisitor', {
+        const res = await callN8NGeneric('list_visitors', 'evisitor', {
           user_email: employeeEmail,
           user_name: employeeName,
         });
