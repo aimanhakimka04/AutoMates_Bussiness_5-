@@ -46,19 +46,41 @@ async function callN8N(action, payload = {}) {
 }
 
 // ─── Normalizer (robust to backend field names) ──────────────────────────────
-const normalizeProgram = (p = {}) => ({
-  id: p.id ?? p.program_id ?? p.programId ?? '',
-  title: p.title ?? p.program_title ?? p.programTitle ?? '',
-  date: p.date ?? p.program_date ?? p.programDate ?? '',
-  startTime: p.startTime ?? p.start_time ?? p.start ?? '',
-  endTime: p.endTime ?? p.end_time ?? p.end ?? '',
-  location: p.location ?? p.venue ?? p.address ?? '',
-  trainer: p.trainer ?? p.facilitator ?? p.instructor ?? '',
-  status: p.status ?? p.enrollment_status ?? p.enrollmentStatus ?? '',
-  desc: p.desc ?? p.description ?? '',
-  duration: p.duration ?? '',
-  category: p.category ?? '',
-});
+// Backend often returns date as '2026-04-15 09:00:00' or ISO string; normalize to YYYY-MM-DD for calendar
+const toDateOnly = (v) => {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  const part = s.split('T')[0].split(' ')[0];
+  return part && /^\d{4}-\d{2}-\d{2}$/.test(part) ? part : s;
+};
+// Extract time HH:mm from datetime string (e.g. '2026-04-15 09:00:00' -> '09:00')
+const toTimeOnly = (v) => {
+  if (v == null || v === '') return '';
+  const s = String(v).trim();
+  const afterT = s.split('T')[1];
+  const afterSpace = s.split(' ')[1];
+  const timePart = (afterT || afterSpace || '').replace(/\.\d+Z?$/i, '');
+  const match = timePart.match(/^(\d{1,2}):(\d{2})/);
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : '';
+};
+
+const normalizeProgram = (p = {}) => {
+  const rawDate = p.date ?? p.program_date ?? p.programDate ?? p.training_date ?? '';
+  const extractedTime = toTimeOnly(rawDate);
+  return {
+    id: p.id ?? p.program_id ?? p.programId ?? '',
+    title: p.title ?? p.program_title ?? p.programTitle ?? '',
+    date: toDateOnly(rawDate),
+    startTime: p.startTime ?? p.start_time ?? p.start ?? extractedTime,
+    endTime: p.endTime ?? p.end_time ?? p.end ?? (extractedTime ? `${String(parseInt(extractedTime.split(':')[0], 10) + 1).padStart(2, '0')}:${extractedTime.split(':')[1]}` : ''),
+    location: p.location ?? p.venue ?? p.address ?? '',
+    trainer: p.trainer ?? p.facilitator ?? p.instructor ?? '',
+    status: p.status ?? p.enrollment_status ?? p.enrollmentStatus ?? '',
+    desc: p.desc ?? p.description ?? '',
+    duration: p.duration ?? '',
+    category: p.category ?? '',
+  };
+};
 
 // Optional helper like StaffClaim’s normalizeStatus (for future use)
 const normalizeStatus = (s = '') => {
@@ -95,35 +117,52 @@ const Chart = ({ userInfo }) => {
   const [navDate, setNavDate] = useState(new Date());
 
   // ─── Fetch all training data (like StaffClaim.fetchClaims) ──────────────────
-  const fetchChartData = useCallback(async () => {
+  // dataType: 'training' = calendar/upcoming, 'course' = Learning Programs, undefined = both
+  const fetchChartData = useCallback(async (dataType) => {
     if (!userEmail) return;
     setLoading(true);
     setApiError('');
 
     try {
-      // Adjust "get_chart_overview" if your Training flow uses another name
       const res = await callN8N('get_chart_overview', {
         employee_email: userEmail,
         employee_name: userName,
+        data_type: dataType ?? 'all',
       });
 
       // Align with StaffClaim’s “res?.data OR res?.result?.data” pattern
+      const resData = res?.data ?? res?.result?.data;
       const root =
-        (res?.data && typeof res.data === 'object' && res.data) ||
-        (res?.result?.data && typeof res.result.data === 'object' && res.result.data) ||
-        {};
+        (resData && typeof resData === 'object' && !Array.isArray(resData) && resData) || {};
+      const top = res && typeof res === 'object' ? res : {};
 
-      const rawMy =
+      // Backend may return a plain array as res.data – use only for the list that matches data_type
+      // so course list doesn't also appear in "my programs" (which would show everything as "signed up")
+      const dataAsArray = Array.isArray(resData) ? resData : [];
+      const useArrayForTraining = dataType === 'training';
+      const useArrayForCourse = dataType === 'course';
+
+      // Learning Calendar & Upcoming Training = only enrollments (signed-up trainings)
+      const rawTraining =
+        (Array.isArray(root.training_info) && root.training_info) ||
+        (Array.isArray(top.training_info) && top.training_info) ||
         (Array.isArray(root.my_programs) && root.my_programs) ||
         (Array.isArray(root.myPrograms) && root.myPrograms) ||
+        (Array.isArray(root.data) && root.data) ||
+        (useArrayForTraining ? dataAsArray : []) ||
         [];
-      const rawAvail =
+      // Learning Programs = course catalog (available to sign up)
+      const rawCourses =
+        (Array.isArray(root.course_info) && root.course_info) ||
+        (Array.isArray(top.course_info) && top.course_info) ||
         (Array.isArray(root.available_programs) && root.available_programs) ||
         (Array.isArray(root.availablePrograms) && root.availablePrograms) ||
+        (Array.isArray(root.data) && root.data) ||
+        (useArrayForCourse ? dataAsArray : []) ||
         [];
 
-      setMyPrograms(rawMy.map(normalizeProgram));
-      setAvailablePrograms(rawAvail.map(normalizeProgram));
+      setMyPrograms(rawTraining.map(normalizeProgram));
+      setAvailablePrograms(rawCourses.map(normalizeProgram));
     } catch {
       setApiError('Unable to load training data. Please try again.');
     } finally {
@@ -136,11 +175,13 @@ const Chart = ({ userInfo }) => {
     if (userEmail) fetchChartData();
   }, [userEmail, fetchChartData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Refresh when entering data-heavy views
+  // Refresh when entering data-heavy views (send data_type so backend knows training vs course)
   useEffect(() => {
     if (!userEmail) return;
-    if (view === 'calendar' || view === 'upcoming' || view === 'programs') {
-      fetchChartData();
+    if (view === 'calendar' || view === 'upcoming') {
+      fetchChartData('training');
+    } else if (view === 'programs') {
+      fetchChartData('course');
     }
   }, [view, userEmail, fetchChartData]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -423,6 +464,24 @@ const Chart = ({ userInfo }) => {
                 <>
                   <h4 className="section-title">Schedule for {selectedDate}</h4>
                   {renderTimeline()}
+                  {(() => {
+                    const dayEvents = myPrograms.filter(p => p.date === selectedDate);
+                    const withTime = dayEvents.filter(e => e.startTime && e.endTime);
+                    if (dayEvents.length > 0 && withTime.length === 0) {
+                      return (
+                        <div className="registered-hints" style={{ marginTop: 12 }}>
+                          {dayEvents.map(p => (
+                            <div key={p.id || `${p.title}-${p.date}`} className="hint-item">
+                              <CheckCircle2 size={14} color="#2b1d62" /> <span>{p.title}</span>
+                              {p.startTime && <span style={{ marginLeft: 6, color: '#555' }}>{p.startTime}</span>}
+                              {p.location && <span className="hint-venue"> — {p.location}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </>
               )}
             </div>
@@ -549,8 +608,7 @@ const Chart = ({ userInfo }) => {
               <div className="form-group">
                 <label>Date & Time *</label>
                 <input
-                  type="text"
-                  placeholder="e.g. 2026-05-10 09:00"
+                  type="datetime-local"
                   className="c-input"
                   value={requestForm.dateTime}
                   onChange={e => setRequestForm({ ...requestForm, dateTime: e.target.value })}

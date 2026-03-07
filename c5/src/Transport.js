@@ -76,6 +76,11 @@ const Transport = ({ userInfo }) => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [lastBooking, setLastBooking] = useState(null);
 
+  // ── timetable (from backend: routes then sessions per route) ───────────────
+  const [timetableRoutes, setTimetableRoutes] = useState([]);
+  const [timetableLoading, setTimetableLoading] = useState(false);
+  const [transportRoutes, setTransportRoutes] = useState([]); // { from_location, to_location }[]
+
   // ── form state ─────────────────────────────────────────────────────────────
   const [pickup,    setPickup]    = useState('');
   const [dropoff,   setDropoff]   = useState('');
@@ -106,6 +111,72 @@ const Transport = ({ userInfo }) => {
   useEffect(() => { if (userEmail) fetchBookings(); }, [userEmail]); // eslint-disable-line
   useEffect(() => { if (view === 'main') fetchBookings(); }, [view]); // eslint-disable-line
 
+  // ── fetch transport routes (from backend) ───────────────────────────────────
+  const fetchTransportRoutes = useCallback(async () => {
+    try {
+      const res = await callN8N('get_routes', {});
+      const raw = res?.data ?? res?.result?.data ?? res?.routes ?? [];
+      const list = Array.isArray(raw) ? raw : [];
+      const routes = list.map((r) => ({
+        from_location: r.from_location ?? r.from ?? r.pickup,
+        to_location: r.to_location ?? r.to ?? r.dropoff,
+      })).filter((r) => r.from_location && r.to_location);
+      setTransportRoutes(routes);
+      return routes;
+    } catch {
+      setTransportRoutes([]);
+      return [];
+    }
+  }, []);
+
+  // ── fetch timetable (sessions per route for today; routes from backend) ─────
+  const fetchTimetable = useCallback(async (routesOverride) => {
+    setTimetableLoading(true);
+    setTimetableRoutes([]);
+    try {
+      let routes = Array.isArray(routesOverride) ? routesOverride : transportRoutes;
+      if (routes.length === 0) {
+        routes = await fetchTransportRoutes();
+      }
+      // Fallback if backend has no get_routes or returns empty
+      const routeList = routes.length > 0 ? routes : [
+        { from_location: '8th & Stellar', to_location: 'Naga Emas' },
+        { from_location: 'Naga Emas', to_location: '8th & Stellar' },
+        { from_location: '8th & Stellar', to_location: 'Sri Petaling' },
+        { from_location: 'Sri Petaling', to_location: '8th & Stellar' },
+        { from_location: 'Naga Emas', to_location: 'Sri Petaling' },
+        { from_location: 'Sri Petaling', to_location: 'Naga Emas' },
+      ];
+      const results = await Promise.all(
+        routeList.map(async ({ from_location, to_location }) => {
+          const res = await callN8N('get_sessions', {
+            from_location,
+            to_location,
+            booking_date: todayISO,
+            employee_email: userEmail,
+          });
+          const rows = res?.data ?? res?.result?.data ?? [];
+          const sessions = Array.isArray(rows) ? rows : [];
+          return { from_location, to_location, route: `${from_location} ↔ ${to_location}`, sessions };
+        })
+      );
+      setTimetableRoutes(results);
+    } catch {
+      setTimetableRoutes([]);
+    } finally {
+      setTimetableLoading(false);
+    }
+  }, [userEmail, transportRoutes, fetchTransportRoutes]);
+
+  useEffect(() => {
+    if (activeTab === 'Timetable' && userEmail) {
+      fetchTransportRoutes().then((routes) => {
+        setTransportRoutes(routes);
+        fetchTimetable(routes);
+      });
+    }
+  }, [activeTab, userEmail]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── fetch available sessions ───────────────────────────────────────────────
   const fetchSessions = useCallback(async () => {
     if (!pickup || !dropoff || !bookingDate) return;
@@ -131,9 +202,10 @@ const Transport = ({ userInfo }) => {
     setSubmitting(true); setFormError('');
     try {
       const res = await callN8N('create_booking', {
-        employee_email: userEmail,
+        email:      userEmail,
+        sessionId:  session.session_id,
+        seatNumber: session.seat_number ?? 0,
         employee_name:  userName,
-        session_id:     session.session_id,
         booking_date:   bookingDate,
         from_location:  pickup,
         to_location:    dropoff,
@@ -218,12 +290,6 @@ const Transport = ({ userInfo }) => {
     success: 'Transport',
     detail:  'Booking Detail',
   }[view] || 'Transport';
-
-  // ── TIMETABLE DATA ─────────────────────────────────────────────────────────
-  const timetable = [
-    { route: '8th & Stellar ↔ Naga Emas',    morning: '07:00 AM – 09:00 AM', evening: '04:30 PM – 07:00 PM' },
-    { route: '8th & Stellar ↔ Sri Petaling', morning: '07:00 AM – 09:00 AM', evening: '04:30 PM – 06:45 PM' },
-  ];
 
   const openDetail = (b) => { setSelectedBooking(b); setView('detail'); };
 
@@ -355,31 +421,47 @@ const Transport = ({ userInfo }) => {
                 )}
               </div>
             ) : (
-              /* TIMETABLE */
+              /* TIMETABLE – from backend get_sessions */
               <div className="tr-timetable">
                 <div className="tr-tt-notice">
                   <AlertTriangle size={13} color="#f59e0b" />
-                  <span>Mon – Fri, except Public Holidays</span>
+                  <span>Mon – Fri, except Public Holidays. Times from transport service.</span>
                 </div>
-                {timetable.map((tt, i) => (
-                  <div key={i} className="tr-tt-card">
-                    <div className="tr-tt-route">
-                      <Route size={14} color="#6c47d9" /><span>{tt.route}</span>
-                    </div>
-                    <div className="tr-tt-sessions">
-                      <div className="tr-tt-session morning">
-                        <span className="tr-tt-badge">Morning</span>
-                        <span>{tt.morning}</span>
-                        <span className="tr-tt-freq">Every 15 mins</span>
-                      </div>
-                      <div className="tr-tt-session evening">
-                        <span className="tr-tt-badge">Evening</span>
-                        <span>{tt.evening}</span>
-                        <span className="tr-tt-freq">Every 15 mins</span>
-                      </div>
-                    </div>
+                {timetableLoading ? (
+                  <div className="tr-loading">
+                    <Loader2 size={32} className="spin" />
+                    <span>Loading timetable…</span>
                   </div>
-                ))}
+                ) : timetableRoutes.length === 0 ? (
+                  <div className="tr-empty">
+                    <Route size={40} color="#ccc" />
+                    <p>No routes or sessions available</p>
+                    <span>Use Booking to select a route and date</span>
+                  </div>
+                ) : (
+                  timetableRoutes.map((tr, i) => (
+                    <div key={i} className="tr-tt-card">
+                      <div className="tr-tt-route">
+                        <Route size={14} color="#6c47d9" /><span>{tr.route}</span>
+                      </div>
+                      <div className="tr-tt-sessions">
+                        {tr.sessions.length === 0 ? (
+                          <div className="tr-tt-session">
+                            <span className="tr-tt-freq">No sessions today</span>
+                          </div>
+                        ) : (
+                          tr.sessions.map((s, j) => (
+                            <div key={j} className="tr-tt-session">
+                              <span className="tr-tt-badge">{s.session_type || 'Shuttle'}</span>
+                              <span>{typeof s.session_time === 'string' ? s.session_time : (s.session_time ? String(s.session_time).slice(0, 5) : '—')}</span>
+                              {s.booked_count != null && <span className="tr-tt-freq">Booked: {s.booked_count}</span>}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
