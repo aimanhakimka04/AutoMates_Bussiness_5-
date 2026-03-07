@@ -55,8 +55,6 @@ const HRRequestCenter = ({ userInfo }) => {
 
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
-  const isHR = String(employee_role || '').toUpperCase() === 'HR';
-
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -75,16 +73,37 @@ const HRRequestCenter = ({ userInfo }) => {
         const res = await callN8NGeneric('get_tickets', 'ticketing', {
           employee_email: employeeEmail,
         });
-        setTickets(res?.data?.tickets || []);
+        let raw =
+          (res?.data?.tickets && Array.isArray(res.data.tickets) && res.data.tickets) ||
+          (res?.tickets && Array.isArray(res.tickets) && res.tickets) ||
+          (res?.data && Array.isArray(res.data) && res.data) ||
+          (res?.result?.data && Array.isArray(res.result?.data) && res.result.data) ||
+          null;
+        if (raw == null && res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+          const d = res.data;
+          raw = [...(d.open || []), ...(d.approved || []), ...(d.rejected || [])];
+        }
+        const ticketList = Array.isArray(raw) ? raw : [];
+        setTickets(
+          ticketList.filter(
+            (t) => t && (t.id != null || t.ticket_id != null) && (t.issueCategory != null || t.issueDescription != null || t.level != null)
+          )
+        );
       } else if (tab === 'visitors') {
         const res = await callN8NGeneric('list_visitors', 'evisitor', {
           user_email: employeeEmail,
           user_name: employeeName,
         });
-        const arr =
+        const raw =
           (res?.data && Array.isArray(res.data) && res.data) ||
           (res?.result?.data && Array.isArray(res.result.data) && res.result.data) ||
+          (res?.tickets && Array.isArray(res.tickets) && res.tickets) ||
+          (res?.grouped?.open && Array.isArray(res.grouped.open) && res.grouped.open) ||
           [];
+        // Drop partial rows (e.g. RETURNING-only) that lack visitor details so we don't show blank cards
+        const arr = raw.filter(
+          (v) => v && v.appointment_id != null && (v.visitor_name != null || v.official_email != null)
+        );
         setVisitors(arr);
       }
     } catch {
@@ -99,10 +118,6 @@ const HRRequestCenter = ({ userInfo }) => {
   }, [loadData]);
 
   const handleDecision = async (kind, item, decision) => {
-    if (!isHR) {
-      alert('Only HR users can approve or reject.');
-      return;
-    }
     const id =
       kind === 'claims'
         ? item.claim_id ?? item.id
@@ -117,6 +132,7 @@ const HRRequestCenter = ({ userInfo }) => {
         : '';
 
     setActionLoadingId(`${kind}-${id}-${decision}`);
+    let actionSucceeded = false;
     try {
       if (kind === 'claims') {
         const action = decision === 'approve' ? 'approve_claim' : 'reject_claim';
@@ -127,6 +143,8 @@ const HRRequestCenter = ({ userInfo }) => {
           decision,
           reason,
         });
+        actionSucceeded = true;
+        setClaims((prev) => prev.filter((c) => (c.claim_id ?? c.id) !== id));
       } else if (kind === 'tickets') {
         const action = decision === 'approve' ? 'approve_ticket' : 'reject_ticket';
         await callN8NGeneric(action, 'ticketing', {
@@ -136,6 +154,8 @@ const HRRequestCenter = ({ userInfo }) => {
           decision,
           reason,
         });
+        actionSucceeded = true;
+        setTickets((prev) => prev.filter((t) => (t.id ?? t.ticket_id) !== id));
       } else if (kind === 'visitors') {
         const action = decision === 'approve' ? 'approve_appointment' : 'reject_appointment';
         await callN8NGeneric(action, 'evisitor', {
@@ -145,10 +165,14 @@ const HRRequestCenter = ({ userInfo }) => {
           user_email: employeeEmail,
           user_name: employeeName,
         });
+        actionSucceeded = true;
+        setVisitors((prev) => prev.filter((v) => (v.appointment_id ?? v.id) !== id));
       }
+      setError('');
       await loadData();
     } catch (e) {
-      alert(e.message || 'Action failed. Please try again.');
+      if (!actionSucceeded) alert(e.message || 'Action failed. Please try again.');
+      setError('');
     } finally {
       setActionLoadingId(null);
     }
@@ -254,7 +278,7 @@ const HRRequestCenter = ({ userInfo }) => {
                 <div className="hr-card-title-row">
                   <div className="hr-pill-id">
                     <Hash size={12} />
-                    <span>{t.id}</span>
+                    <span>{t.id ?? t.ticket_id ?? '—'}</span>
                   </div>
                   <span className={`hr-status ${st}`}>
                     {t.status || 'Pending'}
@@ -262,15 +286,15 @@ const HRRequestCenter = ({ userInfo }) => {
                 </div>
                 <div className="hr-card-line">
                   <FileText size={13} />
-                  <span>{t.issueCategory || '—'}</span>
+                  <span>{t.issueCategory ?? t.issueDescription ?? '—'}</span>
                 </div>
                 <div className="hr-card-line">
                   <Calendar size={13} />
-                  <span>{t.date || '—'}</span>
+                  <span>{t.date ?? t.created_at ?? '—'}</span>
                 </div>
                 <div className="hr-card-line">
                   <MapPin size={13} />
-                  <span>{t.level || '—'}</span>
+                  <span>{t.level ?? t.facility_area ?? t.zone ?? '—'}</span>
                 </div>
               </div>
               {st === 'pending' && (
@@ -322,7 +346,7 @@ const HRRequestCenter = ({ userInfo }) => {
                 <div className="hr-card-title-row">
                   <div className="hr-pill-id">
                     <Hash size={12} />
-                    <span>{v.appointment_id}</span>
+                    <span>{v.appointment_id ?? '—'}</span>
                   </div>
                   <span className={`hr-status ${st}`}>
                     {v.status || 'Pending'}
@@ -330,19 +354,19 @@ const HRRequestCenter = ({ userInfo }) => {
                 </div>
                 <div className="hr-card-line">
                   <User size={13} />
-                  <span>{v.visitor_name}</span>
+                  <span>{v.visitor_name ?? '—'}</span>
                 </div>
                 <div className="hr-card-line">
                   <Mail size={13} />
-                  <span>{v.official_email}</span>
+                  <span>{v.official_email ?? '—'}</span>
                 </div>
                 <div className="hr-card-line">
                   <Phone size={13} />
-                  <span>{v.contact_number}</span>
+                  <span>{v.contact_number ?? '—'}</span>
                 </div>
                 <div className="hr-card-line">
                   <Calendar size={13} />
-                  <span>{v.visit_date}</span>
+                  <span>{v.visit_date ?? '—'}</span>
                 </div>
               </div>
               {st === 'pending' && (
@@ -382,13 +406,6 @@ const HRRequestCenter = ({ userInfo }) => {
       </nav>
 
       <div className="hr-center-body">
-        {!isHR && (
-          <div className="hr-warning">
-            <AlertCircle size={16} />
-            <span>This page is intended for HR users. Actions may be restricted.</span>
-          </div>
-        )}
-
         <div className="hr-tabs">
           <button
             className={`hr-tab ${tab === 'claims' ? 'active' : ''}`}
