@@ -622,7 +622,6 @@ const Transport = ({ userInfo }) => {
                               </div>
                               <div className="tr-route-line-wrap">
                                 <div className="tr-route-line" />
-                                <ArrowRight size={10} color="#c4b5fd" />
                               </div>
                               <div className="tr-route-point">
                                 <div className="tr-route-dot dest" />
