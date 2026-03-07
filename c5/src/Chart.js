@@ -1,118 +1,182 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  ChevronLeft, Calendar as CalendarIcon, BookOpen, Book, ChevronRight, AlertCircle, 
-  Clock, MapPin, X, Info, ChevronLeftCircle, ChevronRightCircle, CheckCircle2, User
+import {
+  ChevronLeft,
+  Calendar as CalendarIcon,
+  BookOpen,
+  Book,
+  ChevronRight,
+  AlertCircle,
+  Clock,
+  MapPin,
+  X,
+  ChevronLeftCircle,
+  ChevronRightCircle,
+  CheckCircle2,
+  User
 } from 'lucide-react';
 import './Chart.css';
 
-// Default programs used when there is nothing in localStorage
-const DEFAULT_PROGRAMS = [
-  { 
-    id: "P001", 
-    title: "Leadership Excellence 101", 
-    date: "2026-02-15", 
-    startTime: "10:00", 
-    endTime: "12:00",
-    location: "Level 17, Meeting Room A", 
-    trainer: "Dr. Alan Smith",
-    status: "Confirmed",
-    desc: "Advanced leadership strategies for management teams focusing on transformation."
-  },
-  { 
-    id: "P002", 
-    title: "Digital Transformation", 
-    date: "2026-02-15", 
-    startTime: "14:00", 
-    endTime: "16:30",
-    location: "Level 8, Idea Lab 5", 
-    trainer: "Ms. Jane Doe",
-    status: "Confirmed",
-    desc: "Exploring digital workflows, automation tools and business reskilling."
-  }
-];
+// ─── CONFIG (aligned with StaffClaim.js) ─────────────────────────────────────
+const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
-// Helper to load initial state from localStorage (or use defaults)
-const loadInitialPrograms = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      const stored = window.localStorage.getItem('chart_myPrograms');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      // ignore JSON errors and fall back to defaults
-    }
-  }
-  return DEFAULT_PROGRAMS;
+// ─── n8n API helper (same pattern as StaffClaim.js) ──────────────────────────
+async function callN8N(action, payload = {}) {
+  const body = {
+    input_type: 'direct_action',
+    edited_plan: {
+      action,
+      sub_target: 'training',  // this module’s sub_target
+      ...payload,
+    },
+  };
+
+  const res = await fetch(N8N_WEBHOOK_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${AUTH_TOKEN()}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) throw new Error(`n8n error: ${res.status}`);
+  return res.json();
+}
+
+// ─── Normalizer (robust to backend field names) ──────────────────────────────
+const normalizeProgram = (p = {}) => ({
+  id: p.id ?? p.program_id ?? p.programId ?? '',
+  title: p.title ?? p.program_title ?? p.programTitle ?? '',
+  date: p.date ?? p.program_date ?? p.programDate ?? '',
+  startTime: p.startTime ?? p.start_time ?? p.start ?? '',
+  endTime: p.endTime ?? p.end_time ?? p.end ?? '',
+  location: p.location ?? p.venue ?? p.address ?? '',
+  trainer: p.trainer ?? p.facilitator ?? p.instructor ?? '',
+  status: p.status ?? p.enrollment_status ?? p.enrollmentStatus ?? '',
+  desc: p.desc ?? p.description ?? '',
+  duration: p.duration ?? '',
+  category: p.category ?? '',
+});
+
+// Optional helper like StaffClaim’s normalizeStatus (for future use)
+const normalizeStatus = (s = '') => {
+  const l = String(s || '').trim().toLowerCase();
+  if (l.includes('reject')) return 'rejected';
+  if (l.includes('approve')) return 'approved';
+  if (l.includes('confirm')) return 'confirmed';
+  if (l.includes('pending')) return 'pending';
+  return 'pending';
 };
 
-const Chart = () => {
+const Chart = ({ userInfo }) => {
   const navigate = useNavigate();
-  // 视图状态：'main', 'calendar', 'upcoming', 'programs', 'mylearning'
+
+  const userEmail = userInfo?.email || '';
+  const userName = userInfo?.name || '';
+
+  // view: 'main', 'calendar', 'upcoming', 'programs', 'mylearning'
   const [view, setView] = useState('main');
-  const [selectedDate, setSelectedDate] = useState(null); 
-  const [selectedEvent, setSelectedEvent] = useState(null); 
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  // 外部学习申请表单的状态管理
   const [requestForm, setRequestForm] = useState({ title: '', dateTime: '', venue: '' });
 
-  //----------------------------for mock data----------------//
-  const [myPrograms, setMyPrograms] = useState(loadInitialPrograms);
+  // Data from n8n
+  const [myPrograms, setMyPrograms] = useState([]);
+  const [availablePrograms, setAvailablePrograms] = useState([]);
 
-  const availablePrograms = [
-    { 
-      id: "A001", title: "Effective Communication", duration: "1 Day", trainer: "Jane Doe", 
-      category: "Soft Skills", date: "2026-03-10", startTime: "09:00", endTime: "17:00", 
-      location: "Grand Hall, Level 1", desc: "Learn to communicate effectively in the modern workplace." 
-    },
-    { 
-      id: "A002", title: "Python for Data Science", duration: "3 Days", trainer: "John Wick", 
-      category: "Technical", date: "2026-03-15", startTime: "10:00", endTime: "16:00", 
-      location: "Training Room B", desc: "Comprehensive introduction to data manipulation and visualization." 
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
+
+  const [navDate, setNavDate] = useState(new Date());
+
+  // ─── Fetch all training data (like StaffClaim.fetchClaims) ──────────────────
+  const fetchChartData = useCallback(async () => {
+    if (!userEmail) return;
+    setLoading(true);
+    setApiError('');
+
+    try {
+      // Adjust "get_chart_overview" if your Training flow uses another name
+      const res = await callN8N('get_chart_overview', {
+        employee_email: userEmail,
+        employee_name: userName,
+      });
+
+      // Align with StaffClaim’s “res?.data OR res?.result?.data” pattern
+      const root =
+        (res?.data && typeof res.data === 'object' && res.data) ||
+        (res?.result?.data && typeof res.result.data === 'object' && res.result.data) ||
+        {};
+
+      const rawMy =
+        (Array.isArray(root.my_programs) && root.my_programs) ||
+        (Array.isArray(root.myPrograms) && root.myPrograms) ||
+        [];
+      const rawAvail =
+        (Array.isArray(root.available_programs) && root.available_programs) ||
+        (Array.isArray(root.availablePrograms) && root.availablePrograms) ||
+        [];
+
+      setMyPrograms(rawMy.map(normalizeProgram));
+      setAvailablePrograms(rawAvail.map(normalizeProgram));
+    } catch {
+      setApiError('Unable to load training data. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ];
-  //-------------------end of mock data -------------------------//
+  }, [userEmail, userName]);
 
-  // Persist myPrograms whenever it changes so sign-ups survive refresh/navigation
+  // Initial load
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('chart_myPrograms', JSON.stringify(myPrograms));
-    }
-  }, [myPrograms]);
+    if (userEmail) fetchChartData();
+  }, [userEmail, fetchChartData]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  //----------------------------for back navigation logic----------------//
+  // Refresh when entering data-heavy views
+  useEffect(() => {
+    if (!userEmail) return;
+    if (view === 'calendar' || view === 'upcoming' || view === 'programs') {
+      fetchChartData();
+    }
+  }, [view, userEmail, fetchChartData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Navigation (keep style) ────────────────────────────────────────────────
   const handleBack = () => {
     if (view === 'main') navigate('/');
-    else { setView('main'); setSelectedDate(null); }
+    else {
+      setView('main');
+      setSelectedDate(null);
+      setSelectedEvent(null);
+      setShowConfirm(false);
+      setApiError('');
+    }
   };
-  //-------------------end of back navigation logic -------------------------//
 
-  //----------------------------for subpage learning calendar logic----------------//
-  const [navDate, setNavDate] = useState(new Date(2026, 1, 1)); 
-
+  // ─── Calendar helpers (unchanged UI) ───────────────────────────────────────
   const renderCalendarDays = () => {
     const year = navDate.getFullYear();
     const month = navDate.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const firstDay = new Date(year, month, 1).getDay();
     const offset = firstDay === 0 ? 6 : firstDay - 1;
-    const days = [];
 
-    for (let i = 0; i < offset; i++) days.push(<div key={`e-${i}`} className="cal-day empty"></div>);
-    
+    const days = [];
+    for (let i = 0; i < offset; i++) {
+      days.push(<div key={`e-${i}`} className="cal-day empty"></div>);
+    }
+
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const hasEvent = myPrograms.some(p => p.date === dateStr);
       const isSelected = selectedDate === dateStr;
 
       days.push(
-        <div key={d} 
+        <div
+          key={d}
           className={`cal-day ${hasEvent ? 'has-event' : ''} ${isSelected ? 'selected' : ''}`}
           onClick={() => setSelectedDate(hasEvent ? dateStr : null)}
         >
@@ -128,7 +192,7 @@ const Chart = () => {
     const hours = [];
     for (let i = 0; i < 24; i++) {
       const h = (8 + i) % 24;
-      const label = h === 0 ? "12 AM" : h < 12 ? `${h} AM` : h === 12 ? "12 PM" : `${h-12} PM`;
+      const label = h === 0 ? '12 AM' : h < 12 ? `${h} AM` : h === 12 ? '12 PM' : `${h - 12} PM`;
       hours.push(
         <div key={i} className="timeline-hour-row">
           <span className="hour-label">{label}</span>
@@ -138,21 +202,27 @@ const Chart = () => {
     }
 
     const dayEvents = myPrograms.filter(p => p.date === selectedDate);
-    
+
     return (
       <div className="timeline-container">
         <div className="timeline-grid">
           {hours}
           {dayEvents.map(event => {
-            const startH = parseInt(event.startTime.split(':')[0]);
-            const startM = parseInt(event.startTime.split(':')[1]);
-            const endH = parseInt(event.endTime.split(':')[0]);
-            const endM = parseInt(event.endTime.split(':')[1]);
+            if (!event?.startTime || !event?.endTime) return null;
+
+            const startH = parseInt(event.startTime.split(':')[0], 10);
+            const startM = parseInt(event.startTime.split(':')[1], 10);
+            const endH = parseInt(event.endTime.split(':')[0], 10);
+            const endM = parseInt(event.endTime.split(':')[1], 10);
+
             const top = ((startH < 8 ? startH + 24 : startH) - 8) * 60 + startM;
-            const height = ((endH < startH ? endH + 24 : endH) * 60 + endM) - (startH * 60 + startM);
+            const height =
+              ((endH < startH ? endH + 24 : endH) * 60 + endM) - (startH * 60 + startM);
 
             return (
-              <div key={event.id} className="timeline-event-block" 
+              <div
+                key={event.id || `${event.title}-${event.date}-${event.startTime}`}
+                className="timeline-event-block"
                 style={{ top: `${top}px`, height: `${height}px` }}
                 onClick={() => setSelectedEvent(event)}
               >
@@ -167,84 +237,121 @@ const Chart = () => {
       </div>
     );
   };
-  //-------------------end of subpage learning calendar logic -------------------------//
 
-  // 处理报名确认逻辑
-  const handleConfirmSignUp = () => {
-    if (selectedEvent) {
-      // If user already signed up for this program (same title + date), show message
-      const alreadyExist = myPrograms.some(
-        p => p.title === selectedEvent.title && p.date === selectedEvent.date
-      );
+  // ─── Enroll program (Sign Up) – StaffClaim-style submit ─────────────────────
+  const handleConfirmSignUp = async () => {
+    if (!selectedEvent) return;
 
-      if (alreadyExist) {
-        alert('You have already signed up for this program.');
-        setShowConfirm(false);
-        setSelectedEvent(null);
-        return;
-      }
-
-      // 1. 将新课程添加到“我的课程”数组中，状态设为 Pending
-      const newProgram = {
-        id: `P${Date.now()}`, // 生成唯一ID
-        title: selectedEvent.title,
-        date: selectedEvent.date,
-        startTime: selectedEvent.startTime,
-        endTime: selectedEvent.endTime,
-        location: selectedEvent.location,
-        trainer: selectedEvent.trainer,
-        status: "Pending HR Approval",
-        desc: selectedEvent.desc
-      };
-      setMyPrograms(prev => [...prev, newProgram]);
-      
-      // 2. 提示成功并关闭所有弹窗
-      alert('Sign up request submitted successfully!');
-      setShowConfirm(false); 
+    const alreadyExist = myPrograms.some(
+      p =>
+        (p.id && selectedEvent.id && p.id === selectedEvent.id) ||
+        (p.title === selectedEvent.title && p.date === selectedEvent.date)
+    );
+    if (alreadyExist) {
+      alert('You have already signed up for this program.');
+      setShowConfirm(false);
       setSelectedEvent(null);
-      
-      // 3. 跳转到“我的课程”页面查看结果
-      setView('upcoming'); 
-    }
-  };
-
-  // 处理外部学习表单提交
-  const handleRequestSubmit = () => {
-    if (!requestForm.title || !requestForm.dateTime || !requestForm.venue) {
-      alert("Please fill in all required fields!");
       return;
     }
-    alert('External Learning Request Submitted!'); 
-    setRequestForm({ title: '', dateTime: '', venue: '' }); // 提交后清空表单
-    setView('main'); 
+
+    if (!userEmail) {
+      alert('Missing user identity. Please re-login.');
+      return;
+    }
+
+    setLoading(true);
+    setApiError('');
+    try {
+      await callN8N('enroll_program', {
+        employee_email: userEmail,
+        employee_name: userName,
+        program_id: selectedEvent.id,
+      });
+
+      alert('Sign up request submitted successfully!');
+      setShowConfirm(false);
+      setSelectedEvent(null);
+      await fetchChartData();
+      setView('upcoming');
+    } catch {
+      setApiError('Submission failed. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // ─── External learning request – StaffClaim-style submit ────────────────────
+  const handleRequestSubmit = async () => {
+    if (!requestForm.title || !requestForm.dateTime || !requestForm.venue) {
+      alert('Please fill in all required fields!');
+      return;
+    }
+    if (!userEmail) {
+      alert('Missing user identity. Please re-login.');
+      return;
+    }
+
+    setLoading(true);
+    setApiError('');
+    try {
+      await callN8N('create_external_learning_request', {
+        employee_email: userEmail,
+        employee_name: userName,
+        title: requestForm.title,
+        date_time: requestForm.dateTime,
+        venue: requestForm.venue,
+      });
+
+      alert('External Learning Request Submitted!');
+      setRequestForm({ title: '', dateTime: '', venue: '' });
+      setView('main');
+    } catch {
+      setApiError('Submission failed. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── RENDER (style kept as you had it) ──────────────────────────────────────
   return (
     <div className="chart-page-container">
-      {/* 顶部导航 */}
+      {/* Top nav */}
       <nav className="chart-top-nav">
-        <div className="back-arrow" onClick={handleBack}><ChevronLeft size={24} color="#ffffff" strokeWidth={2.5} /></div>
+        <div className="back-arrow" onClick={handleBack}>
+          <ChevronLeft size={24} color="#ffffff" strokeWidth={2.5} />
+        </div>
         <span className="nav-title">
-          {view === 'main' ? 'CHART' : 
-           view === 'calendar' ? 'Learning Calendar' : 
-           view === 'upcoming' ? 'My Upcoming Trainings' : 
+          {view === 'main' ? 'CHART' :
+           view === 'calendar' ? 'Learning Calendar' :
+           view === 'upcoming' ? 'My Upcoming Trainings' :
            view === 'programs' ? 'Learning Programs' : 'My Learning Request'}
         </span>
       </nav>
 
       <div className="chart-scroll-content">
+        {/* Global error like StaffClaim */}
+        {apiError && (
+          <div className="important-note-box" style={{ marginTop: 12 }}>
+            <div className="note-header">Notice</div>
+            <div className="note-body">
+              <AlertCircle size={20} color="#444" />
+              <p>{apiError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* MAIN */}
         {view === 'main' && (
           <>
-            {/*----------------------------for header hero section----------------//*/}
             <div className="chart-hero-header">
-              <div className="chart-logo-box"><img src="/icon_img/CHARTlogo.png" alt="Logo" className="chart-main-logo" /></div>
+              <div className="chart-logo-box">
+                <img src="/icon_img/CHARTlogo.png" alt="Logo" className="chart-main-logo" />
+              </div>
               <h2 className="about-title">About CHART</h2>
               <p className="about-desc">The Chin Hin Academy for Reskilling & Transformation (CHART)</p>
               <button className="read-more-btn" onClick={() => setShowAboutModal(true)}>Read More</button>
             </div>
-            {/*-------------------end of header hero section -------------------------//*/}
 
-            {/*----------------------------for main menu list----------------//*/}
             <div className="chart-menu-list">
               <div className="chart-menu-item" onClick={() => setView('calendar')}>
                 <div className="menu-item-left"><CalendarIcon size={20} color="#333" /><span>Learning Calendar</span></div>
@@ -263,34 +370,54 @@ const Chart = () => {
                 <ChevronRight size={20} color="#ccc" />
               </div>
             </div>
-            {/*-------------------end of main menu list -------------------------//*/}
 
             <div className="important-note-box">
               <div className="note-header">Important Note</div>
-              <div className="note-body"><AlertCircle size={20} color="#444" /><p>Please reach out to HR for training nomination.</p></div>
+              <div className="note-body">
+                <AlertCircle size={20} color="#444" />
+                <p>Please reach out to HR for training nomination.</p>
+              </div>
             </div>
           </>
         )}
 
-        {/*----------------------------for subpage learning calendar----------------//*/}
+        {/* LEARNING CALENDAR */}
         {view === 'calendar' && (
           <div className="chart-subpage-view">
             <div className="cal-section">
               <div className="calendar-month-nav">
-                <button onClick={() => setNavDate(new Date(navDate.getFullYear(), navDate.getMonth()-1, 1))}><ChevronLeftCircle size={24} color="#2b1d62" /></button>
-                <span className="current-month-label">{navDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                <button onClick={() => setNavDate(new Date(navDate.getFullYear(), navDate.getMonth()+1, 1))}><ChevronRightCircle size={24} color="#2b1d62" /></button>
+                <button onClick={() => setNavDate(new Date(navDate.getFullYear(), navDate.getMonth() - 1, 1))}>
+                  <ChevronLeftCircle size={24} color="#2b1d62" />
+                </button>
+                <span className="current-month-label">
+                  {navDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+                </span>
+                <button onClick={() => setNavDate(new Date(navDate.getFullYear(), navDate.getMonth() + 1, 1))}>
+                  <ChevronRightCircle size={24} color="#2b1d62" />
+                </button>
               </div>
+
               <div className="calendar-grid-mock">{renderCalendarDays()}</div>
             </div>
 
             <div className="cal-bottom-detail">
-              {!selectedDate ? (
+              {loading ? (
+                <div className="registered-hints">
+                  <h4 className="section-title">Loading</h4>
+                  <div className="hint-item"><CheckCircle2 size={14} color="#2b1d62" /> <span>Fetching data from n8n…</span></div>
+                </div>
+              ) : !selectedDate ? (
                 <div className="registered-hints">
                   <h4 className="section-title">Registered Hints</h4>
-                  {myPrograms.map(p => (
-                    <div key={p.id} className="hint-item"><CheckCircle2 size={14} color="#2b1d62" /> <span>{p.title} ({p.date})</span></div>
-                  ))}
+                  {myPrograms.length === 0 ? (
+                    <div className="hint-item"><CheckCircle2 size={14} color="#2b1d62" /> <span>No registered trainings yet.</span></div>
+                  ) : (
+                    myPrograms.map(p => (
+                      <div key={p.id || `${p.title}-${p.date}`} className="hint-item">
+                        <CheckCircle2 size={14} color="#2b1d62" /> <span>{p.title} ({p.date})</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               ) : (
                 <>
@@ -301,96 +428,124 @@ const Chart = () => {
             </div>
           </div>
         )}
-        {/*-------------------end of subpage learning calendar -------------------------//*/}
 
-        {/*----------------------------for subpage upcoming trainings----------------//*/}
+        {/* MY UPCOMING TRAININGS */}
         {view === 'upcoming' && (
           <div className="chart-subpage-view">
             <h4 className="section-title">Confirmed & Pending Trainings</h4>
-            {myPrograms.map(p => (
-              <div key={p.id} className="training-detail-card" onClick={() => setSelectedEvent(p)}>
-                <div className="card-top">
-                  <h4>{p.title}</h4> 
-                  <span
-                    className="s-badge"
-                    style={{
-                      backgroundColor: p.status === 'Confirmed' ? '#e8f5e9' : '#fff3e0',
-                      color: p.status === 'Confirmed' ? '#2e7d32' : '#e65100'
-                    }}
-                  >
-                    {p.status}
-                  </span>
-                </div>
-                <div className="card-info-row"><CalendarIcon size={14} /> <span>{p.date}</span></div>
-                <div className="card-info-row"><Clock size={14} /> <span>{p.startTime} - {p.endTime}</span></div>
-                <div className="card-info-row"><MapPin size={14} /> <span>{p.location}</span></div>
+
+            {loading ? (
+              <div className="training-detail-card">
+                <div className="card-top"><h4>Loading…</h4></div>
               </div>
-            ))}
+            ) : myPrograms.length === 0 ? (
+              <div className="training-detail-card">
+                <div className="card-top"><h4>No trainings found</h4></div>
+              </div>
+            ) : (
+              myPrograms.map(p => (
+                <div
+                  key={p.id || `${p.title}-${p.date}`}
+                  className="training-detail-card"
+                  onClick={() => setSelectedEvent(p)}
+                >
+                  <div className="card-top">
+                    <h4>{p.title}</h4>
+                    <span
+                      className="s-badge"
+                      style={{
+                        backgroundColor: normalizeStatus(p.status) === 'approved' || normalizeStatus(p.status) === 'confirmed'
+                          ? '#e8f5e9'
+                          : '#fff3e0',
+                        color: normalizeStatus(p.status) === 'approved' || normalizeStatus(p.status) === 'confirmed'
+                          ? '#2e7d32'
+                          : '#e65100'
+                      }}
+                    >
+                      {p.status || 'Pending'}
+                    </span>
+                  </div>
+                  <div className="card-info-row"><CalendarIcon size={14} /> <span>{p.date || 'N/A'}</span></div>
+                  <div className="card-info-row"><Clock size={14} /> <span>{p.startTime && p.endTime ? `${p.startTime} - ${p.endTime}` : 'N/A'}</span></div>
+                  <div className="card-info-row"><MapPin size={14} /> <span>{p.location || 'N/A'}</span></div>
+                </div>
+              ))
+            )}
           </div>
         )}
-        {/*-------------------end of subpage upcoming trainings -------------------------//*/}
 
-        {/*----------------------------for subpage learning programs----------------//*/}
+        {/* LEARNING PROGRAMS */}
         {view === 'programs' && (
           <div className="chart-subpage-view">
             <h4 className="section-title">Open for Registration</h4>
-            {availablePrograms.map(p => {
-              const isSignedUp = myPrograms.some(
-                prog => prog.title === p.title && prog.date === p.date
-              );
 
-              return (
-                <div
-                  key={p.id}
-                  className="available-program-card"
-                  onClick={() => setSelectedEvent(p)}
-                >
-                  <div className="p-card-content">
-                    <h4>{p.title}</h4>
-                    <p>Duration: {p.duration}</p>
-                    {isSignedUp && (
-                      <span className="signed-badge">Already signed up</span>
-                    )}
-                  </div>
-                  <button
-                    className={`signup-btn ${isSignedUp ? 'disabled' : ''}`}
-                    disabled={isSignedUp}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (isSignedUp) {
-                        alert('You have already signed up for this program.');
-                        return;
-                      }
-                      setSelectedEvent(p);
-                      setShowConfirm(true);
-                    }}
+            {loading ? (
+              <div className="available-program-card">
+                <div className="p-card-content"><h4>Loading…</h4></div>
+              </div>
+            ) : availablePrograms.length === 0 ? (
+              <div className="available-program-card">
+                <div className="p-card-content"><h4>No programs available</h4></div>
+              </div>
+            ) : (
+              availablePrograms.map(p => {
+                const isSignedUp = myPrograms.some(
+                  prog =>
+                    (prog.id && p.id && prog.id === p.id) ||
+                    (prog.title === p.title && prog.date === p.date)
+                );
+
+                return (
+                  <div
+                    key={p.id || `${p.title}-${p.date}`}
+                    className="available-program-card"
+                    onClick={() => setSelectedEvent(p)}
                   >
-                    {isSignedUp ? 'Signed Up' : 'Sign Up'}
-                  </button>
-                </div>
-              );
-            })}
+                    <div className="p-card-content">
+                      <h4>{p.title}</h4>
+                      <p>Duration: {p.duration || 'N/A'}</p>
+                      {isSignedUp && <span className="signed-badge">Already signed up</span>}
+                    </div>
+
+                    <button
+                      className={`signup-btn ${isSignedUp ? 'disabled' : ''}`}
+                      disabled={isSignedUp || loading}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isSignedUp) {
+                          alert('You have already signed up for this program.');
+                          return;
+                        }
+                        setSelectedEvent(p);
+                        setShowConfirm(true);
+                      }}
+                    >
+                      {isSignedUp ? 'Signed Up' : 'Sign Up'}
+                    </button>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
-        {/*-------------------end of subpage learning programs -------------------------//*/}
 
-        {/*----------------------------for subpage my learning request----------------//*/}
+        {/* MY LEARNING REQUEST */}
         {view === 'mylearning' && (
           <div className="chart-subpage-view">
             <div className="request-form-card">
               <h4 className="section-title">External Learning Request</h4>
               <p className="hint-text">For non-HR provided programs.</p>
-              
+
               <div className="form-group">
                 <label>Program Title *</label>
                 <input
                   type="text"
                   className="c-input"
                   value={requestForm.title}
-                  onChange={e => setRequestForm({...requestForm, title: e.target.value})}
+                  onChange={e => setRequestForm({ ...requestForm, title: e.target.value })}
                 />
               </div>
-              
+
               <div className="form-group">
                 <label>Date & Time *</label>
                 <input
@@ -398,67 +553,70 @@ const Chart = () => {
                   placeholder="e.g. 2026-05-10 09:00"
                   className="c-input"
                   value={requestForm.dateTime}
-                  onChange={e => setRequestForm({...requestForm, dateTime: e.target.value})}
+                  onChange={e => setRequestForm({ ...requestForm, dateTime: e.target.value })}
                 />
               </div>
-              
+
               <div className="form-group">
                 <label>Address / Venue *</label>
                 <input
                   type="text"
                   className="c-input"
                   value={requestForm.venue}
-                  onChange={e => setRequestForm({...requestForm, venue: e.target.value})}
+                  onChange={e => setRequestForm({ ...requestForm, venue: e.target.value })}
                 />
               </div>
-              
-              <button className="submit-req-btn" onClick={handleRequestSubmit}>Submit Request</button>
+
+              <button className="submit-req-btn" onClick={handleRequestSubmit} disabled={loading}>
+                {loading ? 'Submitting…' : 'Submit Request'}
+              </button>
             </div>
           </div>
         )}
-        {/*-------------------end of subpage my learning request -------------------------//*/}
       </div>
 
-      {/*----------------------------for all modals implementation----------------//*/}
-      
-      {/* 1. Activity Detail Modal */}
+      {/* MODALS */}
+
+      {/* Activity Detail Modal */}
       {selectedEvent && !showConfirm && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal">
             <div className="modal-top">
               <h3>Activity Details</h3>
-              <X size={24} onClick={() => setSelectedEvent(null)} style={{cursor: 'pointer'}} />
+              <X size={24} onClick={() => setSelectedEvent(null)} style={{ cursor: 'pointer' }} />
             </div>
+
             <div className="modal-main">
               <h2 className="m-title">{selectedEvent.title}</h2>
-              <div className="m-row"><CalendarIcon size={16} color="#00a8ff" /> <span>{selectedEvent.date || "N/A"}</span></div>
+              <div className="m-row"><CalendarIcon size={16} color="#00a8ff" /> <span>{selectedEvent.date || 'N/A'}</span></div>
               <div className="m-row">
-                <Clock size={16} color="#00a8ff" />{" "}
+                <Clock size={16} color="#00a8ff" />{' '}
                 <span>
                   {selectedEvent.startTime
                     ? `${selectedEvent.startTime} - ${selectedEvent.endTime}`
-                    : (selectedEvent.time || "N/A")}
+                    : (selectedEvent.time || 'N/A')}
                 </span>
               </div>
-              <div className="m-row"><User size={16} color="#00a8ff" /> <span>Trainer: {selectedEvent.trainer}</span></div>
-              <div className="m-row"><MapPin size={16} color="#00a8ff" /> <span>{selectedEvent.location || "N/A"}</span></div>
+              <div className="m-row"><User size={16} color="#00a8ff" /> <span>Trainer: {selectedEvent.trainer || 'N/A'}</span></div>
+              <div className="m-row"><MapPin size={16} color="#00a8ff" /> <span>{selectedEvent.location || 'N/A'}</span></div>
               <div className="m-desc-box">
                 <h4>Description</h4>
-                <p>{selectedEvent.desc || "No description available for this program."}</p>
+                <p>{selectedEvent.desc || 'No description available for this program.'}</p>
               </div>
             </div>
+
             <button className="m-close-btn" onClick={() => setSelectedEvent(null)}>Done</button>
           </div>
         </div>
       )}
 
-      {/* 2. Read More Modal */}
+      {/* About CHART Modal */}
       {showAboutModal && (
         <div className="chart-modal-overlay">
           <div className="event-detail-modal about-modal">
             <div className="modal-top">
               <h3>About CHART</h3>
-              <X size={24} onClick={() => setShowAboutModal(false)} style={{cursor: 'pointer'}} />
+              <X size={24} onClick={() => setShowAboutModal(false)} style={{ cursor: 'pointer' }} />
             </div>
             <div className="modal-main">
               <p>CHART (Chin Hin Academy for Reskilling & Transformation) is dedicated to fostering a culture of continuous learning.</p>
@@ -469,7 +627,7 @@ const Chart = () => {
         </div>
       )}
 
-      {/* 3. Double Confirm Modal */}
+      {/* Confirm Enroll Modal */}
       {showConfirm && selectedEvent && (
         <div className="chart-modal-overlay">
           <div className="confirm-dialog">
@@ -477,13 +635,24 @@ const Chart = () => {
             <h3>Enroll in Program?</h3>
             <p>Are you sure you want to sign up for <strong>{selectedEvent.title}</strong>?</p>
             <div className="confirm-actions">
-              <button className="cancel-btn" onClick={() => { setShowConfirm(false); setSelectedEvent(null); }}>Cancel</button>
-              <button className="confirm-btn" onClick={handleConfirmSignUp}>Confirm</button>
+              <button
+                className="cancel-btn"
+                onClick={() => { setShowConfirm(false); setSelectedEvent(null); }}
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                className="confirm-btn"
+                onClick={handleConfirmSignUp}
+                disabled={loading}
+              >
+                {loading ? 'Submitting…' : 'Confirm'}
+              </button>
             </div>
           </div>
         </div>
       )}
-      {/*-------------------end of all modals implementation -------------------------//*/}
     </div>
   );
 };

@@ -36,7 +36,7 @@ async function callN8N(action, payload = {}) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-const claimTypeOptions = ['Mileage', 'Meal/Entertainment', 'Medical'];
+const claimTypeOptions = ['Mileage', 'Meal', 'Entertainment', 'Medical'];
 const gstOptions = ['No', 'Yes'];
 
 const approvalStages = ['Superior', 'HOD', 'HR', 'Finance'];
@@ -104,12 +104,55 @@ const getTimelineIndex = (claim) => {
   return 0; // pending/draft starts at Superior
 };
 
+// 压缩图片并转为 base64（复用自 Ticketing）
+const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        // 去掉 data:image/jpeg;base64, 前缀，只保留纯 base64 字符串，方便 SQL 存储
+        resolve(dataUrl.split(',')[1]);
+      };
+    };
+    reader.onerror = error => reject(error);
+  });
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 const StaffClaim = ({ userInfo }) => {
   const navigate = useNavigate();
-
+  const [receiptFile, setReceiptFile] = useState(null);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState(null);
+  const handleReceiptFile = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) {
+      setReceiptFile(null);
+      setReceiptPreviewUrl(null);
+      return;
+    }
+    setReceiptFile(f);
+    setReceiptPreviewUrl(URL.createObjectURL(f));
+  };
   const employeeName = userInfo?.name || '';
   const employeeEmail = userInfo?.email || '';
   const employeeDept = userInfo?.department || userInfo?.dept || '—';
@@ -342,18 +385,11 @@ const StaffClaim = ({ userInfo }) => {
       return;
     }
 
-    const dateErr = validateReceiptDatePolicy(receiptDate);
-    if (dateErr) {
-      setFormError(dateErr);
-      return;
-    }
-
     if (!Number.isFinite(amt) || amt <= 0) {
       setFormError('Total Amount must be a valid number greater than 0.');
       return;
     }
 
-    // Conditional requirements
     if (type === 'Mileage') {
       if (!formData.start_point || !formData.end_point || !formData.total_km) {
         setFormError('Mileage claims require Start Point, End Point, and Total KM.');
@@ -361,9 +397,10 @@ const StaffClaim = ({ userInfo }) => {
       }
     }
 
-    if (type === 'Meal/Entertainment') {
+    // Meal/Entertainment 两种 type 共用相同字段
+    if (type === 'Meal' || type === 'Entertainment') {
       if (!formData.attendee_names || !formData.purpose) {
-        setFormError('Meal/Entertainment claims require Attendee Names and Purpose.');
+        setFormError(`${type} claims require Attendee Names and Purpose.`);
         return;
       }
     }
@@ -373,9 +410,19 @@ const StaffClaim = ({ userInfo }) => {
 
     try {
       const isEdit = !!formData.claim_id;
-
-      // Adjust action strings if your n8n expects different names.
       const action = isEdit ? 'update_claim' : 'submit_claim';
+
+      // 先处理图片：压缩 + 转 base64（可选）
+      let receiptBase64 = null;
+      if (receiptFile) {
+        try {
+          receiptBase64 = await compressImage(receiptFile);
+        } catch (err) {
+          setFormError('Failed to process receipt image. Please try again.');
+          setSubmitting(false);
+          return;
+        }
+      }
 
       const payload = {
         employee_email: employeeEmail,
@@ -387,10 +434,14 @@ const StaffClaim = ({ userInfo }) => {
         total_amount: Number(formData.total_amount),
         gst_included: formData.gst_included === 'Yes',
         remarks: formData.remarks,
-
-        // Attachment placeholder (store filename only for now)
+        // 原来占位的文件名（如果你要保持，可以继续用）
         receipt_file_name: formData.receipt_file_name || undefined,
       };
+
+      // 新增：把 base64 文本传给 n8n / SQL
+      if (receiptBase64) {
+        payload.receipt_photo = receiptBase64;
+      }
 
       if (type === 'Mileage') {
         payload.start_point = formData.start_point;
@@ -399,7 +450,7 @@ const StaffClaim = ({ userInfo }) => {
         payload.tolls_amount = formData.tolls_amount ? Number(formData.tolls_amount) : 0;
       }
 
-      if (type === 'Meal/Entertainment') {
+      if (type === 'Meal' || type === 'Entertainment') {
         payload.attendee_names = formData.attendee_names;
         payload.relationship_to_company = formData.relationship_to_company;
         payload.purpose = formData.purpose;
@@ -410,13 +461,21 @@ const StaffClaim = ({ userInfo }) => {
 
       if (isEdit && returned) {
         const id = formData.claim_id;
-        setClaims(prev => prev.map(c => (String(c.claim_id ?? c.id) === String(id) ? { ...c, ...returned } : c)));
+        setClaims(prev =>
+          prev.map(c =>
+            String(c.claim_id ?? c.id) === String(id)
+              ? { ...c, ...returned }
+              : c
+          )
+        );
       } else {
         await fetchClaims();
       }
 
       setFormData(blankForm);
       setReceiptDate(null);
+      setReceiptFile(null);
+      setReceiptPreviewUrl(null);
       goTo('list');
     } catch {
       setFormError('Submission failed. Please check your connection and try again.');
@@ -832,17 +891,28 @@ const StaffClaim = ({ userInfo }) => {
               </div>
 
               <div className="sc-field-group">
-                <label className="sc-label"><Receipt size={13} /> Receipt Attachment (placeholder)</label>
+                <label className="sc-label"><Receipt size={13} /> Receipt Attachment</label>
                 <input
                   className="sc-file"
                   type="file"
-                  onChange={(e) => {
-                    const f = e.target.files && e.target.files[0];
-                    setFormData(prev => ({ ...prev, receipt_file_name: f ? f.name : '' }));
-                  }}
+                  accept="image/*"
+                  onChange={handleReceiptFile}
                 />
-                {formData.receipt_file_name && (
-                  <div className="sc-file-hint">Selected: <strong>{formData.receipt_file_name}</strong></div>
+                {receiptPreviewUrl && (
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ fontSize: 12, color: '#666' }}>Preview:</span>
+                    <img
+                      src={receiptPreviewUrl}
+                      alt="Receipt preview"
+                      style={{
+                        display: 'block',
+                        marginTop: 6,
+                        maxWidth: '100%',
+                        borderRadius: 8,
+                        border: '1px solid #eee'
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -898,7 +968,7 @@ const StaffClaim = ({ userInfo }) => {
               </>
             )}
 
-            {formData.claim_type === 'Meal/Entertainment' && (
+             {(formData.claim_type === 'Meal' || formData.claim_type === 'Entertainment') && (
               <>
                 <p className="sc-form-section-label">Meal / Entertainment Details</p>
                 <div className="sc-form-card">
@@ -1086,7 +1156,7 @@ const StaffClaim = ({ userInfo }) => {
                   </div>
                 )}
 
-                {(type === 'Meal/Entertainment') && (
+                {(type === 'Meal' || type === 'Entertainment') && (
                   <div className="sc-detail-section">
                     <h4 className="sc-detail-section-title">Meal / Entertainment Details</h4>
                     <div className="sc-detail-grid">
