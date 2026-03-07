@@ -94,12 +94,19 @@ const HRRequestCenter = ({ userInfo }) => {
           user_email: employeeEmail,
           user_name: employeeName,
         });
-        const raw =
-          (res?.data && Array.isArray(res.data) && res.data) ||
-          (res?.result?.data && Array.isArray(res.result.data) && res.result.data) ||
-          (res?.tickets && Array.isArray(res.tickets) && res.tickets) ||
-          (res?.grouped?.open && Array.isArray(res.grouped.open) && res.grouped.open) ||
-          [];
+        let raw = null;
+        if (res?.data && Array.isArray(res.data)) {
+          raw = res.data;
+        } else if (res?.result?.data && Array.isArray(res.result.data)) {
+          raw = res.result.data;
+        } else if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+          const d = res.data;
+          raw = [...(d.open || []), ...(d.approved || []), ...(d.rejected || []), ...(d.cancelled || [])];
+        } else if (res?.grouped && typeof res.grouped === 'object') {
+          const g = res.grouped;
+          raw = [...(g.open || []), ...(g.approved || []), ...(g.rejected || []), ...(g.cancelled || [])];
+        }
+        if (raw == null) raw = [];
         // Drop partial rows (e.g. RETURNING-only) that lack visitor details so we don't show blank cards
         const arr = raw.filter(
           (v) => v && v.appointment_id != null && (v.visitor_name != null || v.official_email != null)
