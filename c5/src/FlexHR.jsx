@@ -179,6 +179,7 @@ const FlexHR = ({ userInfo }) => {
         leave_type:lvForm.leaveType,
         start_date:fmtISO(lvForm.fromDate), end_date:fmtISO(lvForm.toDate),
         total_days:duration, reason:lvForm.reason,
+        status:'PENDING',
       });
       if (r?.success===false) throw new Error(r?.message || 'Submission failed');
       setLvOK(true); setLvForm(initLv);
