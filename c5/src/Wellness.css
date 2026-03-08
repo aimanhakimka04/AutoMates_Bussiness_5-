@@ -1,934 +1,294 @@
+/* ═══════════════════════════════════════════════
+   WELLNESS BASE
+═══════════════════════════════════════════════ */
 .wellness-container { background-color: #f7f9fc; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.wellness-top-nav { background-color: #2b1d62; color: white; height: 7vh; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; }
-.wellness-top-nav .nav-title { font-weight: 600; margin-left: 10px; font-size: 17px; }
+.wellness-top-nav { background: linear-gradient(135deg,#2b1d62,#3a2a80); color: white; height: 56px; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; z-index: 100; box-shadow: 0 2px 12px rgba(43,29,98,0.25); }
+.wellness-top-nav .nav-title { font-weight: 700; margin-left: 10px; font-size: 16px; flex: 1; }
+.back-arrow { cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; transition: background .15s; }
+.back-arrow:hover { background: rgba(255,255,255,0.15); }
+.wl-refresh-btn { background: none; border: none; color: rgba(255,255,255,0.8); cursor: pointer; padding: 6px; display: flex; align-items: center; border-radius: 50%; transition: background .15s; margin-left: auto; }
+.wl-refresh-btn:hover { background: rgba(255,255,255,0.15); }
 .wellness-scroll-content { flex: 1; overflow-y: auto; }
 
-/* 主网格 */
-.wellness-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
-.wellness-card { background: white; border-radius: 15px; padding: 25px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; }
-.wellness-card span { font-size: 13px; font-weight: 600; color: #333; }
-.wellness-hero-illustration { text-align: center; padding: 20px; }
-.wellness-hero-illustration img { width: 85%; max-width: 300px; }
+/* ═══════════════════════════════════════════════
+   TOAST NOTIFICATIONS
+═══════════════════════════════════════════════ */
+.wl-toast-wrapper { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 420px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.wl-toast { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 12px; font-size: 13.5px; font-weight: 500; pointer-events: all; animation: wlToastIn .25s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+.wl-toast-success { background: #1a4731; color: #a7f3d0; }
+.wl-toast-error   { background: #7f1d1d; color: #fca5a5; }
+.wl-toast-info    { background: #1e3a5f; color: #bfdbfe; }
+.wl-toast-loading { background: #312e81; color: #c7d2fe; }
+.wl-toast-close { background: none; border: none; color: inherit; cursor: pointer; opacity: .7; margin-left: auto; display: flex; align-items: center; padding: 0; }
+@keyframes wlToastIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Fitness Banner */
-.fitness-banner { background-color: #1e2875; padding: 30px 20px; color: white; }
-.fitness-banner h2 { font-size: 20px; margin-bottom: 10px; }
-.fitness-banner p { font-size: 13px; opacity: 0.8; margin-bottom: 20px; line-height: 1.4; }
-.free-trial-btn { background: transparent; border: 1px solid white; color: white; padding: 8px 20px; border-radius: 20px; font-size: 12px; }
+/* ═══════════════════════════════════════════════
+   SKELETON LOADER
+═══════════════════════════════════════════════ */
+.wl-skeleton-card { display: flex; gap: 14px; padding: 16px 20px; background: white; border-bottom: 1px solid #f5f5f5; }
+.wl-sk-avatar { width: 48px; height: 48px; border-radius: 50%; background: #eee; flex-shrink: 0; animation: wlPulse 1.4s ease-in-out infinite; }
+.wl-sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.wl-sk-line { height: 12px; border-radius: 6px; background: #eee; animation: wlPulse 1.4s ease-in-out infinite; }
+.wl-sk-line-lg { width: 70%; } .wl-sk-line-md { width: 50%; } .wl-sk-line-sm { width: 35%; }
+@keyframes wlPulse { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
-/* 列表菜单 */
+/* ═══════════════════════════════════════════════
+   SPIN ANIMATION
+═══════════════════════════════════════════════ */
+.wl-spin { animation: wlRotate .8s linear infinite; }
+@keyframes wlRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════
+   ERROR BANNER
+═══════════════════════════════════════════════ */
+.wl-error-banner { display: flex; align-items: center; gap: 10px; background: #fff3cd; border-left: 4px solid #f39c12; padding: 12px 16px; font-size: 13px; color: #7d5f00; margin: 0; }
+.wl-error-banner button { background: none; border: none; cursor: pointer; color: inherit; margin-left: auto; display: flex; align-items: center; }
+
+/* ═══════════════════════════════════════════════
+   MAIN MENU
+═══════════════════════════════════════════════ */
+.wl-welcome-banner { background: linear-gradient(135deg,#2b1d62,#4a3ab5); color: white; padding: 24px 20px 20px; display: flex; justify-content: space-between; align-items: center; }
+.wl-welcome-text h2 { font-size: 14px; opacity: .8; margin: 0 0 4px; font-weight: 400; }
+.wl-welcome-text h3 { font-size: 22px; margin: 0 0 6px; font-weight: 700; }
+.wl-welcome-text p  { font-size: 12px; opacity: .75; margin: 0; }
+.wl-welcome-img { width: 90px; opacity: .9; }
+
+.wellness-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px; }
+.wellness-card { background: white; border-radius: 16px; padding: 22px 10px 18px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); cursor: pointer; transition: transform .15s, box-shadow .15s; border: 1.5px solid transparent; }
+.wellness-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.1); }
+.wellness-card span { font-size: 12.5px; font-weight: 700; color: #333; }
+.wl-card-icon-ring { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+
+/* ═══════════════════════════════════════════════
+   FITNESS BANNER
+═══════════════════════════════════════════════ */
+.fitness-banner { background: linear-gradient(135deg,#1e2875,#2b4db5); padding: 28px 20px; color: white; display: flex; align-items: center; justify-content: space-between; }
+.banner-left-text { flex: 1; }
+.wl-banner-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 20px; margin-bottom: 10px; }
+.fitness-banner h2 { font-size: 19px; margin: 0 0 8px; font-weight: 700; }
+.fitness-banner p  { font-size: 12px; opacity: .8; margin: 0 0 16px; line-height: 1.5; }
+.free-trial-btn { background: white; border: none; color: #1e2875; padding: 9px 22px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.banner-right-img img { width: 90px; }
+
+/* ═══════════════════════════════════════════════
+   LIST MENU
+═══════════════════════════════════════════════ */
 .list-menu { background: white; margin-top: 10px; }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
-.item-content { display: flex; align-items: center; gap: 15px; color: #444; }
-.item-content h4 { font-size: 15px; margin: 0; }
-.item-content p { font-size: 12px; color: #888; margin: 3px 0 0; }
+.list-item { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background .1s; }
+.list-item:hover { background: #fafafa; }
+.item-content { display: flex; align-items: center; gap: 14px; color: #444; flex: 1; }
+.item-content h4 { font-size: 14.5px; margin: 0; color: #222; }
+.item-content p  { font-size: 12px; color: #999; margin: 2px 0 0; }
+.wl-list-icon { width: 36px; height: 36px; background: #f0f2ff; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2b1d62; }
+.wl-list-right { display: flex; align-items: center; gap: 8px; }
+.wl-count-badge { background: #2b1d62; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; min-width: 22px; text-align: center; }
 
-/* Nursing */
-.nursing-info-box { padding: 20px; background: white; }
-.loc-row { display: flex; gap: 12px; margin: 20px 0; }
-.loc-row strong { font-size: 14px; }
-.loc-row p { font-size: 12px; color: #666; margin-top: 4px; }
-.blue-cap-btn { width: 100%; height: 48px; background: #2b1d62; color: white; border: none; border-radius: 24px; margin-bottom: 12px; font-weight: 500; font-size: 14px; }
-.content-text-section h4 { margin: 25px 0 10px; color: #333; }
-.content-text-section p, .content-text-section li { font-size: 13px; color: #666; line-height: 1.6; }
-.how-it-works-card { padding: 15px; border-radius: 8px; border: 1px solid #eee; }
+/* ═══════════════════════════════════════════════
+   TIMETABLE / CLASS CARDS
+═══════════════════════════════════════════════ */
+.timetable-page-container { padding-bottom: 20px; }
+.timetable-view-list { padding-bottom: 20px; }
+.timetable-section { padding: 0 0 16px; }
+.wl-section-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px 6px; }
+.wl-section-count { font-size: 12px; color: #27ae60; font-weight: 700; background: #e8f9ee; padding: 3px 10px; border-radius: 10px; }
+.section-title { font-size: 15px; color: #2b1d62; font-weight: 700; margin: 0; padding: 14px 20px 6px; }
+.class-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
 
-/* TCM */
-.tcm-banner { background-color: #1e2875; padding: 25px 20px; display: flex; justify-content: space-between; align-items: center; color: white; height: 130px;}
-.tcm-text { max-width: 65%; }
-.tcm-text h3 { font-size: 22px; margin-bottom: 8px; }
-.tcm-text p { font-size: 12px; opacity: 0.8; line-height: 1.4; }
-.tcm-banner-img { width: 180px; }
+.class-card-item { background: white; border-radius: 14px; padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); border: 1.5px solid #f0f0f0; }
+.class-card-full { opacity: .7; }
+.class-info-left { flex: 1; }
+.class-info-left h4 { font-size: 14px; margin: 0 0 6px; color: #222; }
+.class-info-left p { font-size: 12px; color: #666; margin: 3px 0; display: flex; align-items: center; gap: 5px; }
+.wl-class-top-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.wl-full-tag { font-size: 10px; background: #fdecea; color: #e74c3c; padding: 2px 8px; border-radius: 8px; font-weight: 700; }
+.book-now-btn { background: #2b1d62; color: white; border: none; padding: 9px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 700; cursor: pointer; flex-shrink: 0; margin-left: 12px; transition: opacity .15s; }
+.book-now-btn:hover { opacity: .9; }
+.book-now-btn-disabled { background: #ccc; cursor: not-allowed; }
+.book-now-btn:disabled { opacity: .6; cursor: not-allowed; }
 
-/* 教练卡片 */
-.trainer-card { background: white; margin: 12px 15px; padding: 25px 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); text-align: center; cursor: pointer; }
-.trainer-card h4 { font-size: 16px; margin: 0; color: #333; }
-.trainer-card p { font-size: 12px; color: #888; margin-top: 6px; }
+/* ═══════════════════════════════════════════════
+   CAPACITY BAR
+═══════════════════════════════════════════════ */
+.wl-cap-bar-wrap { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.wl-cap-bar-bg { flex: 1; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; }
+.wl-cap-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
+.wl-cap-label { font-size: 11px; font-weight: 700; min-width: 36px; }
 
-/* 教练详情 */
-.profile-img-placeholder { height: 260px; background: white; }
-.profile-content { padding: 25px 20px; background: white; min-height: 100%; }
-.exp-text { color: #666; font-size: 14px; margin: 8px 0 30px; }
-.specs-list { list-style: none; padding: 0; margin-top: 15px; }
-.specs-list li { font-size: 14px; color: #444; margin-bottom: 10px; }
+/* ═══════════════════════════════════════════════
+   STATUS BADGE
+═══════════════════════════════════════════════ */
+.wl-status-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
 
-/* 套餐详情 */
-.pkg-detail-view { padding: 25px 20px; background: white; height: 100%; }
-.sub-detail { color: #00a8ff; font-size: 14px; font-weight: 600; margin-bottom: 15px; }
-.main-desc { font-size: 13px; color: #666; line-height: 1.6;  }
-.info-block{ font-size: 13px; color: #666; line-height: 1.6;  }
-.coach-level-row { font-size: 13px; color: #666; line-height: 1.6;  }
+/* ═══════════════════════════════════════════════
+   TRAINER CARDS
+═══════════════════════════════════════════════ */
+.trainer-list-mini { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+.mini-trainer-card { background: white; border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); cursor: pointer; transition: transform .12s; }
+.mini-trainer-card:hover { transform: translateX(2px); }
+.trainer-card-img-placeholder { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg,#2b1d62,#4a3ab5); flex-shrink: 0; }
+.wl-trainer-avatar { display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 18px; }
+.trainer-card-info { flex: 1; }
+.trainer-card-info h4 { font-size: 14px; margin: 0 0 4px; color: #222; }
+.wl-spec-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.wl-spec-tag { font-size: 11px; background: #f0f2ff; color: #2b1d62; padding: 3px 9px; border-radius: 8px; font-weight: 600; }
+.wl-spec-tag-lg { font-size: 12.5px; padding: 5px 12px; }
 
-.price-info { border-top: 1px solid #eee; padding: 15px 0; }
-.price-info label { display: block; font-size: 12px; color: #999; margin-bottom: 5px; }
-.price-info strong { font-size: 18px; color: #333; }
-.interest-btn { width: 100%; height: 50px; background: #2b1d62; color: white; border: none; border-radius: 25px; margin-top: 30px; font-weight: 600; }
+.trainers-view { padding-bottom: 20px; }
+.wl-trainer-card-fancy { background: white; margin: 8px 16px; padding: 16px; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); display: flex; align-items: center; gap: 14px; cursor: pointer; transition: box-shadow .15s; }
+.wl-trainer-card-fancy:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.1); }
+.wl-trainer-avatar-lg { width: 52px; height: 52px; min-width: 52px; border-radius: 50%; background: linear-gradient(135deg,#2b1d62,#4a3ab5); color: white; font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.wl-trainer-card-body { flex: 1; }
+.wl-trainer-card-body h4 { font-size: 15px; margin: 0 0 4px; color: #222; }
+.wl-trainer-bio { font-size: 12px; color: #777; margin: 0 0 6px; line-height: 1.4; }
 
-/* Wellness Profile 表单 */
-.section-header { background-color: #e3f2fd; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; color: #2b1d62; border-bottom: 1px solid #d0e3f5; cursor: pointer; }
-.section-title {
-    font-size: 16px;
-    color: #2b1d62;
-    margin-bottom: 15px;
-    font-weight: 700;
-    margin-left: 20px;}
-.section-body { padding: 20px; background: white; border-bottom: 1px solid #f0f0f0; }
+/* ═══════════════════════════════════════════════
+   TRAINER PROFILE
+═══════════════════════════════════════════════ */
+.wl-trainer-hero { height: 200px; background: linear-gradient(135deg,#2b1d62,#4a3ab5); display: flex; align-items: center; justify-content: center; }
+.wl-trainer-hero-avatar { width: 90px; height: 90px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 3px solid white; color: white; font-size: 38px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.profile-content { background: white; padding: 24px 20px; min-height: calc(100% - 200px); }
+.wl-divider { height: 1px; background: #f0f0f0; margin: 20px 0; }
+
+/* ═══════════════════════════════════════════════
+   MEMBERSHIP CARDS
+═══════════════════════════════════════════════ */
+.membership-view { padding: 0 0 20px; }
+.wl-membership-card { background: white; margin: 8px 16px; padding: 18px; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); cursor: pointer; border-left: 4px solid var(--mc-accent, #2b1d62); transition: box-shadow .15s, transform .12s; }
+.wl-membership-card:hover { box-shadow: 0 5px 20px rgba(0,0,0,0.1); transform: translateY(-1px); }
+.wl-mc-tier-label { font-size: 11.5px; font-weight: 800; margin-bottom: 6px; }
+.wl-membership-card h4 { font-size: 15px; color: #222; margin: 0 0 6px; font-weight: 700; }
+.wl-mc-detail { font-size: 12.5px; color: #2b6cb0; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 5px; }
+.wl-mc-desc { font-size: 12.5px; color: #666; margin: 0 0 10px; line-height: 1.5; }
+.wl-mc-meta { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; font-size: 12px; color: #888; }
+.wl-mc-price { font-size: 16px; font-weight: 800; color: var(--mc-accent, #2b1d62); }
+.wl-mc-cta { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; color: var(--mc-accent, #2b1d62); margin-top: 6px; }
+
+/* ═══════════════════════════════════════════════
+   PACKAGE DETAIL
+═══════════════════════════════════════════════ */
+.pkg-detail-view { background: white; padding: 0 20px 30px; min-height: 100%; }
+.wl-pkg-hero { padding: 24px 0 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 16px; }
+.wl-pkg-hero h2 { font-size: 20px; color: #222; margin: 0 0 6px; }
+.sub-detail { color: #2b6cb0; font-size: 14px; font-weight: 700; margin: 0; }
+.main-desc { font-size: 13.5px; color: #555; line-height: 1.6; margin: 0 0 16px; }
+.wl-info-row { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: #444; margin-bottom: 12px; }
+.price-info { background: #f7f9ff; border-radius: 10px; padding: 14px 16px; margin: 16px 0; }
+.price-info label { display: block; font-size: 12px; color: #999; margin-bottom: 4px; }
+.price-info strong { font-size: 22px; color: #2b1d62; }
+.wl-coach-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+.wl-coach-level { font-size: 13px; color: #444; font-weight: 600; }
+.wl-coach-rates { text-align: right; }
+.wl-coach-total { display: block; font-size: 15px; font-weight: 800; color: #2b1d62; }
+.wl-coach-rate  { display: block; font-size: 11.5px; color: #888; }
+.interest-btn { width: 100%; height: 50px; background: linear-gradient(135deg,#2b1d62,#4a3ab5); color: white; border: none; border-radius: 25px; margin-top: 24px; font-weight: 700; font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: opacity .15s; }
+.interest-btn:hover { opacity: .9; }
+.interest-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════
+   BOOKINGS / APPOINTMENTS
+═══════════════════════════════════════════════ */
+.bookings-view { padding-bottom: 20px; }
+.booking-card { background: white; margin: 8px 16px; padding: 14px; border-radius: 14px; display: flex; gap: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); cursor: pointer; align-items: flex-start; transition: box-shadow .12s; }
+.booking-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.booking-img-box { width: 52px; height: 52px; border-radius: 12px; background: #eee; flex-shrink: 0; }
+.wl-appt-icon-box { display: flex; align-items: center; justify-content: center; }
+.booking-details { flex: 1; }
+.booking-details h4 { font-size: 13.5px; margin: 0 0 4px; color: #222; font-weight: 700; }
+.booking-details p  { font-size: 11.5px; color: #888; margin: 2px 0; }
+.b-row { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: #666; margin-top: 3px; }
+
+/* ═══════════════════════════════════════════════
+   BOOKING / APPOINTMENT DETAIL
+═══════════════════════════════════════════════ */
+.booking-detail-view { background: white; min-height: 100%; }
+.wl-detail-hero { height: 180px; display: flex; align-items: center; justify-content: center; }
+.booking-info-content { padding: 24px 20px 40px; }
+.detail-title { font-size: 22px; color: #222; margin: 0 0 4px; font-weight: 700; flex: 1; }
+.detail-provider { font-size: 13px; color: #888; margin: 0 0 20px; }
+.detail-meta-list { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.meta-item-row { display: flex; align-items: flex-start; gap: 14px; }
+.meta-item-row div strong { display: block; font-size: 12px; color: #999; margin-bottom: 2px; text-transform: uppercase; letter-spacing: .5px; }
+.meta-item-row div p { margin: 0; font-size: 14px; color: #333; }
+.detail-desc-section { background: #f7f9fc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
+.detail-desc-section h3 { font-size: 14px; color: #2b1d62; margin: 0 0 8px; }
+.detail-desc-section p  { font-size: 13px; color: #555; line-height: 1.6; margin: 0; }
+.cancel-booking-btn { width: 100%; height: 48px; background: transparent; border: 1.5px solid #e74c3c; color: #e74c3c; border-radius: 24px; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .15s; }
+.cancel-booking-btn:hover { background: #fdecea; }
+.cancel-booking-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════
+   WELLNESS PROFILE FORM
+═══════════════════════════════════════════════ */
+.wellness-profile-view { background: #f7f9fc; }
+.wl-form-section { margin-bottom: 10px; }
+.section-header { background: #f0f2ff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; color: #2b1d62; cursor: pointer; border-bottom: 1px solid #e0e4f8; }
+.section-body { padding: 20px; background: white; }
 .f-group { margin-bottom: 18px; }
-.f-group label { display: block; font-size: 13px; color: #444; margin-bottom: 8px; }
-.f-group input { width: 100%; height: 42px; border: 1px solid #eee; padding: 0 12px; border-radius: 6px; font-size: 14px; }
-.f-select { border: 1px solid #eee; height: 42px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; color: #333; font-size: 14px; }
-.toggle-btns { display: flex; gap: 10px; }
-.toggle-btns button { flex: 1; height: 40px; border-radius: 20px; border: 1px solid #eee; background: white; color: #666; font-size: 13px; }
-.toggle-btns button.active { background: #e3f2fd; color: #2b1d62; border-color: #2b1d62; font-weight: 600; }
-.pill-btn { width: 100%; height: 42px; border-radius: 21px; border: 1px solid #eee; background: white; margin-bottom: 10px; font-size: 14px; color: #555; }
-.submit-form-btn { width: 90%; margin: 30px 5%; height: 50px; background: #2b1d62; color: white; border-radius: 25px; border: none; font-weight: 600; }
+.f-group label { display: block; font-size: 13px; color: #444; font-weight: 600; margin-bottom: 8px; }
+.toggle-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.toggle-btns button { flex: 1; min-width: 60px; height: 38px; border-radius: 20px; border: 1.5px solid #e0e0e0; background: white; color: #555; font-size: 12.5px; cursor: pointer; transition: all .15s; }
+.toggle-btns button.active, .toggle-btns .button.active { background: #f0f2ff; color: #2b1d62; border-color: #2b1d62; font-weight: 700; }
+.pill-btn { width: 100%; height: 44px; border-radius: 22px; border: 1.5px solid #eee; background: white; margin-bottom: 8px; font-size: 14px; color: #555; cursor: pointer; text-align: left; padding-left: 16px; transition: all .15s; }
+.wl-input-error { border-color: #e74c3c !important; }
 
-/* My Bookings */
-.booking-card { background: white; margin: 15px; padding: 15px; border-radius: 12px; display: flex; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
-.booking-img { width: 110px; height: 90px; border-radius: 8px; overflow: hidden; background: #eee; }
-.booking-img img { width: 100%; height: 100%; object-fit: cover; }
-.booking-info h4 { font-size: 15px; margin: 0 0 5px 0; color: #333; }
-.booking-info p { font-size: 11px; color: #888; margin: 3px 0; }
-.b-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; margin-top: 4px; }
-
-/* --- 基础容器 --- */
-.wellness-container { background-color: #f7f9fc; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.wellness-top-nav { background-color: #2b1d62; color: white; height: 7vh; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; z-index: 10; }
-.wellness-top-nav .nav-title { font-weight: 600; margin-left: 10px; font-size: 17px; }
-.wellness-scroll-content { flex: 1; overflow-y: auto; }
-
-/* --- Nursing 专属样式 --- */
-.nursing-top-empty { height: 50vh; background-color: white; width: 100%; }
+/* ═══════════════════════════════════════════════
+   NURSING
+═══════════════════════════════════════════════ */
+.nursing-view { background: white; min-height: 100%; }
+.wl-nursing-hero { background: linear-gradient(135deg,#97266d,#c26d9a); padding: 30px 20px; text-align: center; color: white; }
+.wl-nursing-icon { font-size: 40px; margin-bottom: 8px; }
+.wl-nursing-hero h3 { font-size: 22px; margin: 0 0 6px; }
+.wl-nursing-hero p  { font-size: 13px; opacity: .85; margin: 0; }
+.nursing-top-spacer { height: 20px; background: white; }
 .nursing-info-box { padding: 20px; background: white; }
-.loc-row { display: flex; gap: 12px; margin: 20px 0; }
-.blue-cap-btn { width: 100%; height: 48px; background: #2b1d62; color: white; border: none; border-radius: 24px; margin-bottom: 12px; font-weight: 600; }
-
-/* --- 课程表样式 --- */
-.class-list { padding: 15px; }
-.class-card-item { background: white; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 15px; }
-.class-info-left h4 { font-size: 15px; margin: 0 0 5px 0; color: #333; }
-.class-info-left p { font-size: 11px; color: #777; margin: 3px 0; display: flex; align-items: center; gap: 5px; }
-.book-now-btn { background: #2b1d62; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-
-/* --- 教练详情 (Profile) --- */
-.profile-img-area { height: 260px; background-color: #f0f0f0; width: 100%; }
-.profile-content-box { padding: 25px 20px; background: white; min-height: 50vh;  margin-top: -25px; }
-.exp-label { color: #666; font-size: 14px; margin: 10px 0 25px; }
-.specialties-list { list-style: none; padding: 0; }
-.specialties-list li { font-size: 14px; color: #444; margin-bottom: 12px; padding-left: 5px; }
-
-/* --- My Bookings --- */
-.booking-card { background: white; margin: 15px; padding: 15px; border-radius: 12px; display: flex; gap: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.06); }
-.booking-img-box { width: 110px; height: 90px; border-radius: 8px; overflow: hidden; background: #eee; }
-.booking-img-box img { width: 100%; height: 100%; object-fit: cover; }
-.booking-details h4 { font-size: 15px; margin: 0 0 5px 0; }
-.b-row { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; margin-top: 5px; }
-
-/* --- 其他主样式保留 ... --- */
-.wellness-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
-.wellness-card { background: white; border-radius: 15px; padding: 25px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-.section-header { background-color: #e3f2fd; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 600; color: #2b1d62; cursor: pointer; }
-
-/* Fitness Banner 布局优化 */
-.fitness-banner {
-  background-color: #1e2875;
-  padding: 30px 20px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  overflow: hidden;
-}
-
-.banner-left-text {
-  max-width: 55%;
-  z-index: 2;
-}
-
-.banner-left-text h2 { font-size: 20px; margin-bottom: 8px; line-height: 1.2; }
-.banner-left-text p { font-size: 12px; opacity: 0.9; margin-bottom: 15px; }
-
-.banner-right-img {
-  width: 140px;
-  height: auto;
-}
-
-.banner-right-img img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-
-/* TCM 列表去除图标圆圈 */
-.list-item .item-content {
-  display: flex;
-  align-items: center;
-  gap: 18px; /* 增加图标与文字的间距 */
-}
-
-/* Nursing 5vh 留白 */
-.nursing-top-empty {
-  height: 5vh;
-  background-color: transparent; /* 或者根据需要设置为背景色 */
-  width: 100%;
-}
-
-/* 通用列表与其它样式 */
-.wellness-container { background-color: #f7f9fc; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.wellness-top-nav { background-color: #2b1d62; color: white; height: 7vh; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; }
-.wellness-top-nav .nav-title { font-weight: 600; margin-left: 10px; }
-.wellness-scroll-content { flex: 1; overflow-y: auto; }
-
-.list-menu { background: white; margin-top: 10px; }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
-.item-content h4 { font-size: 15px; margin: 0; color: #333; }
-.item-content p { font-size: 11px; color: #999; margin-top: 2px; }
-
-.free-trial-btn { background: transparent; border: 1px solid white; color: white; padding: 6px 15px; border-radius: 15px; font-size: 11px; }
-
-.nursing-info-box { padding: 20px; background: white; }
-.blue-cap-btn { width: 100%; height: 48px; background: #2b1d62; color: white; border: none; border-radius: 24px; margin-bottom: 12px; font-weight: 600; }
-
-.pkg-card { background: white; margin: 15px; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-
-/* 弹窗样式 */
-.chart-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.confirm-dialog { background: white; padding: 30px; border-radius: 12px; text-align: center; width: 85%; max-width: 300px; }
-.confirm-actions { display: flex; gap: 10px; margin-top: 20px; }
-.cancel-btn, .confirm-btn { flex: 1; padding: 12px; border-radius: 20px; border: none; font-weight: bold; }
-.confirm-btn { background: #2b1d62; color: white; }
-
-/*----------------------------for nursing subpage layout styling----------------//*/
-.nursing-top-spacer {
-  height: 5vh;
-  background-color: transparent; /* 或者根据截图背景设置为白色 */
-  width: 100%;
-}
-
-.nursing-info-box {
-  padding: 20px;
-  background: white;
-  min-height: 95vh;
-}
-/*-------------------end of nursing subpage layout styling -------------------------//*/
-
-/*----------------------------for fitness banner layout styling----------------//*/
-.fitness-banner {
-  background-color: #1e2875;
-  padding: 30px 20px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  overflow: hidden;
-}
-
-.banner-left-text {
-  max-width: 55%;
-}
-
-.banner-left-text h2 { font-size: 20px; margin-bottom: 8px; line-height: 1.2; font-weight: 700; }
-.banner-left-text p { font-size: 12px; opacity: 0.9; margin-bottom: 20px; line-height: 1.4; }
-
-.banner-right-img {
-  width: 140px;
-  height: auto;
-}
-
-.banner-right-img img {
-  width: 100%;
-  height: auto;
-  object-fit: contain;
-}
-/*-------------------end of fitness banner layout styling -------------------------//*/
-
-/*----------------------------for TCM icon and list styling----------------//*/
-.list-item .item-content {
-  display: flex;
-  align-items: center;
-  gap: 18px; /* 增加图标与文字的间距 */
-}
-
-/* 去除圆圈外框的图标样式 */
-.list-item .item-content svg {
-  flex-shrink: 0;
-}
-/*-------------------end of TCM icon and list styling -------------------------//*/
-
-/*----------------------------for empty timetable page styling----------------//*/
-.timetable-view-empty {
-  background: white;
-  min-height: 100%;
-  padding: 20px;
-}
-
-.timetable-section {
-  margin-bottom: 40px;
-}
-
-.timetable-header {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: #000;
-}
-
-.timetable-subtext {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.4;
-}
-
-.no-data-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  margin-top: 50px;
-}
-
-.no-data-img {
-  width: 250px;
-  margin-bottom: 20px;
-  opacity: 0.8;
-}
-
-.no-data-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.no-data-desc {
-  font-size: 13px;
-  color: #999;
-  max-width: 250px;
-  line-height: 1.5;
-}
-/*-------------------end of empty timetable page styling -------------------------//*/
-
-/* 其他基础样式保留 */
-.wellness-container { background-color: #f7f9fc; height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-.wellness-top-nav { background-color: #2b1d62; color: white; height: 7vh; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; }
-.wellness-scroll-content { flex: 1; overflow-y: auto; }
-.list-menu { background: white; margin-top: 10px; }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
-.item-content h4 { font-size: 15px; margin: 0; color: #333; }
-.item-content p { font-size: 11px; color: #999; margin-top: 2px; }
-.free-trial-btn { background: transparent; border: 1px solid white; color: white; padding: 8px 20px; border-radius: 20px; font-size: 12px; }
-
-/*----------------------------for timetable view (can check version)----------------//*/
-.timetable-view-list {
-  padding: 15px 0;
-  background-color: #f7f9fc;
-}
-
-.timetable-section {
-  margin-bottom: 25px;
-}
-
-/* 课程卡片样式 */
-.class-list {
-  padding: 0 15px;
-}
-
-.class-card-item {
-  background: white;
-  border-radius: 12px;
-  padding: 15px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  margin-bottom: 12px;
-}
-
-.class-info-left h4 {
-  font-size: 15px;
-  margin: 0 0 5px 0;
-  color: #333;
-  font-weight: 600;
-}
-
-.class-info-left p {
-  font-size: 11px;
-  color: #777;
-  margin: 3px 0;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.book-now-btn {
-  background-color: #2b1d62;
-  color: white;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* 教练简易列表样式 */
-.trainer-list-mini {
-  background: white;
-  margin: 0 15px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.mini-trainer-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #f2f2f2;
-  cursor: pointer;
-}
-
-.mini-trainer-card:last-child {
-  border-bottom: none;
-}
-
-.trainer-card-info h4 {
-  font-size: 14px;
-  margin: 0;
-  color: #333;
-}
-
-.trainer-card-info p {
-  font-size: 11px;
-  color: #999;
-  margin-top: 3px;
-}
-/*-------------------end of timetable list styling -------------------------//*/
-
-/* 保留其他原有样式：TCM、Nursing Spacer、Banner 等... */
-
-/* --- 教练迷你卡片布局 (30% 空白图片 + 70% 文字) --- */
-.mini-trainer-card {
-  display: flex;
-  align-items: center;
-  background: white;
-  margin: 12px 15px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  cursor: pointer;
-  min-height: 100px;
-}
-
-.trainer-card-img-placeholder {
-  width: 30%; /* 左侧 30% */
-  height: 100px;
-  background-color: #f5f5f5; /* 灰色空白区域样式 */
-  flex-shrink: 0;
-}
-
-.trainer-card-info {
-  width: 70%; /* 右侧 70% */
-  padding: 0 15px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.trainer-card-info h4 {
-  font-size: 15px;
-  margin: 0;
-  color: #333;
-  font-weight: 600;
-}
-
-.trainer-card-info p {
-  font-size: 11px;
-  color: #888;
-  margin-top: 5px;
-}
-
-.mini-arrow {
-  margin-right: 15px;
-}
-
-.trainer-page-card {
-  margin: 15px;
-}
-
-/* --- Nursing 顶部 5vh 留白 --- */
-.nursing-top-spacer {
-  height: 5vh;
-  background-color: transparent;
-  width: 100%;
-}
-
-/* --- Fitness Banner 左右布局 --- */
-.fitness-banner {
-  background-color: #1e2875;
-  padding: 30px 20px;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.banner-left-text { max-width: 55%; }
-.banner-right-img { width: 140px; }
-.banner-right-img img { width: 100%; height: auto; object-fit: contain; }
-
-/* --- Timetable 空状态样式 --- */
-.timetable-view-empty { background: white; min-height: 100%; padding: 20px; }
-.timetable-header { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
-.timetable-subtext { font-size: 13px; color: #666; margin-bottom: 30px; }
-.no-data-wrapper { display: flex; flex-direction: column; align-items: center; text-align: center; margin-top: 40px; }
-.no-data-img { width: 260px; margin-bottom: 20px; }
-
-/* --- 通用列表设计 --- */
-.list-menu { background: white; margin-top: 10px; }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid #f2f2f2; cursor: pointer; }
-.item-content { display: flex; align-items: center; gap: 15px; }
-
-/* ... 保留其它原有布局样式 ... */
-
-/* --- Wellness Profile Form Styles --- */
-.profile-form-view {
-  background-color: #f7f9fc;
-  padding-bottom: 40px;
-}
-
-.form-section {
-  margin-bottom: 2px;
-}
-
-.section-header {
-  background-color: #e3f2fd; /* Light blue header */
-  padding: 14px 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #2b1d62;
-  cursor: pointer;
-  border-bottom: 1px solid #d0e3f5;
-}
-
-.section-body {
-  padding: 20px 18px;
-  background-color: #ffffff;
-}
-
-.f-group {
-  margin-bottom: 20px;
-}
-
-.f-group label {
-  display: block;
-  font-size: 13px;
-  color: #444;
-  margin-bottom: 10px;
-}
-
-.f-group input {
-  width: 100%;
-  height: 44px;
-  border: 1px solid #eeeeee;
-  padding: 0 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  background-color: #fafafa;
-}
-
-.f-select {
-  border: 1px solid #eeeeee;
-  height: 44px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  color: #333;
-  font-size: 14px;
-  background-color: #ffffff;
-}
-
-.f-label {
-  font-size: 13px;
-  color: #444;
-  margin-bottom: 12px;
-  line-height: 1.4;
-}
-
-/* Toggle Buttons (Yes/No) */
-.toggle-btns {
-  display: flex;
-  gap: 12px;
-}
-
-.toggle-btns button {
-  flex: 1;
-  height: 42px;
-  border-radius: 21px;
-  border: 1px solid #eeeeee;
-  background-color: #ffffff;
-  color: #666;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.toggle-btns button.active {
-  background-color: #e3f2fd;
-  color: #2b1d62;
-  border-color: #2b1d62;
-  font-weight: 600;
-}
-
-/* Pill Buttons (Selection List) */
-.pill-btn {
-  width: 100%;
-  height: 44px;
-  border-radius: 22px;
-  border: 1px solid #eeeeee;
-  background-color: #ffffff;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: #555;
-  text-align: center;
-  cursor: pointer;
-}
-
-.submit-form-btn {
-  width: 90%;
-  margin: 30px 5% 0;
-  height: 50px;
-  background-color: #2b1d62;
-  color: white;
-  border-radius: 25px;
-  border: none;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-/* --- Membership Detail Styles --- */
-.pkg-detail-view { padding: 25px 20px; background: white; min-height: 100%; }
-.pkg-title { font-size: 19px; font-weight: 700; margin-bottom: 5px; }
-.pkg-sub-detail { font-size: 13px; color: #444; margin-bottom: 25px; }
-.pkg-main-desc { font-size: 13px; color: #333; line-height: 1.5; margin-bottom: 20px; }
-.coach-pricing-box { margin-bottom: 35px; }
-.price-row { font-size: 12px; color: #333; margin-bottom: 8px; }
-.meta-block strong { font-size: 12px; color: #333;  }
-.meta-block { font-size: 12px; color: #333;   }
-.meta-block strong { font-size: 12px; }
-
-.pkg-meta-info { border-top: 1px solid #f2f2f2; padding-top: 20px; }
-.interest-btn { width: 100%; height: 50px; background-color: #2b1d62; color: white; border: none; border-radius: 25px; margin-top: 50px; font-weight: 600; }
-
-/* --- 30/70 List Card Layout --- */
-.mini-trainer-card {
-  display: flex;
-  align-items: center;
-  background: white;
-  margin: 12px 15px;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  cursor: pointer;
-  min-height: 100px;
-}
-.trainer-card-img-placeholder { width: 30%; height: 100px; background-color: #f5f5f5; flex-shrink: 0; }
-.trainer-card-info { width: 70%; padding: 15px; display: flex; flex-direction: column; justify-content: center; }
-.mini-arrow { margin-right: 15px; }
-
-/* --- Wellness Profile Interactive Styles --- */
-.f-select-el {
-  width: 100%;
-  height: 44px;
-  border: 1px solid #eeeeee;
-  border-radius: 6px;
-  padding: 0 12px;
-  font-size: 14px;
-  background-color: #ffffff;
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ccc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  color: #333;
-}
-
-/* Multi-select Pill Active State */
-.pill-btn.active {
-  background-color: #e3f2fd;
-  border-color: #2b1d62;
-  color: #2b1d62;
-  font-weight: 600;
-}
-
-.f-group input:focus, .f-select-el:focus {
-  outline: none;
-  border-color: #2b1d62;
-}
-
-/* ... keep all previously provided 30/70 and base layouts ... */
-.f-group input {
-    width: 93.5%;
-    height: 44px;
-    border: 1px solid #eeeeee;
-    padding: 0 12px;
-    border-radius: 6px;
-    font-size: 14px;
-    background-color: #fafafa;
-}
-
-/* --- Booking Detail Subpage --- */
-.booking-detail-view {
-  background-color: #ffffff;
-  min-height: 100%;
-}
-
-.booking-hero-img {
-  height: 200px;
-  background-color: #f0f0f0;
-  width: 100%;
-}
-
-.booking-info-content {
-  padding: 25px 20px;
-}
-
-.detail-title {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 5px;
-  color: #333;
-}
-
-.detail-provider {
-  font-size: 14px;
-  color: #00a8ff;
-  font-weight: 600;
-  margin-bottom: 30px;
-}
-
-.detail-meta-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 35px;
-}
-
-.meta-item-row {
-  display: flex;
-  gap: 15px;
-  align-items: flex-start;
-}
-
-.meta-item-row strong {
-  display: block;
-  font-size: 14px;
-  color: #333;
-}
-
-.meta-item-row p {
-  font-size: 12px;
-  color: #777;
-  margin-top: 3px;
-}
-
-.detail-desc-section h3 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-
-.detail-desc-section p {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.6;
-}
-
-.cancel-booking-btn {
-  width: 100%;
-  height: 50px;
-  background-color: #f8f9fa;
-  color: #ff4d4f;
-  border: 1px solid #ff4d4f;
-  border-radius: 25px;
-  margin-top: 40px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.booking-arrow {
-  margin-left: 10px;
-}
-
-/* Physio 专属图标框 */
-.icon-box {
-  width: 40px;
-  height: 40px;
-  background: #f0f4ff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 调整 Nursing 页面文字间距 */
-.nursing-info-box h3 {
-  font-weight: 700;
-  color: #2b1d62;
-}
-
-/* 统一列表标题样式 */
-.section-title {
-  padding: 15px 20px 5px;
-  font-size: 16px;
-  color: #333;
-}
-
-/* 基础按钮样式 */
-.blue-cap-btn {
-  width: 100%;
-  height: 52px;
-  background-color: #2b1d62; /* 深蓝色 */
-  color: white;
-  border: none;
-  border-radius: 26px; /* 胶囊形状 */
-  margin-bottom: 15px;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-}
- 
-
-/* Nursing 专用弹窗样式 */
-.nursing-detail-modal {
-  background: white;
-  width: 85%;
-  max-width: 320px;
-  border-radius: 15px;
-  overflow: hidden;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-  animation: modalPop 0.3s ease-out;
-}
-
-@keyframes modalPop {
-  from { transform: scale(0.9); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.n-modal-header {
-  padding: 15px 20px;
-  background-color: #f8fbff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #eee;
-}
-
-.n-modal-header h4 { margin: 0; color: #2b1d62; font-size: 16px; }
-
-.n-modal-body {
-  padding: 20px;
-  font-size: 14px;
-  color: #666;
-  line-height: 1.6;
-  text-align: left;
-}
-
-.n-modal-body ul {
-  padding-left: 0;
-  list-style: none;
-  margin-top: 10px;
-}
-
-.n-modal-body li { margin-bottom: 8px; }
-
-.n-modal-close-btn {
-  width: calc(100% - 40px);
-  margin: 0 20px 20px;
-  height: 44px;
-  background-color: #2b1d62;
-  color: white;
-  border: none;
-  border-radius: 22px;
-  font-weight: 600;
-}
-
-/* --- Nursing 下方文字区域样式 (image_2ad60e) --- */
-.nursing-divider {
-  height: 1px;
-  background-color: #f0f0f0;
-  margin: 30px 0 25px;
-  width: 100%;
-}
-
-.nursing-extra-content {
-  text-align: left;
-}
-
-.extra-section-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #333;
-  margin-bottom: 12px;
-}
-
-.extra-description {
-  font-size: 13.5px;
-  color: #444;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.extra-how-works-card {
-  background-color: #fafafa;
-  border: 1px solid #f0f0f0;
-  border-radius: 12px;
-  padding: 15px;
-}
-
-.extra-bullet-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.extra-bullet-list li {
-  font-size: 13px;
-  color: #555;
-  line-height: 1.5;
-  margin-bottom: 8px;
-}
-
-.extra-bullet-list li:last-child {
-  margin-bottom: 0;
-}
-
-/* 确保 TCM 列表内的项目垂直对齐 */
-.list-item .item-content {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-}
-
-/* 适配 TCM 标题样式 */
-.section-title {
-  padding: 15px 20px 5px;
-  font-size: 16px;
-  color: #333;
-  font-weight: 700;
-}
-
-/* 购买页面的价格显示微调 */
-.trainer-card-info p {
-  margin-top: 4px;
-}
-
-/* 修改 TCM 子页面的导航标题颜色一致性 */
-.nav-title {
-  text-transform: capitalize;
-}
+.nursing-info-box h3 { font-size: 19px; color: #222; margin: 0 0 14px; }
+.loc-row { display: flex; gap: 12px; margin: 16px 0; align-items: flex-start; }
+.loc-row strong { font-size: 13px; color: #333; display: block; margin-bottom: 2px; }
+.loc-row p  { font-size: 12.5px; color: #666; margin: 0; }
+.blue-cap-btn { width: 100%; height: 48px; background: linear-gradient(135deg,#2b1d62,#4a3ab5); color: white; border: none; border-radius: 24px; margin-bottom: 10px; font-weight: 700; font-size: 14px; cursor: pointer; }
+.rules-border { background: white !important; color: #2b1d62 !important; border: 1.5px solid #2b1d62 !important; }
+.nursing-extra-content { margin-top: 10px; }
+.extra-section-title { font-size: 14px; color: #2b1d62; font-weight: 700; margin: 20px 0 8px; }
+.extra-description { font-size: 13px; color: #555; line-height: 1.6; margin: 0; }
+.extra-how-works-card { background: #f7f9fc; border-radius: 10px; padding: 14px 16px; }
+.extra-bullet-list { list-style: none; padding: 0; margin: 0; }
+.extra-bullet-list li { font-size: 13px; color: #555; margin-bottom: 8px; line-height: 1.5; }
+
+/* ═══════════════════════════════════════════════
+   TCM / PHYSIO BANNER
+═══════════════════════════════════════════════ */
+.tcm-banner { background: linear-gradient(135deg,#7b341e,#c05621); padding: 24px 20px; display: flex; justify-content: space-between; align-items: center; color: white; min-height: 120px; }
+.tcm-text h3 { font-size: 22px; margin: 0 0 6px; font-weight: 700; }
+.tcm-text p  { font-size: 12px; opacity: .85; margin: 0; max-width: 200px; line-height: 1.4; }
+.tcm-banner-img { width: 80px; opacity: .9; }
+
+/* ═══════════════════════════════════════════════
+   EMPTY STATE
+═══════════════════════════════════════════════ */
+.wl-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 20px; gap: 12px; }
+.wl-empty-state p { color: #bbb; font-size: 14px; margin: 0; }
+.wl-empty-cta { background: #2b1d62; color: white; border: none; padding: 10px 24px; border-radius: 20px; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+
+/* ═══════════════════════════════════════════════
+   CONFIRM DIALOG
+═══════════════════════════════════════════════ */
+.chart-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: flex-end; justify-content: center; }
+.wl-confirm-dialog { background: white; width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; padding: 28px 24px 40px; animation: wlSlideUp .25s ease; }
+@keyframes wlSlideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.wl-confirm-icon { width: 60px; height: 60px; background: #f0f2ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; }
+.wl-confirm-dialog h3 { text-align: center; font-size: 18px; color: #222; margin: 0 0 16px; }
+.wl-confirm-details { background: #f7f9fc; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
+.wl-cd-title { font-size: 14.5px; font-weight: 700; color: #222; margin: 0 0 8px; }
+.wl-confirm-details p { font-size: 12.5px; color: #666; margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+.confirm-actions { display: flex; gap: 12px; }
+.cancel-btn  { flex: 1; height: 48px; border: 1.5px solid #ddd; background: white; color: #555; border-radius: 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.confirm-btn { flex: 2; height: 48px; background: linear-gradient(135deg,#2b1d62,#4a3ab5); color: white; border: none; border-radius: 24px; font-size: 14px; font-weight: 700; cursor: pointer; }
+
+/* ═══════════════════════════════════════════════
+   NURSING MODAL
+═══════════════════════════════════════════════ */
+.nursing-detail-modal { background: white; width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; padding: 0 0 40px; animation: wlSlideUp .25s ease; }
+.n-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 20px 16px; border-bottom: 1px solid #f0f0f0; }
+.n-modal-header h4 { font-size: 16px; color: #222; margin: 0; font-weight: 700; }
+.n-modal-body { padding: 16px 20px; max-height: 45vh; overflow-y: auto; }
+.n-modal-close-btn { width: calc(100% - 40px); margin: 16px 20px 0; height: 48px; background: #f0f2ff; color: #2b1d62; border: none; border-radius: 24px; font-weight: 700; font-size: 14px; cursor: pointer; }
