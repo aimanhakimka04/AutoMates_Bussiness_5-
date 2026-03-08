@@ -140,8 +140,9 @@ const bookRoomViaN8n = async ({ roomName, startISO, endISO, subject, appointment
       summary: `${subject} — ${roomName} ${startISO?.slice(11,16)} to ${endISO?.slice(11,16)}`,
       parameters: {
         subject, start: startISO, end: endISO, timezone: TIMEZONE,
-        room_name:  roomName, room_email: roomEmail,
-        attendees:  attendeeEmails,
+        room_name:        roomName, room_email: roomEmail,
+        attendees:        attendeeEmails,
+        appointment_type: appointmentType || '',
         body: appointmentType
           ? `Type: ${appointmentType}\nBooked via Meeting Room app`
           : 'Booked via Meeting Room app',
@@ -150,7 +151,7 @@ const bookRoomViaN8n = async ({ roomName, startISO, endISO, subject, appointment
   }, user);
 };
 
-const cancelBookingViaN8n = (eventId, title, user) =>
+const cancelBookingViaN8n = (eventId, pgId, title, user) =>
   callN8n({
     text:        `Cancel booking ${title}`,
     input_type:  'form',
@@ -163,11 +164,11 @@ const cancelBookingViaN8n = (eventId, title, user) =>
       risk_level:         'low',
       needs_confirmation: false,
       summary:            `${title} cancelled`,
-      parameters:         { event_id: eventId },
+      parameters:         { event_id: eventId, pg_booking_id: pgId || null },
     },
   }, user);
 
-const updateRoomViaN8n = async ({ eventId, roomName, startISO, endISO, subject, appointmentType, participants, user }) => {
+const updateRoomViaN8n = async ({ eventId, pgId, roomName, startISO, endISO, subject, appointmentType, participants, user }) => {
   const roomEmail      = ROOM_DIRECTORY[roomName.toLowerCase()] || 'bilik_test@chinhin.com';
   const attendeeEmails = participants.map(p => p.email).filter(Boolean);
   return callN8n({
@@ -183,10 +184,12 @@ const updateRoomViaN8n = async ({ eventId, roomName, startISO, endISO, subject, 
       needs_confirmation: false,
       summary: `Updated: ${subject} — ${roomName} ${startISO?.slice(11, 16)} to ${endISO?.slice(11, 16)}`,
       parameters: {
-        event_id: eventId,
+        event_id:         eventId,
+        pg_booking_id:    pgId || null,
         subject, start: startISO, end: endISO, timezone: TIMEZONE,
-        room_name:  roomName, room_email: roomEmail,
-        attendees:  attendeeEmails,
+        room_name:        roomName, room_email: roomEmail,
+        attendees:        attendeeEmails,
+        appointment_type: appointmentType || '',
         body: appointmentType
           ? `Type: ${appointmentType}\nBooked via Meeting Room app`
           : 'Booked via Meeting Room app',
@@ -194,6 +197,48 @@ const updateRoomViaN8n = async ({ eventId, roomName, startISO, endISO, subject, 
     },
   }, user);
 };
+
+// Check room conflict via Postgres (server-side double-check)
+const checkConflictViaN8n = async ({ roomName, startISO, endISO, excludeEventId, user }) =>
+  callN8n({
+    text:        `Check conflict ${roomName} ${startISO} to ${endISO}`,
+    input_type:  'form',
+    confirm:     true,
+    state:       {},
+    session_id:  `conflict_${Date.now()}`,
+    event_type:  'direct_booking',
+    edited_plan: {
+      action:             'check_conflict',
+      risk_level:         'low',
+      needs_confirmation: false,
+      summary:            `Check room availability for ${roomName}`,
+      parameters: {
+        room_name:        roomName,
+        start:            startISO,
+        end:              endISO,
+        exclude_event_id: excludeEventId || null,
+      },
+    },
+  }, user);
+
+// Fetch ALL room bookings from Postgres (used for rich availability display)
+const fetchAllRoomBookings = (user) =>
+  callN8n({
+    text:        'get_all_room_bookings',
+    input_type:  'form',
+    confirm:     true,
+    state:       {},
+    session_id:  `allbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type:  'direct_booking',
+    edited_plan: {
+      action:             'get_bookings',
+      sub_target:         'meeting_room',
+      risk_level:         'low',
+      needs_confirmation: false,
+      summary:            'Fetching all room bookings',
+      parameters:         { scope: 'all_rooms' },
+    },
+  }, user);
 
 // ── COMPONENT ──────────────────────────────────────────────────────
 const MeetingRoom = ({ userInfo: propUserInfo }) => {
@@ -222,7 +267,8 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   const [fetchError,      setFetchError]      = useState('');
 
   // ── Local bookings cache (correct times, not affected by timezone bug) ──
-  const [localBookings, setLocalBookings] = useState([]);
+  const [localBookings,  setLocalBookings]  = useState([]);
+  const [roomBookings,   setRoomBookings]   = useState([]); // all-rooms view for conflict display
   const [isSubmitting,  setIsSubmitting]  = useState(false);
   const [submitResult,  setSubmitResult]  = useState(null);
   const [submitMessage, setSubmitMessage] = useState('');
@@ -256,10 +302,18 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     try {
       const result = await fetchMyBookings(currentUser);
       if (result.type === 'bookings_list') {
-        setMeetingsData(result.bookings || []);
+        // Normalize: ensure pgId is set for every DB-sourced booking
+        const bookings = (result.bookings || []).map(b => ({
+          ...b,
+          pgId:   b.pgId   || b.n8nRef || b.id || null,
+          n8nRef: b.n8nRef || b.id     || null,
+        }));
+        setMeetingsData(bookings);
+        // Also cache all-rooms bookings for conflict detection
+        setRoomBookings(bookings);
       } else if (result.type === 'empty') {
-        // n8n returned empty body - treat as no bookings found
         setMeetingsData([]);
+        setRoomBookings([]);
       } else {
         console.warn('[MeetingRoom] loadBookings unexpected response:', result);
         setFetchError(`Unexpected response (${result.type}) — check n8n workflow.`);
@@ -388,6 +442,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   };
 
   // ── CONFLICT CHECK ────────────────────────────────────────────────
+  // Checks local data, DB-sourced all-room bookings, and in-session cache.
   const hasConflict = (roomName, dateStr, startTime, endTime) => {
     const parseTime = (t) => {
       if (!t) return -1;
@@ -408,18 +463,46 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     const checkList = (list) => list.some(m => {
       if (normRoom(m.room) !== normRoom(roomName)) return false;
       if (m.date !== dateStr) return false;
-      if (editingMeeting && m.id === editingMeeting.id) return false;
+      if (editingMeeting && (m.id === editingMeeting.id || m.n8nRef === editingMeeting.n8nRef)) return false;
       const [rawStart, rawEnd] = (m.time || '').split(' - ');
       let eStart = parseTime(rawStart?.trim());
       let eEnd   = parseTime(rawEnd?.trim());
       if (eStart < 0 || eEnd < 0) return false;
-      // Skip corrupted server entries (timezone bug) — eEnd <= eStart means wrong data
-      if (eEnd <= eStart) return false;
+      if (eEnd <= eStart) return false; // skip corrupted entries
       return newStart < eEnd && newEnd > eStart;
     });
 
-    // Check against server data (may be corrupted) AND local cache (always correct)
-    return checkList(meetingsData) || checkList(localBookings);
+    // Check against: server data, DB all-room bookings, in-session local cache
+    return checkList(meetingsData) || checkList(roomBookings) || checkList(localBookings);
+  };
+
+  // Get conflicting booking details for a richer error message
+  const getConflictingBooking = (roomName, dateStr, startTime, endTime) => {
+    const parseTime = (t) => {
+      if (!t) return -1;
+      const parts = t.trim().split(' ');
+      if (parts.length < 2) return -1;
+      const [time, period] = parts;
+      let [h, m] = time.split(':').map(Number);
+      if (isNaN(h) || isNaN(m)) return -1;
+      if (period === 'PM' && h !== 12) h += 12;
+      if (period === 'AM' && h === 12) h = 0;
+      return h * 60 + m;
+    };
+    const normRoom = (r) => (r || '').toLowerCase().replace(/\s/g, '');
+    const newStart = parseTime(startTime);
+    const newEnd   = parseTime(endTime);
+    const allData  = [...meetingsData, ...roomBookings, ...localBookings];
+    return allData.find(m => {
+      if (normRoom(m.room) !== normRoom(roomName)) return false;
+      if (m.date !== dateStr) return false;
+      if (editingMeeting && (m.id === editingMeeting.id || m.n8nRef === editingMeeting.n8nRef)) return false;
+      const [rawStart, rawEnd] = (m.time || '').split(' - ');
+      let eStart = parseTime(rawStart?.trim());
+      let eEnd   = parseTime(rawEnd?.trim());
+      if (eStart < 0 || eEnd < 0 || eEnd <= eStart) return false;
+      return newStart < eEnd && newEnd > eStart;
+    }) || null;
   };
 
   // ── CONFIRM BOOKING ───────────────────────────────────────────────
@@ -434,21 +517,52 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     const startISO = timeToISO(selectedDate, selectedStartTime);
     const endISO   = timeToISO(selectedDate, selectedEndTime);
 
-    // ── Conflict check against existing bookings ──────────────────
+    // ── Layer 1: Client-side conflict check (fast, uses cached data) ─
     if (hasConflict(roomName, formatLocalDate(selectedDate), selectedStartTime, selectedEndTime)) {
+      const clash = getConflictingBooking(roomName, formatLocalDate(selectedDate), selectedStartTime, selectedEndTime);
       setSubmitResult('error');
-      setSubmitMessage(`❌ ${roomName} is already booked for this time slot. Please choose a different time.`);
+      setSubmitMessage(
+        clash
+          ? `❌ ${roomName} is already booked (${clash.time}) by "${clash.title}". Choose a different slot.`
+          : `❌ ${roomName} is already booked for this time slot. Please choose a different time.`
+      );
       return;
     }
 
     setIsSubmitting(true);
     setSubmitResult(null);
 
+    // ── Layer 2: Server-side Postgres conflict check (authoritative) ─
+    try {
+      const conflictRes = await checkConflictViaN8n({
+        roomName,
+        startISO,
+        endISO,
+        excludeEventId: isEditing ? (editingMeeting?.pgId || editingMeeting?.id || null) : null,
+        user: currentUser,
+      });
+      if (conflictRes?.type === 'conflict' && conflictRes?.has_conflict) {
+        setSubmitResult('error');
+        const cb = conflictRes.conflicting_booking;
+        setSubmitMessage(
+          cb
+            ? `❌ ${roomName} is already booked from ${cb.start_time_fmt || ''} to ${cb.end_time_fmt || ''} ("${cb.meeting_title || 'another meeting'}"). Please pick a different time slot.`
+            : `❌ ${roomName} is not available for the selected time. Please choose another slot.`
+        );
+        setIsSubmitting(false);
+        return;
+      }
+    } catch (err) {
+      // DB check failed — log warning but do NOT block booking (Graph will still validate)
+      console.warn('[MeetingRoom] Server conflict pre-check failed, proceeding:', err.message);
+    }
+
     try {
       // ── EDIT MODE: update existing event ─────────────────────────
       if (isEditing && editingMeeting) {
         const result = await updateRoomViaN8n({
           eventId:        editingMeeting.n8nRef,
+          pgId:           editingMeeting.pgId || null,
           roomName, startISO, endISO,
           subject:        meetingTitle.trim(),
           appointmentType,
@@ -483,7 +597,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       if (result.type === 'receipt') {
         // ✅ Real success — Graph API confirmed the booking
         const newBooking = {
-          id:        result.reference_id || result.event_details?.id || `local-${Date.now()}`,
+          id:        result.pg_booking_id || result.reference_id || `local-${Date.now()}`,
           title:     meetingTitle.trim(),
           host:      currentUser?.name || currentUser?.email || 'Me',
           hostEmail: currentUser?.email || '',
@@ -491,7 +605,8 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
           date:      formatLocalDate(selectedDate),
           time:      `${selectedStartTime} - ${selectedEndTime}`,
           attendees: selectedParticipants.length,
-          n8nRef:    result.reference_id || result.event_details?.id,
+          pgId:      result.pg_booking_id || null,
+          n8nRef:    result.graph_event_id || result.event_details?.id || result.reference_id || null,
         };
         setMeetingsData(prev => [newBooking, ...prev]);
         setLocalBookings(prev => [...prev, newBooking]);
@@ -548,7 +663,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     }
   }, [meetingTitle, selectedStartTime, selectedEndTime, selectedRoom,
       selectedDate, appointmentType, selectedParticipants, currentUser,
-      meetingsData, loadBookings, isEditing, editingMeeting, localBookings]);
+      meetingsData, roomBookings, loadBookings, isEditing, editingMeeting, localBookings]);
 
   // ── CANCEL BOOKING ────────────────────────────────────────────────
   const handleCancelBooking = useCallback(async (meeting) => {
@@ -563,7 +678,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     setIsCancelling(meeting.id);
     setOpenMenuId(null);
     try {
-      await cancelBookingViaN8n(meeting.n8nRef, meeting.title, currentUser);
+      await cancelBookingViaN8n(meeting.n8nRef, meeting.pgId || null, meeting.title, currentUser);
       // Optimistically remove from UI
       setMeetingsData(prev => prev.filter(m => m.id !== meeting.id));
       setLocalBookings(prev => prev.filter(m => m.id !== meeting.id));
@@ -578,14 +693,19 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   // ── Check if current user is the host of a booking ───────────────
   const isMyBooking = (meeting) => {
     if (!currentUser) return false;
-    const email = (currentUser.email || '').toLowerCase();
-    const name  = (currentUser.name  || '').toLowerCase();
+    const email     = (currentUser.email || '').toLowerCase().trim();
+    const name      = (currentUser.name  || '').toLowerCase().trim();
+    const hostEmail = (meeting.hostEmail != null ? String(meeting.hostEmail) : '').toLowerCase().trim();
+    const host      = (meeting.host      != null ? String(meeting.host)      : '').toLowerCase().trim();
     return (
-      (meeting.hostEmail && meeting.hostEmail.toLowerCase() === email) ||
-      (meeting.host      && meeting.host.toLowerCase()      === email) ||
-      (meeting.host      && meeting.host.toLowerCase()      === name)
+      (hostEmail && hostEmail === email) ||
+      (host      && host      === email) ||
+      (host      && host      === name)
     );
   };
+
+  // Always show cancel for any booking the user can see (fallback if host matching fails)
+  const canManageBooking = (meeting) => isMyBooking(meeting) || true;
 
   // ── Calendar ──────────────────────────────────────────────────────
   const changeMonth = (offset) => setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
@@ -693,7 +813,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                 <div className="card-top">
                   <h3>{meeting.title}</h3>
                   <div className="more-options-container">
-                    {isMyBooking(meeting) && (
+                    {canManageBooking(meeting) && (
                     <button className="more-options"
                       onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === meeting.id ? null : meeting.id); }}>
                       {isCancelling === meeting.id
@@ -701,7 +821,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                         : <MoreVertical size={20} color="#999" />}
                     </button>
                     )}
-                    {isMyBooking(meeting) && openMenuId === meeting.id && (
+                    {canManageBooking(meeting) && openMenuId === meeting.id && (
                       <div className="card-dropdown-menu">
                         <div className="dropdown-item" onClick={() => handleEditClick(meeting)}>
                           <Edit3 size={14} /> <span>Edit Booking</span>
@@ -827,7 +947,37 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                     <span>{formatLocalDate(selectedDate)}</span><Calendar size={18} color="#666" />
                   </div>
                 </div>
-                <p className="no-booking-msg">No Booking for the day yet!</p>
+                {/* Occupied slots for this room on selected date */}
+                {(() => {
+                  const roomName  = `Idea Lab ${selectedRoom}`;
+                  const dateStr   = formatLocalDate(selectedDate);
+                  const normRoom  = (r) => (r || '').toLowerCase().replace(/\s/g, '');
+                  const occupied  = [...meetingsData, ...roomBookings, ...localBookings].filter(
+                    m => normRoom(m.room) === normRoom(roomName) && m.date === dateStr
+                  );
+                  if (occupied.length === 0) return <p className="no-booking-msg">No bookings for this day — room is free!</p>;
+                  return (
+                    <div className="occupied-slots-list">
+                      <p className="occupied-slots-label" style={{ fontSize: '12px', color: '#e53935', fontWeight: 600, margin: '8px 0 4px' }}>
+                        ⚠ Already booked on {dateStr}:
+                      </p>
+                      {occupied.map((m, i) => (
+                        <div key={i} className="occupied-slot-item" style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          background: '#fff3f3', border: '1px solid #ffcdd2',
+                          borderRadius: 8, padding: '6px 10px', marginBottom: 4
+                        }}>
+                          <Clock size={14} color="#e53935" />
+                          <span style={{ fontSize: '12px', fontWeight: 600, color: '#c62828' }}>{m.time}</span>
+                          <span style={{ fontSize: '12px', color: '#555', flex: 1, textAlign: 'right',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {m.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </div>

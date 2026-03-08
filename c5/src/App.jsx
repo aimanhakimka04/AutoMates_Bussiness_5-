@@ -567,7 +567,7 @@ const PageWrapper = ({ children, showTopBar }) => (
 // ══════════════════════════════════════════════════════════════════
 //  10. BOTTOM NAV
 // ══════════════════════════════════════════════════════════════════
-const FooterNav = () => {
+const FooterNav = ({ userInfo }) => {
   const location = useLocation();
   const left  = [
     { label: 'Home',      path: '/',          icon: <HomeIcon        size={22} /> },
@@ -585,7 +585,7 @@ const FooterNav = () => {
         </Link>
       ))}
       <div className="nav-chatbot-slot">
-        <ChatBot />
+        <ChatBot userInfo={userInfo} />
       </div>
       {right.map(n => (
         <Link to={n.path} key={n.label} className={`nav-item ${location.pathname === n.path ? 'active' : ''}`}>
@@ -726,8 +726,7 @@ function App() {
               <Route path="*"             element={<Navigate to="/" replace />} />
             </Routes>
           )}
-          {showFooter && <FooterNav />}
-        </>
+          {showFooter && <FooterNav userInfo={userInfo} />}        </>
       )}
 
       {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
