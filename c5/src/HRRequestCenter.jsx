@@ -75,6 +75,123 @@ function RejectModal({ onConfirm, onCancel, loading }) {
   );
 }
 
+/* ─── Detail Modal ─────────────────────────────────────────── */
+const SKIP_KEYS = new Set([
+  'claim_id', 'id', 'ticket_id', 'appointment_id', 'visitor_id', 'employee_id',
+  'status', 'status_code', 'status_id', 'created_at', 'updated_at', 'deleted_at',
+  'receipt_photo', 'receipt_file_name', 'photo', 'image', 'file', 'blob',
+]);
+const IMAGE_KEYS = new Set(['photo_base64', 'photo', 'image_base64', 'image']);
+const LABEL_MAP = {
+  visitor_name: 'Visitor', official_email: 'Email', contact_number: 'Phone',
+  ic_number: 'IC / ID', meeting_location: 'Location', purpose_of_visit: 'Purpose',
+  visit_date: 'Visit Date', host_name: 'Host', claim_type: 'Claim Type',
+  receipt_date: 'Receipt Date', total_amount: 'Total Amount',
+  employee_name: 'Submitted by', issueCategory: 'Category',
+  issueDescription: 'Description', facility_area: 'Location', level: 'Location',
+  purpose: 'Purpose', rejection_reason: 'Rejection Reason',
+  cancellation_reason: 'Cancellation Reason', remarks: 'Remarks',
+  start_point: 'Start Point', end_point: 'End Point', total_km: 'Total KM',
+  tolls_amount: 'Tolls', attendee_names: 'Attendees',
+  relationship_to_company: 'Relationship', gst_included: 'GST Included',
+  submitted_at: 'Submitted At', display_label: 'Status',
+  photo_base64: 'Attached Photo', submittedBy: 'Submitted By',
+  facilityArea: 'Facility Area',
+};
+const keyToLabel = (k) => LABEL_MAP[k] ?? k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+function DetailModal({ detail, onClose, statusClass, onApprove, onReject, openRejectModal, actionLoadingId }) {
+  if (!detail) return null;
+  const { kind, item } = detail;
+  const st = statusClass(item?.status ?? item?.status_code);
+  const id = kind === 'claims' ? item.claim_id ?? item.id : kind === 'tickets' ? item.id ?? item.ticket_id : item.appointment_id;
+  const loadKey = `${kind}-${id}`;
+  const la = actionLoadingId === `${loadKey}-approve`;
+  const lr = actionLoadingId === `${loadKey}-reject`;
+
+  const formatVal = (val) => {
+    if (val == null || val === '') return null;
+    if (val instanceof Date) return val.toLocaleDateString();
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (Array.isArray(val)) return val.length ? val.join(', ') : null;
+    if (typeof val === 'object') return null;
+    const s = String(val).trim();
+    return s || null;
+  };
+
+  const PRIORITY_ORDER = ['visitor_name', 'claim_type', 'type', 'issueCategory', 'receipt_date', 'date', 'visit_date', 'total_amount', 'amount', 'employee_name', 'host_name', 'company', 'official_email', 'contact_number'];
+  const getOrder = (k) => {
+    const i = PRIORITY_ORDER.indexOf(k);
+    return i >= 0 ? i : 999;
+  };
+
+  const detailFields = Object.entries(item || {})
+    .filter(([key, val]) => {
+      if (SKIP_KEYS.has(key)) return false;
+      if (IMAGE_KEYS.has(key)) return val != null && String(val).trim() !== '';
+      const formatted = formatVal(val);
+      return formatted != null && formatted !== '';
+    })
+    .map(([key, val]) => ({
+      key,
+      label: keyToLabel(key),
+      value: IMAGE_KEYS.has(key) ? val : formatVal(val),
+      full: /reason|remarks|description|purpose|attendee|name|email|company/i.test(key) || IMAGE_KEYS.has(key),
+      order: IMAGE_KEYS.has(key) ? 998 : getOrder(key),
+      isImage: IMAGE_KEYS.has(key),
+    }))
+    .sort((a, b) => a.order - b.order);
+
+  const Field = ({ label, value, full, isImage }) => (
+    <div className={`hr-detail-field${full ? ' full' : ''}${isImage ? ' hr-detail-field-image' : ''}`}>
+      <span className="hr-detail-label">{label}</span>
+      {isImage && value ? (
+        <img
+          src={`data:image/jpeg;base64,${value}`}
+          alt={label}
+          className="hr-detail-photo"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      ) : !isImage ? (
+        <span className="hr-detail-value">{value || '—'}</span>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="hr-detail-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="hr-detail-box">
+        <div className="hr-detail-handle" />
+        <div className={`hr-detail-accent ${st}`} />
+        <div className="hr-detail-header">
+          <div className="hr-detail-id"><Hash size={14} />#{id}</div>
+          <StatusBadge status={item?.status ?? item?.status_code} />
+        </div>
+        <div className="hr-detail-body">
+          {detailFields.map(({ key, label, value, full, isImage }) => (
+            <Field key={key} label={label} value={value} full={full} isImage={isImage} />
+          ))}
+        </div>
+        {st === 'pending' && (
+          <div className="hr-detail-actions">
+            <button className="hr-btn approve" onClick={() => onApprove(kind, item)} disabled={la || lr}>
+              {la ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
+              Approve
+            </button>
+            <button className="hr-btn reject" onClick={() => { onClose(); openRejectModal(kind, item); }} disabled={la || lr}>
+              {lr ? <Loader2 size={14} className="spin" /> : <X size={14} />}
+              Reject
+            </button>
+          </div>
+        )}
+        <button className="hr-detail-close" onClick={onClose} aria-label="Close">
+          <X size={20} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Status Badge ─────────────────────────────────────────── */
 function StatusBadge({ status }) {
   const l = String(status || '').toLowerCase();
@@ -108,6 +225,7 @@ const HRRequestCenter = ({ userInfo }) => {
 
   /* modal state */
   const [modal, setModal] = useState(null); // { kind, item } | null
+  const [detailItem, setDetailItem] = useState(null); // { kind, item } | null — detail box
 
   /* ── data loader ── */
   const loadData = useCallback(async () => {
@@ -148,13 +266,24 @@ const HRRequestCenter = ({ userInfo }) => {
           user_email: employeeEmail,
           user_name: employeeName,
         });
-        const raw =
-          (res?.data && Array.isArray(res.data) && res.data) ||
-          (res?.result?.data && Array.isArray(res.result.data) && res.result.data) ||
-          (res?.tickets && Array.isArray(res.tickets) && res.tickets) ||
-          (res?.grouped?.open && Array.isArray(res.grouped.open) && res.grouped.open) ||
-          [];
-        setVisitors(raw.filter((v) => v && v.appointment_id != null && (v.visitor_name != null || v.official_email != null)));
+        let raw = null;
+        if (res?.data && Array.isArray(res.data)) {
+          raw = res.data;
+        } else if (res?.result?.data && Array.isArray(res.result.data)) {
+          raw = res.result.data;
+        } else if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+          const d = res.data;
+          raw = [...(d.open || []), ...(d.approved || []), ...(d.rejected || []), ...(d.cancelled || [])];
+        } else if (res?.grouped && typeof res.grouped === 'object') {
+          const g = res.grouped;
+          raw = [...(g.open || []), ...(g.approved || []), ...(g.rejected || []), ...(g.cancelled || [])];
+        }
+        if (raw == null) raw = [];
+        // Drop partial rows (e.g. RETURNING-only) that lack visitor details so we don't show blank cards
+        const arr = raw.filter(
+          (v) => v && v.appointment_id != null && (v.visitor_name != null || v.official_email != null)
+        );
+        setVisitors(arr);
       }
     } catch {
       setError('Unable to load requests. Please try again.');
@@ -214,6 +343,11 @@ const HRRequestCenter = ({ userInfo }) => {
     setModal(null);
   };
 
+  const handleApproveFromDetail = async (kind, item) => {
+    await handleDecision(kind, item, 'approve', '');
+    setDetailItem(null);
+  };
+
   const statusClass = (s) => {
     const l = String(s || '').toLowerCase();
     if (l.includes('approve')) return 'approved';
@@ -223,7 +357,7 @@ const HRRequestCenter = ({ userInfo }) => {
   };
 
   /* ── counts ── */
-  const pendingClaims   = claims.filter((c) => statusClass(c.status) === 'pending').length;
+  const pendingClaims   = claims.filter((c) => statusClass(c.status ?? c.status_code) === 'pending').length;
   const pendingTickets  = tickets.filter((t) => statusClass(t.status) === 'pending').length;
   const pendingVisitors = visitors.filter((v) => statusClass(v.status) === 'pending').length;
   const totalPending    = tab === 'claims' ? pendingClaims : tab === 'tickets' ? pendingTickets : pendingVisitors;
@@ -276,14 +410,14 @@ const HRRequestCenter = ({ userInfo }) => {
       <div className="hr-list">
         {claims.map((c) => {
           const id = c.claim_id ?? c.id;
-          const st = statusClass(c.status);
+          const st = statusClass(c.status ?? c.status_code);
           return (
-            <div key={`claims-${id}`} className="hr-card">
+            <div key={`claims-${id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'claims', item: c })}>
               <div className={`hr-card-accent ${st}`} />
               <div className="hr-card-inner">
                 <div className="hr-card-title-row">
                   <div className="hr-pill-id"><Hash size={11} />{id}</div>
-                  <StatusBadge status={c.status} />
+                  <StatusBadge status={c.status ?? c.status_code} />
                 </div>
                 <div className="hr-card-fields">
                   <Field label="Claim Type" value={c.claim_type || c.type} />
@@ -294,7 +428,9 @@ const HRRequestCenter = ({ userInfo }) => {
                 {st === 'pending' && (
                   <>
                     <div className="hr-card-divider" />
-                    <ActionBtns kind="claims" item={c} />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="claims" item={c} />
+                    </div>
                   </>
                 )}
               </div>
@@ -313,7 +449,7 @@ const HRRequestCenter = ({ userInfo }) => {
           const id = t.id ?? t.ticket_id;
           const st = statusClass(t.status);
           return (
-            <div key={`tickets-${id}`} className="hr-card">
+            <div key={`tickets-${id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'tickets', item: t })}>
               <div className={`hr-card-accent ${st}`} />
               <div className="hr-card-inner">
                 <div className="hr-card-title-row">
@@ -328,7 +464,9 @@ const HRRequestCenter = ({ userInfo }) => {
                 {st === 'pending' && (
                   <>
                     <div className="hr-card-divider" />
-                    <ActionBtns kind="tickets" item={t} />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="tickets" item={t} />
+                    </div>
                   </>
                 )}
               </div>
@@ -346,7 +484,7 @@ const HRRequestCenter = ({ userInfo }) => {
         {visitors.map((v) => {
           const st = statusClass(v.status);
           return (
-            <div key={`visitors-${v.appointment_id}`} className="hr-card">
+            <div key={`visitors-${v.appointment_id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'visitors', item: v })}>
               <div className={`hr-card-accent ${st}`} />
               <div className="hr-card-inner">
                 <div className="hr-card-title-row">
@@ -362,7 +500,9 @@ const HRRequestCenter = ({ userInfo }) => {
                 {st === 'pending' && (
                   <>
                     <div className="hr-card-divider" />
-                    <ActionBtns kind="visitors" item={v} />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="visitors" item={v} />
+                    </div>
                   </>
                 )}
               </div>
@@ -449,6 +589,19 @@ const HRRequestCenter = ({ userInfo }) => {
           </>
         )}
       </div>
+
+      {/* ── Detail Modal ── */}
+      {detailItem && (
+        <DetailModal
+          detail={detailItem}
+          onClose={() => setDetailItem(null)}
+          statusClass={statusClass}
+          onApprove={handleApproveFromDetail}
+          onReject={() => {}}
+          openRejectModal={openRejectModal}
+          actionLoadingId={actionLoadingId}
+        />
+      )}
 
       {/* ── Reject Modal ── */}
       {modal && (

@@ -59,6 +59,7 @@ const statusClass = (s = '') => {
   if (l === 'approved') return 'approved';
   if (l === 'pending')  return 'pending';
   if (l === 'cancelled') return 'cancelled';
+  if (l === 'rejected') return 'rejected';
   return 'pending';
 };
 
@@ -291,7 +292,8 @@ const EVisitor = ({ userInfo }) => {
     const matchTab =
       activeListTab === 'Approved' ? app.status?.toLowerCase() === 'approved' :
       activeListTab === 'Pending'  ? app.status?.toLowerCase() === 'pending'  :
-      activeListTab === 'Cancelled'? app.status?.toLowerCase() === 'cancelled': true;
+      activeListTab === 'Cancelled'? app.status?.toLowerCase() === 'cancelled' :
+      activeListTab === 'Rejected' ? app.status?.toLowerCase() === 'rejected' : true;
     const q = searchQuery.toLowerCase();
     const matchSearch = !q ||
       (app.visitor_name || '').toLowerCase().includes(q) ||
@@ -304,6 +306,7 @@ const EVisitor = ({ userInfo }) => {
     approved:  appointments.filter(a => a.status?.toLowerCase() === 'approved').length,
     pending:   appointments.filter(a => a.status?.toLowerCase() === 'pending').length,
     cancelled: appointments.filter(a => a.status?.toLowerCase() === 'cancelled').length,
+    rejected:  appointments.filter(a => a.status?.toLowerCase() === 'rejected').length,
   };
 
   const navTitle = {
@@ -446,7 +449,7 @@ const EVisitor = ({ userInfo }) => {
 
             {/* Tabs */}
             <div className="ev-tabs">
-              {['All', 'Approved', 'Pending', 'Cancelled'].map(tab => (
+              {['All', 'Approved', 'Pending', 'Rejected', 'Cancelled'].map(tab => (
                 <button key={tab} className={`ev-tab ${activeListTab === tab ? 'active' : ''}`}
                   onClick={() => setActiveListTab(tab)}>
                   {tab}
@@ -454,6 +457,7 @@ const EVisitor = ({ userInfo }) => {
                     {tab === 'All' ? appointments.length :
                      tab === 'Approved' ? stats.approved :
                      tab === 'Pending'  ? stats.pending  :
+                     tab === 'Rejected' ? stats.rejected :
                      stats.cancelled}
                   </span>
                 </button>
@@ -492,12 +496,13 @@ const EVisitor = ({ userInfo }) => {
                           <span className={`ev-status-badge ${statusClass(item.status)}`}>
                             {statusClass(item.status) === 'approved'  ? <CheckCircle size={10}/> :
                              statusClass(item.status) === 'cancelled' ? <Ban size={10}/> :
+                             statusClass(item.status) === 'rejected'   ? <XCircle size={10}/> :
                              <AlertCircle size={10}/>}
                             {item.status}
                           </span>
                         </div>
                       </div>
-                      {item.status?.toLowerCase() !== 'cancelled' && (
+                      {!['cancelled', 'rejected'].includes(item.status?.toLowerCase()) && (
                         <div className="ev-more-wrapper" onClick={e => e.stopPropagation()}>
                           <button className="ev-more-btn"
                             onClick={() => setOpenMenuId(openMenuId === item.appointment_id ? null : item.appointment_id)}>
@@ -667,7 +672,7 @@ const EVisitor = ({ userInfo }) => {
         {view === 'detail' && selectedItem && (() => {
           const t = selectedItem;
           const sc = statusClass(t.status);
-          const canCancel = sc !== 'cancelled';
+          const canCancel = sc !== 'cancelled' && sc !== 'rejected';
           return (
             <div className="ev-detail-view">
               {/* Banner */}
@@ -680,6 +685,7 @@ const EVisitor = ({ userInfo }) => {
                 <span className={`ev-status-badge ${sc} ev-status-badge-lg`}>
                   {sc === 'approved'  ? <CheckCircle size={11}/> :
                    sc === 'cancelled' ? <Ban size={11}/> :
+                   sc === 'rejected'  ? <XCircle size={11}/> :
                    <AlertCircle size={11}/>}
                   {t.status}
                 </span>
@@ -749,6 +755,14 @@ const EVisitor = ({ userInfo }) => {
                   <div className="ev-detail-section">
                     <h4 className="ev-detail-section-title" style={{color:'#ef4444'}}>Cancellation Reason</h4>
                     <p className="ev-detail-remarks">{t.cancellation_reason}</p>
+                  </div>
+                )}
+
+                {/* Rejection Reason */}
+                {sc === 'rejected' && (t.rejection_reason || t.reject_reason) && (
+                  <div className="ev-detail-section">
+                    <h4 className="ev-detail-section-title" style={{color:'#dc2626'}}>Rejection Reason</h4>
+                    <p className="ev-detail-remarks">{t.rejection_reason || t.reject_reason}</p>
                   </div>
                 )}
               </div>

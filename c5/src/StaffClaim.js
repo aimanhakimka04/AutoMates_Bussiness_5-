@@ -61,6 +61,7 @@ const toMoney = (val) => {
   return n.toFixed(2);
 };
 
+const getStatus = (c) => c?.status ?? c?.status_code ?? '';
 const normalizeStatus = (s = '') => {
   const l = String(s || '').trim().toLowerCase();
   if (l.includes('reject')) return 'rejected';
@@ -98,7 +99,7 @@ const getTimelineIndex = (claim) => {
   if (idx >= 0) return idx;
 
   // Fallback heuristic based on status.
-  const n = normalizeStatus(claim?.status);
+  const n = normalizeStatus(getStatus(claim));
   if (n === 'approved') return approvalStages.length - 1;
   if (n === 'rejected') return Math.min(2, approvalStages.length - 1); // usually rejected by HOD/HR
   return 0; // pending/draft starts at Superior
@@ -320,7 +321,7 @@ const StaffClaim = ({ userInfo }) => {
     const q = searchQuery.trim().toLowerCase();
 
     return claims.filter((c) => {
-      const n = normalizeStatus(c.status);
+      const n = normalizeStatus(getStatus(c));
       const matchTab =
         activeListTab === 'Approved' ? n === 'approved' :
         activeListTab === 'Rejected' ? n === 'rejected' :
@@ -338,10 +339,10 @@ const StaffClaim = ({ userInfo }) => {
 
   const stats = useMemo(() => {
     const total = claims.length;
-    const approved = claims.filter(c => normalizeStatus(c.status) === 'approved').length;
-    const rejected = claims.filter(c => normalizeStatus(c.status) === 'rejected').length;
+    const approved = claims.filter(c => normalizeStatus(getStatus(c)) === 'approved').length;
+    const rejected = claims.filter(c => normalizeStatus(getStatus(c)) === 'rejected').length;
     const pending = claims.filter(c => {
-      const n = normalizeStatus(c.status);
+      const n = normalizeStatus(getStatus(c));
       return n === 'pending' || n === 'draft';
     }).length;
 
@@ -639,7 +640,7 @@ const StaffClaim = ({ userInfo }) => {
                 recentClaims.map((item) => {
                   const id = item.claim_id ?? item.id ?? '—';
                   const t = item.claim_type ?? item.type ?? '—';
-                  const st = statusClass(item.status);
+                  const st = statusClass(getStatus(item));
                   return (
                     <div
                       key={String(id)}
@@ -651,7 +652,7 @@ const StaffClaim = ({ userInfo }) => {
                         <div className="sc-recent-name">Claim #{id}</div>
                         <div className="sc-recent-meta">{t} · {formatDateDisplay(item.receipt_date || item.date)}</div>
                       </div>
-                      <span className={`sc-chip ${st}`}>{statusLabel(item.status)}</span>
+                      <span className={`sc-chip ${st}`}>{statusLabel(getStatus(item))}</span>
                     </div>
                   );
                 })
@@ -723,7 +724,7 @@ const StaffClaim = ({ userInfo }) => {
                   const type = item.claim_type ?? item.type ?? '—';
                   const date = item.receipt_date || item.date;
                   const amount = item.total_amount ?? item.amount ?? 0;
-                  const sc = statusClass(item.status);
+                  const sc = statusClass(getStatus(item));
 
                   return (
                     <div
@@ -742,12 +743,12 @@ const StaffClaim = ({ userInfo }) => {
                               {sc === 'approved' ? <CheckCircle size={10} /> :
                                sc === 'rejected' ? <XCircle size={10} /> :
                                <Clock size={10} />}
-                              {statusLabel(item.status)}
+                              {statusLabel(getStatus(item))}
                             </span>
                           </div>
                         </div>
 
-                        {canEditOrDelete(item.status) && (
+                        {canEditOrDelete(getStatus(item)) && (
                           <div className="sc-more-wrapper" onClick={e => e.stopPropagation()}>
                             <button
                               className="sc-more-btn"
@@ -1030,7 +1031,7 @@ const StaffClaim = ({ userInfo }) => {
         {/* ══ DETAIL VIEW ══ */}
         {view === 'detail' && selectedItem && (() => {
           const t = selectedItem;
-          const sc = statusClass(t.status);
+          const sc = statusClass(getStatus(t));
           const id = t.claim_id ?? t.id ?? '—';
           const type = t.claim_type ?? t.type ?? '—';
           const receipt = t.receipt_date || t.date;
@@ -1038,7 +1039,7 @@ const StaffClaim = ({ userInfo }) => {
           const gstInc = t.gst_included === true ? 'Yes' : (t.gst_included === false ? 'No' : (t.gst_included ? 'Yes' : 'No'));
 
           const timelineIdx = getTimelineIndex(t);
-          const isRejected = normalizeStatus(t.status) === 'rejected';
+          const isRejected = normalizeStatus(getStatus(t)) === 'rejected';
 
           return (
             <div className="sc-detail-view">
@@ -1052,7 +1053,7 @@ const StaffClaim = ({ userInfo }) => {
                   {sc === 'approved' ? <CheckCircle size={11} /> :
                    sc === 'rejected' ? <XCircle size={11} /> :
                    <Clock size={11} />}
-                  {statusLabel(t.status)}
+                  {statusLabel(getStatus(t))}
                 </span>
               </div>
 
@@ -1068,7 +1069,7 @@ const StaffClaim = ({ userInfo }) => {
                   <div className="sc-timeline">
                     {approvalStages.map((stage, idx) => {
                       const active = idx === timelineIdx && !isRejected;
-                      const done = idx < timelineIdx || (normalizeStatus(t.status) === 'approved');
+                      const done = idx < timelineIdx || (normalizeStatus(getStatus(t)) === 'approved');
                       const rejectedHere = isRejected && idx === timelineIdx;
 
                       return (
@@ -1188,7 +1189,7 @@ const StaffClaim = ({ userInfo }) => {
 
               {/* Footer Actions */}
               <div className="sc-detail-footer">
-                {canEditOrDelete(t.status) ? (
+                {canEditOrDelete(getStatus(t)) ? (
                   <>
                     <button className="sc-detail-edit-btn" onClick={() => openForm(t)}>
                       <Edit3 size={16} /> Edit

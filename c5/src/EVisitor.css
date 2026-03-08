@@ -194,6 +194,7 @@
 .ev-recent-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .ev-recent-dot.approved  { background: #10b981; box-shadow: 0 0 6px rgba(16,185,129,0.5); }
 .ev-recent-dot.pending   { background: #f59e0b; box-shadow: 0 0 6px rgba(245,158,11,0.5); }
+.ev-recent-dot.rejected  { background: #dc2626; box-shadow: 0 0 6px rgba(220,38,38,0.4); }
 .ev-recent-dot.cancelled { background: #ef4444; box-shadow: 0 0 6px rgba(239,68,68,0.4); }
 .ev-recent-info  { flex: 1; }
 .ev-recent-name  { font-size: 14px; font-weight: 700; color: #1a1a2e; }
@@ -207,6 +208,7 @@
 }
 .ev-chip.approved  { background: #dcfce7; color: #10b981; }
 .ev-chip.pending   { background: #fef3c7; color: #f59e0b; }
+.ev-chip.rejected  { background: #fee2e2; color: #dc2626; }
 .ev-chip.cancelled { background: #fee2e2; color: #ef4444; }
 
 /* ═══════════════════════
@@ -284,6 +286,7 @@
 }
 .ev-card-accent.approved  { background: linear-gradient(180deg, #10b981, #059669); }
 .ev-card-accent.pending   { background: linear-gradient(180deg, #f59e0b, #d97706); }
+.ev-card-accent.rejected  { background: linear-gradient(180deg, #dc2626, #b91c1c); }
 .ev-card-accent.cancelled { background: linear-gradient(180deg, #ef4444, #dc2626); }
 
 .ev-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; padding-left: 10px; }
@@ -305,6 +308,7 @@
 }
 .ev-status-badge.approved  { background: #dcfce7; color: #10b981; }
 .ev-status-badge.pending   { background: #fef3c7; color: #f59e0b; }
+.ev-status-badge.rejected  { background: #fee2e2; color: #dc2626; }
 .ev-status-badge.cancelled { background: #fee2e2; color: #ef4444; }
 .ev-status-badge-lg { font-size: 11px; padding: 4px 12px; }
 
@@ -495,6 +499,7 @@
 }
 .ev-detail-banner-approved  { background: linear-gradient(135deg, #065f46, #10b981); }
 .ev-detail-banner-pending    { background: linear-gradient(135deg, #92400e, #f59e0b); }
+.ev-detail-banner-rejected   { background: linear-gradient(135deg, #991b1b, #dc2626); }
 .ev-detail-banner-cancelled  { background: linear-gradient(135deg, #991b1b, #ef4444); }
 
 .ev-detail-banner-avatar {
