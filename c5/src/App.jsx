@@ -260,14 +260,132 @@ const GlobalWelcomeBar = ({ userInfo, openNotifications }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  3. NOTIFICATION PANEL
+//  3. NOTIFICATION PANEL  (Live-data)
 // ══════════════════════════════════════════════════════════════════
-const NotificationPanel = ({ onClose }) => {
-  const notifications = [
-    { id: 1, title: 'Meeting Reminder',  desc: 'UAT Briefing starts in 15 mins',      time: 'Just now'    },
-    { id: 2, title: 'Booking Confirmed', desc: 'Your shuttle booking is confirmed',    time: '2 hours ago' },
-    { id: 3, title: 'Policy Updated',    desc: 'Remote Work Policy has been updated', time: 'Yesterday'   },
-  ];
+const NOTIF_N8N = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const notifAuth = () => localStorage.getItem('authToken') || '';
+
+async function callNotifN8N(action, subTarget, payload = {}) {
+  const res = await fetch(NOTIF_N8N, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${notifAuth()}` },
+    body: JSON.stringify({ input_type: 'direct_action', edited_plan: { action, sub_target: subTarget, ...payload } }),
+  });
+  if (!res.ok) throw new Error(`n8n ${res.status}`);
+  return res.json();
+}
+
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins  = Math.floor(diff / 60000);
+  if (mins < 1)   return 'Just now';
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days}d ago`;
+};
+
+const NotificationPanel = ({ onClose, userInfo }) => {
+  const userEmail = userInfo?.email || '';
+  const userName  = userInfo?.name  || '';
+  const [notifs, setNotifs]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      const results = await Promise.allSettled([
+        callNotifN8N('get_bookings', 'meeting_room', { employee_email: userEmail }),
+        callNotifN8N('get_tickets', 'ticketing', { employee_email: userEmail }),
+        callNotifN8N('get_bookings', 'transport', { employee_email: userEmail }),
+        callNotifN8N('list_leaves',  'flexhr',    { user_email: userEmail, user_name: userName }),
+      ]);
+      if (cancelled) return;
+
+      const items = [];
+
+      // Meetings
+      if (results[0].status === 'fulfilled') {
+        const r = results[0].value;
+        let bookings = [];
+        if (r?.type === 'bookings_list') bookings = r.bookings || [];
+        else { const d = r?.data ?? r?.result?.data ?? []; bookings = Array.isArray(d) ? d : []; }
+        bookings.slice(0, 3).forEach(b => {
+          items.push({
+            id: `mtg-${b.id || b.booking_id || Math.random()}`,
+            title: 'Meeting Reminder',
+            desc: `${b.title || b.subject || 'Meeting'} — ${b.room || b.location || 'TBD'}`,
+            time: timeAgo(b.start || b.created_at || b.date),
+            sort: new Date(b.start || b.created_at || b.date || 0).getTime(),
+          });
+        });
+      }
+
+      // Tickets
+      if (results[1].status === 'fulfilled') {
+        const r = results[1].value;
+        const tickets = r?.data?.tickets ?? r?.data ?? [];
+        const arr = Array.isArray(tickets) ? tickets : [];
+        arr.filter(t => (t.status || '').toLowerCase() === 'open').slice(0, 3).forEach(t => {
+          items.push({
+            id: `tkt-${t.ticket_id || t.id || Math.random()}`,
+            title: 'Open Ticket',
+            desc: t.title || t.subject || t.description || 'Ticket pending',
+            time: timeAgo(t.created_at || t.submitted_at),
+            sort: new Date(t.created_at || t.submitted_at || 0).getTime(),
+          });
+        });
+      }
+
+      // Transport
+      if (results[2].status === 'fulfilled') {
+        const r = results[2].value;
+        const rows = r?.data ?? r?.result?.data ?? [];
+        const arr = Array.isArray(rows) ? rows : [];
+        arr.filter(b => (b.status || '').toLowerCase() !== 'cancelled').slice(0, 2).forEach(b => {
+          const timeStr = b.session_time ? String(b.session_time).slice(0, 5) : '';
+          items.push({
+            id: `trn-${b.booking_id || b.id || Math.random()}`,
+            title: 'Shuttle Booking',
+            desc: `${b.route_name || 'Shuttle'} ${timeStr ? 'at ' + timeStr : ''} — ${(b.status || 'confirmed').charAt(0).toUpperCase() + (b.status || 'confirmed').slice(1)}`,
+            time: timeAgo(b.created_at || b.booking_date),
+            sort: new Date(b.created_at || b.booking_date || 0).getTime(),
+          });
+        });
+      }
+
+      // Leaves
+      if (results[3].status === 'fulfilled') {
+        const r = results[3].value;
+        const d = r?.data ?? r?.result?.data ?? [];
+        const arr = Array.isArray(d) ? d : [];
+        arr.filter(a => (a.status_code || a.status || '').toLowerCase() === 'pending').slice(0, 2).forEach(a => {
+          items.push({
+            id: `lv-${a.leave_id || a.id || Math.random()}`,
+            title: 'Leave Application',
+            desc: `${a.leave_type_name || a.leave_type || 'Leave'} — ${(a.status_code || a.status || 'Pending')}`,
+            time: timeAgo(a.applied_at || a.created_at),
+            sort: new Date(a.applied_at || a.created_at || 0).getTime(),
+          });
+        });
+      }
+
+      // Sort newest first
+      items.sort((a, b) => (b.sort || 0) - (a.sort || 0));
+      setNotifs(items);
+      setLoading(false);
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [userEmail, userName]);
+
   return (
     <div className="modal-overlay-custom" onClick={onClose}>
       <div className="notification-modal" onClick={e => e.stopPropagation()}>
@@ -276,7 +394,17 @@ const NotificationPanel = ({ onClose }) => {
           <X size={20} color="white" onClick={onClose} style={{cursor:'pointer'}} />
         </div>
         <div className="notification-list">
-          {notifications.map(n => (
+          {loading ? (
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'40px 0', gap: 10 }}>
+              <Loader2 size={24} color="#6c47d9" style={{ animation:'dashSpin 1s linear infinite' }} />
+              <span style={{ fontSize:12, color:'#aaa' }}>Loading notifications…</span>
+              <style>{`@keyframes dashSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+            </div>
+          ) : notifs.length === 0 ? (
+            <div style={{ padding:'40px 20px', textAlign:'center', color:'#bbb', fontSize:13 }}>
+              No new notifications
+            </div>
+          ) : notifs.map(n => (
             <div key={n.id} className="notification-item">
               <div className="notif-title">{n.title}</div>
               <div className="notif-desc">{n.desc}</div>
@@ -1032,7 +1160,7 @@ function App() {
           {showFooter && <FooterNav userInfo={userInfo} />}        </>
       )}
 
-      {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} />}
+      {showNotifications && <NotificationPanel onClose={() => setShowNotifications(false)} userInfo={userInfo} />}
     </div>
   );
 }
