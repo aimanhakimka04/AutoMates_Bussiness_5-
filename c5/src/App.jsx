@@ -26,7 +26,7 @@ import Ticketing   from './Ticketing';
 import Chart       from './Chart';
 import Wellness    from './Wellness';
 import Meal        from './Meal';
-import Energy      from './Energy';
+//import Energy      from './Energy';
 import FlexHR      from './FlexHR';
 import HRRequestCenter from './HRRequestCenter';
 import Mynews      from './Mynews';
@@ -44,7 +44,7 @@ const SplashScreen = () => (
     <div style={S.splash.ring}>
       <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.splash.logo} />
     </div>
-    <h1 style={S.splash.title}>FlexHR</h1>
+    <h1 style={S.splash.title}>ChinHin Connect</h1>
     <p  style={S.splash.sub}>Loading your workspace…</p>
     <div style={S.splash.dots}>
       {[0,1,2].map(i => <span key={i} style={{...S.splash.dot, animationDelay:`${i*0.2}s`}} />)}
@@ -197,7 +197,7 @@ const Login = ({ setAuth, setUserInfo }) => {
           </div>
         </div>
 
-        <h1 style={S.login.appName}>FlexHR</h1>
+        <h1 style={S.login.appName}>ChinHin Connect</h1>
         <p  style={S.login.tagline}>Your Intelligent Workplace Portal</p>
         <div style={S.login.divider} />
         <p  style={S.login.instruction}>Sign in with your Microsoft account to continue.</p>
@@ -448,7 +448,7 @@ const Home = () => {
       title: 'Resources',
       color: '#b5560a',
       items: [
-        { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
+       // { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
         { label:'flexHR',      icon:'flexhrlogo.png',       path:'/flexhr',       accent:'#d35400' },
         { label:'Staff Claim',  icon:'claim.png',   path:'/staff-claim',  accent:'#e11d48' },
         { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
@@ -716,7 +716,7 @@ function App() {
               <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart userInfo={userInfo}/></PageWrapper>} />
               <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness userInfo={userInfo}/></PageWrapper>} />
               <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy userInfo={userInfo}/></PageWrapper>} />
+              {/* <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy userInfo={userInfo}/></PageWrapper>} /> */}
               <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR userInfo={userInfo} /></PageWrapper>} />
               <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews userInfo={userInfo}/></PageWrapper>} />
               <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare userInfo={userInfo}/></PageWrapper>} />

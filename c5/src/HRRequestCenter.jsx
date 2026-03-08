@@ -16,6 +16,11 @@ import {
   Check,
   X,
   Clock,
+  RefreshCw,
+  AlertTriangle,
+  Ticket,
+  Users,
+  CreditCard,
 } from 'lucide-react';
 import './HRRequestCenter.css';
 
@@ -39,22 +44,190 @@ async function callN8NGeneric(action, subTarget, payload = {}) {
   return res.json();
 }
 
+/* ─── Reject Modal ─────────────────────────────────────────── */
+function RejectModal({ onConfirm, onCancel, loading }) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="hr-modal-overlay" onClick={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="hr-modal">
+        <div className="hr-modal-handle" />
+        <div className="hr-modal-title">Reject Request</div>
+        <div className="hr-modal-sub">Provide an optional reason for this decision.</div>
+        <div className="hr-modal-label">Reason (optional)</div>
+        <textarea
+          className="hr-modal-textarea"
+          placeholder="e.g. Missing documentation, budget constraints…"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          rows={3}
+        />
+        <div className="hr-modal-actions">
+          <button className="hr-modal-cancel" onClick={onCancel} disabled={loading}>
+            Cancel
+          </button>
+          <button className="hr-modal-confirm" onClick={() => onConfirm(reason)} disabled={loading}>
+            {loading ? <Loader2 size={14} className="spin" /> : <X size={14} />}
+            Confirm Reject
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Detail Modal ─────────────────────────────────────────── */
+const SKIP_KEYS = new Set([
+  'claim_id', 'id', 'ticket_id', 'appointment_id', 'visitor_id', 'employee_id',
+  'status', 'status_code', 'status_id', 'created_at', 'updated_at', 'deleted_at',
+  'receipt_photo', 'receipt_file_name', 'photo', 'image', 'file', 'blob',
+]);
+const IMAGE_KEYS = new Set(['photo_base64', 'photo', 'image_base64', 'image']);
+const LABEL_MAP = {
+  visitor_name: 'Visitor', official_email: 'Email', contact_number: 'Phone',
+  ic_number: 'IC / ID', meeting_location: 'Location', purpose_of_visit: 'Purpose',
+  visit_date: 'Visit Date', host_name: 'Host', claim_type: 'Claim Type',
+  receipt_date: 'Receipt Date', total_amount: 'Total Amount',
+  employee_name: 'Submitted by', issueCategory: 'Category',
+  issueDescription: 'Description', facility_area: 'Location', level: 'Location',
+  purpose: 'Purpose', rejection_reason: 'Rejection Reason',
+  cancellation_reason: 'Cancellation Reason', remarks: 'Remarks',
+  start_point: 'Start Point', end_point: 'End Point', total_km: 'Total KM',
+  tolls_amount: 'Tolls', attendee_names: 'Attendees',
+  relationship_to_company: 'Relationship', gst_included: 'GST Included',
+  submitted_at: 'Submitted At', display_label: 'Status',
+  photo_base64: 'Attached Photo', submittedBy: 'Submitted By',
+  facilityArea: 'Facility Area',
+};
+const keyToLabel = (k) => LABEL_MAP[k] ?? k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+function DetailModal({ detail, onClose, statusClass, onApprove, onReject, openRejectModal, actionLoadingId }) {
+  if (!detail) return null;
+  const { kind, item } = detail;
+  const st = statusClass(item?.status ?? item?.status_code);
+  const id = kind === 'claims' ? item.claim_id ?? item.id : kind === 'tickets' ? item.id ?? item.ticket_id : item.appointment_id;
+  const loadKey = `${kind}-${id}`;
+  const la = actionLoadingId === `${loadKey}-approve`;
+  const lr = actionLoadingId === `${loadKey}-reject`;
+
+  const formatVal = (val) => {
+    if (val == null || val === '') return null;
+    if (val instanceof Date) return val.toLocaleDateString();
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+    if (Array.isArray(val)) return val.length ? val.join(', ') : null;
+    if (typeof val === 'object') return null;
+    const s = String(val).trim();
+    return s || null;
+  };
+
+  const PRIORITY_ORDER = ['visitor_name', 'claim_type', 'type', 'issueCategory', 'receipt_date', 'date', 'visit_date', 'total_amount', 'amount', 'employee_name', 'host_name', 'company', 'official_email', 'contact_number'];
+  const getOrder = (k) => {
+    const i = PRIORITY_ORDER.indexOf(k);
+    return i >= 0 ? i : 999;
+  };
+
+  const detailFields = Object.entries(item || {})
+    .filter(([key, val]) => {
+      if (SKIP_KEYS.has(key)) return false;
+      if (IMAGE_KEYS.has(key)) return val != null && String(val).trim() !== '';
+      const formatted = formatVal(val);
+      return formatted != null && formatted !== '';
+    })
+    .map(([key, val]) => ({
+      key,
+      label: keyToLabel(key),
+      value: IMAGE_KEYS.has(key) ? val : formatVal(val),
+      full: /reason|remarks|description|purpose|attendee|name|email|company/i.test(key) || IMAGE_KEYS.has(key),
+      order: IMAGE_KEYS.has(key) ? 998 : getOrder(key),
+      isImage: IMAGE_KEYS.has(key),
+    }))
+    .sort((a, b) => a.order - b.order);
+
+  const Field = ({ label, value, full, isImage }) => (
+    <div className={`hr-detail-field${full ? ' full' : ''}${isImage ? ' hr-detail-field-image' : ''}`}>
+      <span className="hr-detail-label">{label}</span>
+      {isImage && value ? (
+        <img
+          src={`data:image/jpeg;base64,${value}`}
+          alt={label}
+          className="hr-detail-photo"
+          onError={(e) => { e.target.style.display = 'none'; }}
+        />
+      ) : !isImage ? (
+        <span className="hr-detail-value">{value || '—'}</span>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="hr-detail-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="hr-detail-box">
+        <div className="hr-detail-handle" />
+        <div className={`hr-detail-accent ${st}`} />
+        <div className="hr-detail-header">
+          <div className="hr-detail-id"><Hash size={14} />#{id}</div>
+          <StatusBadge status={item?.status ?? item?.status_code} />
+        </div>
+        <div className="hr-detail-body">
+          {detailFields.map(({ key, label, value, full, isImage }) => (
+            <Field key={key} label={label} value={value} full={full} isImage={isImage} />
+          ))}
+        </div>
+        {st === 'pending' && (
+          <div className="hr-detail-actions">
+            <button className="hr-btn approve" onClick={() => onApprove(kind, item)} disabled={la || lr}>
+              {la ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
+              Approve
+            </button>
+            <button className="hr-btn reject" onClick={() => { onClose(); openRejectModal(kind, item); }} disabled={la || lr}>
+              {lr ? <Loader2 size={14} className="spin" /> : <X size={14} />}
+              Reject
+            </button>
+          </div>
+        )}
+        <button className="hr-detail-close" onClick={onClose} aria-label="Close">
+          <X size={20} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Status Badge ─────────────────────────────────────────── */
+function StatusBadge({ status }) {
+  const l = String(status || '').toLowerCase();
+  let cls = 'pending', label = status || 'Pending', Icon = Clock;
+  if (l.includes('approve')) { cls = 'approved'; label = status; Icon = CheckCircle; }
+  else if (l.includes('reject'))  { cls = 'rejected'; label = status; Icon = XCircle; }
+  else if (l.includes('cancel'))  { cls = 'cancelled'; label = status; Icon = AlertTriangle; }
+  return (
+    <span className={`hr-status ${cls}`}>
+      <span className="hr-status-dot" />
+      {label}
+    </span>
+  );
+}
+
+/* ─── Main Component ───────────────────────────────────────── */
 const HRRequestCenter = ({ userInfo }) => {
   const navigate = useNavigate();
   const employeeEmail = userInfo?.email || '';
-  const employeeName = userInfo?.name || '';
-  const employee_role = userInfo?.employee_role || userInfo?.role || '';
+  const employeeName  = userInfo?.name  || '';
 
-  const [tab, setTab] = useState('claims'); // claims | tickets | visitors
+  const [tab, setTab]   = useState('claims');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]     = useState('');
 
-  const [claims, setClaims] = useState([]);
-  const [tickets, setTickets] = useState([]);
+  const [claims,   setClaims]   = useState([]);
+  const [tickets,  setTickets]  = useState([]);
   const [visitors, setVisitors] = useState([]);
 
   const [actionLoadingId, setActionLoadingId] = useState(null);
 
+  /* modal state */
+  const [modal, setModal] = useState(null); // { kind, item } | null
+  const [detailItem, setDetailItem] = useState(null); // { kind, item } | null — detail box
+
+  /* ── data loader ── */
   const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -70,9 +243,7 @@ const HRRequestCenter = ({ userInfo }) => {
           [];
         setClaims(arr);
       } else if (tab === 'tickets') {
-        const res = await callN8NGeneric('get_tickets', 'ticketing', {
-          employee_email: employeeEmail,
-        });
+        const res = await callN8NGeneric('get_tickets', 'ticketing', { employee_email: employeeEmail });
         let raw =
           (res?.data?.tickets && Array.isArray(res.data.tickets) && res.data.tickets) ||
           (res?.tickets && Array.isArray(res.tickets) && res.tickets) ||
@@ -86,7 +257,8 @@ const HRRequestCenter = ({ userInfo }) => {
         const ticketList = Array.isArray(raw) ? raw : [];
         setTickets(
           ticketList.filter(
-            (t) => t && (t.id != null || t.ticket_id != null) && (t.issueCategory != null || t.issueDescription != null || t.level != null)
+            (t) => t && (t.id != null || t.ticket_id != null) &&
+              (t.issueCategory != null || t.issueDescription != null || t.level != null)
           )
         );
       } else if (tab === 'visitors') {
@@ -120,142 +292,148 @@ const HRRequestCenter = ({ userInfo }) => {
     }
   }, [tab, employeeEmail, employeeName]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const handleDecision = async (kind, item, decision) => {
+  /* ── action handler ── */
+  const handleDecision = async (kind, item, decision, reason = '') => {
     const id =
-      kind === 'claims'
-        ? item.claim_id ?? item.id
-        : kind === 'tickets'
-        ? item.id
-        : item.appointment_id;
+      kind === 'claims'   ? item.claim_id ?? item.id
+      : kind === 'tickets'  ? item.id
+      : item.appointment_id;
     if (!id) return;
 
-    const reason =
-      decision === 'reject'
-        ? window.prompt('Reason for rejection? (optional)', '') || ''
-        : '';
-
-    setActionLoadingId(`${kind}-${id}-${decision}`);
-    let actionSucceeded = false;
+    const loadKey = `${kind}-${id}-${decision}`;
+    setActionLoadingId(loadKey);
+    let ok = false;
     try {
       if (kind === 'claims') {
-        const action = decision === 'approve' ? 'approve_claim' : 'reject_claim';
-        await callN8NGeneric(action, 'staff_claim', {
-          employee_email: employeeEmail,
-          employee_name: employeeName,
-          claim_id: id,
-          decision,
-          reason,
+        await callN8NGeneric(decision === 'approve' ? 'approve_claim' : 'reject_claim', 'staff_claim', {
+          employee_email: employeeEmail, employee_name: employeeName, claim_id: id, decision, reason,
         });
-        actionSucceeded = true;
-        setClaims((prev) => prev.filter((c) => (c.claim_id ?? c.id) !== id));
+        ok = true;
+        setClaims((p) => p.filter((c) => (c.claim_id ?? c.id) !== id));
       } else if (kind === 'tickets') {
-        const action = decision === 'approve' ? 'approve_ticket' : 'reject_ticket';
-        await callN8NGeneric(action, 'ticketing', {
-          employee_email: employeeEmail,
-          employee_name: employeeName,
-          ticket_id: id,
-          decision,
-          reason,
+        await callN8NGeneric(decision === 'approve' ? 'approve_ticket' : 'reject_ticket', 'ticketing', {
+          employee_email: employeeEmail, employee_name: employeeName, ticket_id: id, decision, reason,
         });
-        actionSucceeded = true;
-        setTickets((prev) => prev.filter((t) => (t.id ?? t.ticket_id) !== id));
-      } else if (kind === 'visitors') {
-        const action = decision === 'approve' ? 'approve_appointment' : 'reject_appointment';
-        await callN8NGeneric(action, 'evisitor', {
-          appointment_id: id,
-          decision,
-          reason,
-          user_email: employeeEmail,
-          user_name: employeeName,
+        ok = true;
+        setTickets((p) => p.filter((t) => (t.id ?? t.ticket_id) !== id));
+      } else {
+        await callN8NGeneric(decision === 'approve' ? 'approve_appointment' : 'reject_appointment', 'evisitor', {
+          appointment_id: id, decision, reason, user_email: employeeEmail, user_name: employeeName,
         });
-        actionSucceeded = true;
-        setVisitors((prev) => prev.filter((v) => (v.appointment_id ?? v.id) !== id));
+        ok = true;
+        setVisitors((p) => p.filter((v) => (v.appointment_id ?? v.id) !== id));
       }
       setError('');
       await loadData();
     } catch (e) {
-      if (!actionSucceeded) alert(e.message || 'Action failed. Please try again.');
-      setError('');
+      if (!ok) alert(e.message || 'Action failed. Please try again.');
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const statusBadge = (s) => {
+  /* ── open reject modal ── */
+  const openRejectModal = (kind, item) => setModal({ kind, item });
+
+  const confirmReject = async (reason) => {
+    if (!modal) return;
+    await handleDecision(modal.kind, modal.item, 'reject', reason);
+    setModal(null);
+  };
+
+  const handleApproveFromDetail = async (kind, item) => {
+    await handleDecision(kind, item, 'approve', '');
+    setDetailItem(null);
+  };
+
+  const statusClass = (s) => {
     const l = String(s || '').toLowerCase();
     if (l.includes('approve')) return 'approved';
-    if (l.includes('reject')) return 'rejected';
-    if (l.includes('cancel')) return 'cancelled';
+    if (l.includes('reject'))  return 'rejected';
+    if (l.includes('cancel'))  return 'cancelled';
     return 'pending';
   };
 
+  /* ── counts ── */
+  const pendingClaims   = claims.filter((c) => statusClass(c.status ?? c.status_code) === 'pending').length;
+  const pendingTickets  = tickets.filter((t) => statusClass(t.status) === 'pending').length;
+  const pendingVisitors = visitors.filter((v) => statusClass(v.status) === 'pending').length;
+  const totalPending    = tab === 'claims' ? pendingClaims : tab === 'tickets' ? pendingTickets : pendingVisitors;
+
+  /* ── renderers ── */
+  const Empty = ({ icon: Icon, label }) => (
+    <div className="hr-empty">
+      <div className="hr-empty-icon"><Icon size={26} color="var(--muted)" /></div>
+      <p>{label}</p>
+      <span>Pull down to refresh</span>
+    </div>
+  );
+
+  const ActionBtns = ({ kind, item }) => {
+    const id = kind === 'claims' ? item.claim_id ?? item.id : kind === 'tickets' ? item.id : item.appointment_id;
+    const la = actionLoadingId === `${kind}-${id}-approve`;
+    const lr = actionLoadingId === `${kind}-${id}-reject`;
+    return (
+      <div className="hr-card-actions">
+        <button
+          className="hr-btn approve"
+          onClick={() => handleDecision(kind, item, 'approve', '')}
+          disabled={la || lr}
+        >
+          {la ? <Loader2 size={13} className="spin" /> : <Check size={13} />}
+          Approve
+        </button>
+        <button
+          className="hr-btn reject"
+          onClick={() => openRejectModal(kind, item)}
+          disabled={la || lr}
+        >
+          {lr ? <Loader2 size={13} className="spin" /> : <X size={13} />}
+          Reject
+        </button>
+      </div>
+    );
+  };
+
+  const Field = ({ label, value, full }) => (
+    <div className={`hr-card-field${full ? ' full' : ''}`}>
+      <span className="hr-field-label">{label}</span>
+      <span className="hr-field-value">{value || '—'}</span>
+    </div>
+  );
+
   const renderClaims = () => {
-    if (claims.length === 0) {
-      return (
-        <div className="hr-empty">
-          <FileText size={40} />
-          <p>No staff claims found</p>
-        </div>
-      );
-    }
+    if (!claims.length) return <Empty icon={CreditCard} label="No staff claims found" />;
     return (
       <div className="hr-list">
         {claims.map((c) => {
           const id = c.claim_id ?? c.id;
-          const st = statusBadge(c.status);
-          const key = `claims-${id}`;
-          const loadingApprove = actionLoadingId === `${key}-approve`;
-          const loadingReject = actionLoadingId === `${key}-reject`;
+          const st = statusClass(c.status ?? c.status_code);
           return (
-            <div key={key} className="hr-card">
-              <div className="hr-card-main">
+            <div key={`claims-${id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'claims', item: c })}>
+              <div className={`hr-card-accent ${st}`} />
+              <div className="hr-card-inner">
                 <div className="hr-card-title-row">
-                  <div className="hr-pill-id">
-                    <Hash size={12} />
-                    <span>{id}</span>
-                  </div>
-                  <span className={`hr-status ${st}`}>
-                    {st === 'approved' ? <CheckCircle size={12} /> : st === 'rejected' ? <XCircle size={12} /> : <Clock size={12} />}
-                    {c.status || 'Pending'}
-                  </span>
+                  <div className="hr-pill-id"><Hash size={11} />{id}</div>
+                  <StatusBadge status={c.status ?? c.status_code} />
                 </div>
-                <div className="hr-card-line">
-                  <FileText size={13} />
-                  <span>{c.claim_type || c.type || '—'}</span>
+                <div className="hr-card-fields">
+                  <Field label="Claim Type" value={c.claim_type || c.type} />
+                  <Field label="Date" value={c.receipt_date || c.date} />
+                  <Field label="Amount" value={c.amount} />
+                  <Field label="Submitted by" value={c.employee_name || c.name} />
                 </div>
-                <div className="hr-card-line">
-                  <Calendar size={13} />
-                  <span>{c.receipt_date || c.date || '—'}</span>
-                </div>
-                <div className="hr-card-line">
-                  <User size={13} />
-                  <span>{c.employee_name || c.submitted_by || '—'}</span>
-                </div>
+                {st === 'pending' && (
+                  <>
+                    <div className="hr-card-divider" />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="claims" item={c} />
+                    </div>
+                  </>
+                )}
               </div>
-              {st === 'pending' && (
-                <div className="hr-card-actions">
-                  <button
-                    className="hr-btn approve"
-                    onClick={() => handleDecision('claims', c, 'approve')}
-                    disabled={loadingApprove}
-                  >
-                    {loadingApprove ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-                    Accept
-                  </button>
-                  <button
-                    className="hr-btn reject"
-                    onClick={() => handleDecision('claims', c, 'reject')}
-                    disabled={loadingReject}
-                  >
-                    {loadingReject ? <Loader2 size={14} className="spin" /> : <X size={14} />}
-                    Reject
-                  </button>
-                </div>
-              )}
             </div>
           );
         })}
@@ -264,66 +442,34 @@ const HRRequestCenter = ({ userInfo }) => {
   };
 
   const renderTickets = () => {
-    if (tickets.length === 0) {
-      return (
-        <div className="hr-empty">
-          <FileText size={40} />
-          <p>No tickets found</p>
-        </div>
-      );
-    }
+    if (!tickets.length) return <Empty icon={Ticket} label="No tickets found" />;
     return (
       <div className="hr-list">
         {tickets.map((t) => {
-          const key = `tickets-${t.id}`;
-          const st = statusBadge(t.status);
-          const loadingApprove = actionLoadingId === `${key}-approve`;
-          const loadingReject = actionLoadingId === `${key}-reject`;
+          const id = t.id ?? t.ticket_id;
+          const st = statusClass(t.status);
           return (
-            <div key={key} className="hr-card">
-              <div className="hr-card-main">
+            <div key={`tickets-${id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'tickets', item: t })}>
+              <div className={`hr-card-accent ${st}`} />
+              <div className="hr-card-inner">
                 <div className="hr-card-title-row">
-                  <div className="hr-pill-id">
-                    <Hash size={12} />
-                    <span>{t.id ?? t.ticket_id ?? '—'}</span>
-                  </div>
-                  <span className={`hr-status ${st}`}>
-                    {t.status || 'Pending'}
-                  </span>
+                  <div className="hr-pill-id"><Hash size={11} />{id ?? '—'}</div>
+                  <StatusBadge status={t.status} />
                 </div>
-                <div className="hr-card-line">
-                  <FileText size={13} />
-                  <span>{t.issueCategory ?? t.issueDescription ?? '—'}</span>
+                <div className="hr-card-fields">
+                  <Field label="Category" value={t.issueCategory ?? t.issueDescription} full />
+                  <Field label="Date" value={t.date ?? t.created_at} />
+                  <Field label="Location" value={t.level ?? t.facility_area ?? t.zone} />
                 </div>
-                <div className="hr-card-line">
-                  <Calendar size={13} />
-                  <span>{t.date ?? t.created_at ?? '—'}</span>
-                </div>
-                <div className="hr-card-line">
-                  <MapPin size={13} />
-                  <span>{t.level ?? t.facility_area ?? t.zone ?? '—'}</span>
-                </div>
+                {st === 'pending' && (
+                  <>
+                    <div className="hr-card-divider" />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="tickets" item={t} />
+                    </div>
+                  </>
+                )}
               </div>
-              {st === 'pending' && (
-                <div className="hr-card-actions">
-                  <button
-                    className="hr-btn approve"
-                    onClick={() => handleDecision('tickets', t, 'approve')}
-                    disabled={loadingApprove}
-                  >
-                    {loadingApprove ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-                    Accept
-                  </button>
-                  <button
-                    className="hr-btn reject"
-                    onClick={() => handleDecision('tickets', t, 'reject')}
-                    disabled={loadingReject}
-                  >
-                    {loadingReject ? <Loader2 size={14} className="spin" /> : <X size={14} />}
-                    Reject
-                  </button>
-                </div>
-              )}
             </div>
           );
         })}
@@ -332,70 +478,34 @@ const HRRequestCenter = ({ userInfo }) => {
   };
 
   const renderVisitors = () => {
-    if (visitors.length === 0) {
-      return (
-        <div className="hr-empty">
-          <FileText size={40} />
-          <p>No visitor appointments found</p>
-        </div>
-      );
-    }
+    if (!visitors.length) return <Empty icon={Users} label="No visitor appointments found" />;
     return (
       <div className="hr-list">
         {visitors.map((v) => {
-          const key = `visitors-${v.appointment_id}`;
-          const st = statusBadge(v.status);
-          const loadingApprove = actionLoadingId === `${key}-approve`;
-          const loadingReject = actionLoadingId === `${key}-reject`;
+          const st = statusClass(v.status);
           return (
-            <div key={key} className="hr-card">
-              <div className="hr-card-main">
+            <div key={`visitors-${v.appointment_id}`} className="hr-card hr-card-clickable" onClick={() => setDetailItem({ kind: 'visitors', item: v })}>
+              <div className={`hr-card-accent ${st}`} />
+              <div className="hr-card-inner">
                 <div className="hr-card-title-row">
-                  <div className="hr-pill-id">
-                    <Hash size={12} />
-                    <span>{v.appointment_id ?? '—'}</span>
-                  </div>
-                  <span className={`hr-status ${st}`}>
-                    {v.status || 'Pending'}
-                  </span>
+                  <div className="hr-pill-id"><Hash size={11} />{v.appointment_id ?? '—'}</div>
+                  <StatusBadge status={v.status} />
                 </div>
-                <div className="hr-card-line">
-                  <User size={13} />
-                  <span>{v.visitor_name ?? '—'}</span>
+                <div className="hr-card-fields">
+                  <Field label="Visitor" value={v.visitor_name} full />
+                  <Field label="Email" value={v.official_email} full />
+                  <Field label="Phone" value={v.contact_number} />
+                  <Field label="Visit Date" value={v.visit_date} />
                 </div>
-                <div className="hr-card-line">
-                  <Mail size={13} />
-                  <span>{v.official_email ?? '—'}</span>
-                </div>
-                <div className="hr-card-line">
-                  <Phone size={13} />
-                  <span>{v.contact_number ?? '—'}</span>
-                </div>
-                <div className="hr-card-line">
-                  <Calendar size={13} />
-                  <span>{v.visit_date ?? '—'}</span>
-                </div>
+                {st === 'pending' && (
+                  <>
+                    <div className="hr-card-divider" />
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <ActionBtns kind="visitors" item={v} />
+                    </div>
+                  </>
+                )}
               </div>
-              {st === 'pending' && (
-                <div className="hr-card-actions">
-                  <button
-                    className="hr-btn approve"
-                    onClick={() => handleDecision('visitors', v, 'approve')}
-                    disabled={loadingApprove}
-                  >
-                    {loadingApprove ? <Loader2 size={14} className="spin" /> : <Check size={14} />}
-                    Accept
-                  </button>
-                  <button
-                    className="hr-btn reject"
-                    onClick={() => handleDecision('visitors', v, 'reject')}
-                    disabled={loadingReject}
-                  >
-                    {loadingReject ? <Loader2 size={14} className="spin" /> : <X size={14} />}
-                    Reject
-                  </button>
-                </div>
-              )}
             </div>
           );
         })}
@@ -403,37 +513,51 @@ const HRRequestCenter = ({ userInfo }) => {
     );
   };
 
+  const TABS = [
+    { id: 'claims',   label: 'Claims',   Icon: CreditCard, count: pendingClaims },
+    { id: 'tickets',  label: 'Tickets',  Icon: Ticket,     count: pendingTickets },
+    { id: 'visitors', label: 'Visitors', Icon: Users,      count: pendingVisitors },
+  ];
+
   return (
     <div className="hr-center-root">
+      {/* ── Nav ── */}
       <nav className="hr-center-nav">
         <button className="hr-back-btn" onClick={() => navigate('/')}>
-          <ChevronLeft size={22} color="#fff" />
+          <ChevronLeft size={20} color="var(--text)" />
         </button>
-        <span className="hr-title">HR Request Center</span>
+        <div className="hr-nav-info">
+          <span className="hr-title">Request Center</span>
+          {employeeName && <span className="hr-subtitle">{employeeName}</span>}
+        </div>
+        {totalPending > 0 && (
+          <div className="hr-nav-badge">
+            <span className="hr-nav-dot" />
+            {totalPending} pending
+          </div>
+        )}
       </nav>
 
       <div className="hr-center-body">
-        <div className="hr-tabs">
-          <button
-            className={`hr-tab ${tab === 'claims' ? 'active' : ''}`}
-            onClick={() => setTab('claims')}
-          >
-            Staff Claims
-          </button>
-          <button
-            className={`hr-tab ${tab === 'tickets' ? 'active' : ''}`}
-            onClick={() => setTab('tickets')}
-          >
-            Tickets
-          </button>
-          <button
-            className={`hr-tab ${tab === 'visitors' ? 'active' : ''}`}
-            onClick={() => setTab('visitors')}
-          >
-            Visitors
-          </button>
+        {/* ── Tabs ── */}
+        <div className="hr-tabs-wrapper">
+          {TABS.map(({ id, label, Icon, count }) => (
+            <button
+              key={id}
+              className={`hr-tab${tab === id ? ' active' : ''}`}
+              onClick={() => setTab(id)}
+            >
+              <span className="hr-tab-bg" />
+              <Icon size={13} style={{ position: 'relative' }} />
+              <span style={{ position: 'relative' }}>{label}</span>
+              {count > 0 && (
+                <span className="hr-tab-count" style={{ position: 'relative' }}>{count}</span>
+              )}
+            </button>
+          ))}
         </div>
 
+        {/* ── Error ── */}
         {error && (
           <div className="hr-error">
             <AlertCircle size={15} />
@@ -441,22 +565,54 @@ const HRRequestCenter = ({ userInfo }) => {
           </div>
         )}
 
+        {/* ── Section header ── */}
+        <div className="hr-section-head">
+          <span className="hr-section-title">
+            {tab === 'claims' ? 'Staff Claims' : tab === 'tickets' ? 'Support Tickets' : 'Visitor Appointments'}
+          </span>
+          <button className="hr-refresh-btn" onClick={loadData} disabled={loading}>
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
+          </button>
+        </div>
+
+        {/* ── Content ── */}
         {loading ? (
           <div className="hr-loading">
-            <Loader2 size={28} className="spin" />
-            <span>Loading…</span>
+            <div className="hr-loading-ring" />
+            <span>Loading requests…</span>
           </div>
         ) : (
           <>
-            {tab === 'claims' && renderClaims()}
-            {tab === 'tickets' && renderTickets()}
+            {tab === 'claims'   && renderClaims()}
+            {tab === 'tickets'  && renderTickets()}
             {tab === 'visitors' && renderVisitors()}
           </>
         )}
       </div>
+
+      {/* ── Detail Modal ── */}
+      {detailItem && (
+        <DetailModal
+          detail={detailItem}
+          onClose={() => setDetailItem(null)}
+          statusClass={statusClass}
+          onApprove={handleApproveFromDetail}
+          onReject={() => {}}
+          openRejectModal={openRejectModal}
+          actionLoadingId={actionLoadingId}
+        />
+      )}
+
+      {/* ── Reject Modal ── */}
+      {modal && (
+        <RejectModal
+          onConfirm={confirmReject}
+          onCancel={() => setModal(null)}
+          loading={!!actionLoadingId}
+        />
+      )}
     </div>
   );
 };
 
 export default HRRequestCenter;
-
