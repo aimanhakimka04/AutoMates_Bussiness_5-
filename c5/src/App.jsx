@@ -7,7 +7,9 @@ import {
   Calendar, Scan, Bell, ChevronLeft,
   Zap, X,
   Home as HomeIcon, LayoutDashboard, Info as InfoIcon, UserCircle,
-  LogOut, Lock, User, ChevronRight, MapPin
+  LogOut, Lock, User, ChevronRight, MapPin,
+  Clock, Gift, Megaphone, Ticket, CalendarPlus,
+  DoorOpen, FileText, TrendingUp, Briefcase, Loader2, RefreshCw as RefreshCwIcon
 } from 'lucide-react';
 
 import {
@@ -288,37 +290,338 @@ const NotificationPanel = ({ onClose }) => {
 };
 
 // ══════════════════════════════════════════════════════════════════
-//  4. DASHBOARD
+//  4. DASHBOARD  (Live-data fancy dashboard)
 // ══════════════════════════════════════════════════════════════════
-const DashboardPage = () => {
+const DASH_N8N = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const dashAuthToken = () => localStorage.getItem('authToken') || '';
+
+async function callDashN8N(action, subTarget, payload = {}) {
+  const res = await fetch(DASH_N8N, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${dashAuthToken()}` },
+    body: JSON.stringify({ input_type: 'direct_action', edited_plan: { action, sub_target: subTarget, ...payload } }),
+  });
+  if (!res.ok) throw new Error(`n8n ${res.status}`);
+  return res.json();
+}
+
+const DashboardPage = ({ userInfo }) => {
+  const navigate = useNavigate();
+  const [now] = useState(new Date());
+  const userEmail = userInfo?.email || '';
+  const userName  = userInfo?.name  || '';
+
+  const hour = now.getHours();
+  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const dateStr = now.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // ── Live state ──────────────────────────────────────────────────
+  const [loading, setLoading]             = useState(true);
+  const [leaveBalance, setLeaveBalance]   = useState(null);   // object { annual: 14, ... } or null
+  const [openTickets, setOpenTickets]      = useState(0);
+  const [upcomingRides, setUpcomingRides]  = useState(0);
+  const [rideSub, setRideSub]             = useState('No rides');
+  const [trainingCount, setTrainingCount]  = useState(0);
+  const [meetings, setMeetings]            = useState([]);     // upcoming room bookings
+  const [attendance, setAttendance]         = useState(null);   // latest attendance record
+
+  // ── Fetch all dashboard data on mount ───────────────────────────
+  useEffect(() => {
+    if (!userEmail) { setLoading(false); return; }
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      const results = await Promise.allSettled([
+        // 0 – leave balance (flexhr)
+        callDashN8N('check_leave_balance', 'flexhr', { user_email: userEmail, user_name: userName }),
+        // 1 – tickets (ticketing)
+        callDashN8N('get_tickets', 'ticketing', { employee_email: userEmail }),
+        // 2 – transport bookings
+        callDashN8N('get_bookings', 'transport', { employee_email: userEmail }),
+        // 3 – training (chart)
+        callDashN8N('get_chart_overview', 'training', { employee_email: userEmail, employee_name: userName, data_type: 'training' }),
+        // 4 – meeting room bookings
+        callDashN8N('get_bookings', 'meeting_room', { employee_email: userEmail }),
+        // 5 – attendance
+        callDashN8N('list_attendance', 'flexhr', { user_email: userEmail, user_name: userName }),
+      ]);
+      if (cancelled) return;
+
+      // 0 – Leave balance
+      if (results[0].status === 'fulfilled') {
+        const r = results[0].value;
+        setLeaveBalance(r?.data ?? r?.result?.data ?? null);
+      }
+
+      // 1 – Tickets
+      if (results[1].status === 'fulfilled') {
+        const r = results[1].value;
+        const tickets = r?.data?.tickets ?? r?.data ?? [];
+        const arr = Array.isArray(tickets) ? tickets : [];
+        setOpenTickets(arr.filter(t => (t.status || '').toLowerCase() === 'open').length);
+      }
+
+      // 2 – Transport
+      if (results[2].status === 'fulfilled') {
+        const r = results[2].value;
+        const rows = r?.data ?? r?.result?.data ?? [];
+        const arr = Array.isArray(rows) ? rows : [];
+        const active = arr.filter(b => (b.status || '').toLowerCase() !== 'cancelled');
+        setUpcomingRides(active.length);
+        if (active.length > 0) {
+          const next = active[0];
+          const timeStr = next.session_time ? String(next.session_time).slice(0, 5) : '';
+          setRideSub(timeStr ? `Next at ${timeStr}` : `${active.length} active`);
+        } else {
+          setRideSub('No upcoming rides');
+        }
+      }
+
+      // 3 – Training
+      if (results[3].status === 'fulfilled') {
+        const r = results[3].value;
+        const rd = r?.data ?? r?.result?.data;
+        const raw =
+          (rd && typeof rd === 'object' && !Array.isArray(rd))
+            ? (rd.training_info || rd.my_programs || rd.myPrograms || rd.data || [])
+            : (Array.isArray(rd) ? rd : []);
+        const arr = Array.isArray(raw) ? raw : [];
+        setTrainingCount(arr.length);
+      }
+
+      // 4 – Meeting room bookings → events list
+      if (results[4].status === 'fulfilled') {
+        const r = results[4].value;
+        let bookings = [];
+        if (r?.type === 'bookings_list') bookings = r.bookings || [];
+        else { const d = r?.data ?? r?.result?.data ?? []; bookings = Array.isArray(d) ? d : []; }
+        // Take top 3
+        setMeetings(bookings.slice(0, 3));
+      }
+
+      // 5 – Attendance
+      if (results[5].status === 'fulfilled') {
+        const r = results[5].value;
+        const d = r?.data ?? r?.result?.data ?? [];
+        const arr = Array.isArray(d) ? d : [];
+        if (arr.length > 0) setAttendance(arr[0]);
+      }
+
+      setLoading(false);
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [userEmail, userName]);
+
+  // ── Computed values ─────────────────────────────────────────────
+  const fmtTime12 = (iso) => {
+    if (!iso) return '— : —';
+    try { return new Date(iso).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }); }
+    catch { return '— : —'; }
+  };
+
+  const clockIn  = attendance?.clock_in_time  ? fmtTime12(attendance.clock_in_time) : '— : —';
+  const clockOut = attendance?.clock_out_time ? fmtTime12(attendance.clock_out_time) : '— : —';
+  const isOnDuty = !!(attendance?.clock_in_time && !attendance?.clock_out_time);
+
+  // Work progress bar
+  const workPct = (() => {
+    if (!attendance?.clock_in_time) return 0;
+    const inTime = new Date(attendance.clock_in_time).getTime();
+    const endTarget = inTime + 9 * 3600000; // 9 hours
+    const current = attendance?.clock_out_time ? new Date(attendance.clock_out_time).getTime() : Date.now();
+    return Math.min(100, Math.max(0, Math.round(((current - inTime) / (endTarget - inTime)) * 100)));
+  })();
+
+  const workedStr = (() => {
+    if (!attendance?.clock_in_time) return 'Not clocked in';
+    const inTime = new Date(attendance.clock_in_time).getTime();
+    const current = attendance?.clock_out_time ? new Date(attendance.clock_out_time).getTime() : Date.now();
+    const diff = current - inTime;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return `${h}h ${m}m worked`;
+  })();
+
+  // Leave balance display
+  const leaveStr = (() => {
+    if (!leaveBalance) return '—';
+    if (typeof leaveBalance === 'object') {
+      const keys = Object.keys(leaveBalance);
+      if (keys.length === 0) return '—';
+      // Show first key's value (e.g. annual leave)
+      const first = keys[0];
+      return String(leaveBalance[first]);
+    }
+    return String(leaveBalance);
+  })();
+
+  const leaveSub = (() => {
+    if (!leaveBalance || typeof leaveBalance !== 'object') return 'Days Remaining';
+    const keys = Object.keys(leaveBalance);
+    return keys.length > 0 ? keys[0] : 'Days Remaining';
+  })();
+
+  // Build stats array with live data
   const stats = [
-    { label: 'Leave Balance',  value: '14 / 20', sub: 'Days Remaining',       color: '#2b1d62' },
-    { label: 'My Training',    value: '2',       sub: 'Upcoming in CHART',    color: '#1890ff' },
-    { label: 'Open Tickets',   value: '3',       sub: 'Ticketing Status',     color: '#f39c12' },
-    { label: 'Upcoming Ride',  value: '1',       sub: 'Shuttle at 11:00 AM',  color: '#4caf50' },
+    { label: 'Leave Balance', value: leaveStr,              sub: leaveSub,                   color: '#6c47d9', gradient: 'linear-gradient(135deg,#6c47d9,#a855f7)', icon: <Calendar size={20} color="#fff" /> },
+    { label: 'My Training',   value: String(trainingCount),  sub: 'Upcoming in CHART',        color: '#1890ff', gradient: 'linear-gradient(135deg,#1890ff,#38bdf8)', icon: <TrendingUp size={20} color="#fff" /> },
+    { label: 'Open Tickets',  value: String(openTickets),    sub: 'Tickets Pending',          color: '#f39c12', gradient: 'linear-gradient(135deg,#f39c12,#fbbf24)', icon: <Ticket size={20} color="#fff" /> },
+    { label: 'Upcoming Ride', value: String(upcomingRides),  sub: rideSub,                    color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#34d399)', icon: <Briefcase size={20} color="#fff" /> },
   ];
+
+  // Meeting events with colour dots
+  const dotColors = ['#6c47d9', '#1890ff', '#10b981', '#f39c12'];
+  const eventsList = meetings.map((m, i) => ({
+    time:  m.time ? m.time.split(' - ')[0] : (m.start ? new Date(m.start).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'),
+    title: m.title || m.subject || 'Meeting',
+    loc:   m.room || m.location || '—',
+    dot:   dotColors[i % dotColors.length],
+  }));
+
+  const quickActions = [
+    { label: 'Apply Leave',   icon: <CalendarPlus size={22} />, path: '/flexhr',       accent: '#6c47d9' },
+    { label: 'Book Room',     icon: <DoorOpen size={22} />,     path: '/meeting-room', accent: '#1890ff' },
+    { label: 'Submit Ticket', icon: <Ticket size={22} />,       path: '/ticketing',    accent: '#f39c12' },
+    { label: 'Staff Claim',   icon: <FileText size={22} />,     path: '/staff-claim',  accent: '#e11d48' },
+  ];
+
+  const announcements = [
+    { id: 1, title: 'Remote Work Policy Updated',     date: 'Mar 5, 2026', badge: 'New',       badgeColor: '#10b981' },
+    { id: 2, title: 'Annual Performance Review Open', date: 'Mar 1, 2026', badge: 'Important', badgeColor: '#f39c12' },
+    { id: 3, title: 'Office Renovation — Level 12',   date: 'Feb 28, 2026', badge: null,        badgeColor: null     },
+  ];
+
+  const birthdays = [
+    { name: 'Sarah L.', date: 'Mar 10', initials: 'SL', bg: '#e0e7ff' },
+    { name: 'Jason K.', date: 'Mar 12', initials: 'JK', bg: '#fce7f3' },
+    { name: 'Priya M.', date: 'Mar 15', initials: 'PM', bg: '#d1fae5' },
+    { name: 'Ahmad R.', date: 'Mar 18', initials: 'AR', bg: '#fef3c7' },
+  ];
+
+  // ── Loading state ──────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="dash-page" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 size={32} color="#6c47d9" style={{ animation: 'dashSpin 1s linear infinite' }} />
+        <div style={{ marginTop: 14, fontSize: 13, color: '#aaa', fontWeight: 600 }}>Loading your workspace…</div>
+        <style>{`@keyframes dashSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
+      </div>
+    );
+  }
+
   return (
-    <div style={{padding:'20px'}}>
-      <div style={{fontSize:22,fontWeight:800,color:'#2b1d62',marginBottom:20}}>My Workspace</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:15}}>
-        {stats.map((s,i) => (
-          <div key={i} className="employee-stat-card">
-            <div className="stat-label">{s.label}</div>
-            <div className="stat-value" style={{color:s.color}}>{s.value}</div>
-            <div className="stat-sub">{s.sub}</div>
+    <div className="dash-page">
+
+      {/* ── 1. Greeting Header ── */}
+      <div className="dash-header">
+        <div className="dash-greeting">{greeting} 👋</div>
+        <div className="dash-date">{dateStr}</div>
+      </div>
+
+      {/* ── 2. Quick Stats (LIVE) ── */}
+      <div className="dash-section-title">Overview</div>
+      <div className="dash-stats-grid">
+        {stats.map((s, i) => (
+          <div key={i} className="dash-stat-card" style={{ '--dash-accent': s.color, animationDelay: `${i * 0.08}s` }}>
+            <div className="dash-stat-icon" style={{ background: s.gradient }}>{s.icon}</div>
+            <div className="dash-stat-body">
+              <div className="dash-stat-value" style={{ color: s.color }}>{s.value}</div>
+              <div className="dash-stat-label">{s.label}</div>
+              <div className="dash-stat-sub">{s.sub}</div>
+            </div>
           </div>
         ))}
       </div>
-      <div style={{marginTop:25}}>
-        <h3 style={{fontSize:16,color:'#2b1d62',marginBottom:12}}>Next Event</h3>
-        <div className="dashboard-event-item">
-          <div className="event-time-tag">10:00 AM</div>
-          <div className="event-info">
-            <div className="event-title">UAT Briefing</div>
-            <div className="event-loc">Idea Lab 6, Level 19</div>
+
+      {/* ── 3. Attendance (LIVE) ── */}
+      <div className="dash-section-title">Today's Attendance</div>
+      <div className="dash-attendance">
+        <div className="dash-att-row">
+          <div className="dash-att-block">
+            <Clock size={16} color="#10b981" />
+            <div>
+              <div className="dash-att-label">Clock In</div>
+              <div className="dash-att-time">{clockIn}</div>
+            </div>
+          </div>
+          <div className="dash-att-divider" />
+          <div className="dash-att-block">
+            <Clock size={16} color={isOnDuty ? '#f39c12' : '#ef4444'} />
+            <div>
+              <div className="dash-att-label">Clock Out</div>
+              <div className={`dash-att-time ${!attendance?.clock_out_time ? 'dash-att-pending' : ''}`}>{clockOut}</div>
+            </div>
+          </div>
+        </div>
+        <div className="dash-timeline">
+          <div className="dash-timeline-track">
+            <div className="dash-timeline-fill" style={{ width: `${workPct}%` }} />
+          </div>
+          <div className="dash-timeline-labels">
+            <span>{clockIn !== '— : —' ? clockIn : '—'}</span>
+            <span className="dash-timeline-hours">{workedStr}</span>
+            <span>06:00 PM</span>
           </div>
         </div>
       </div>
+
+      {/* ── 4. Upcoming Events (LIVE from meeting room bookings) ── */}
+      <div className="dash-section-title">Upcoming Events</div>
+      <div className="dash-events">
+        {eventsList.length === 0 ? (
+          <div style={{ padding: '18px 0', textAlign: 'center', color: '#bbb', fontSize: 13 }}>No upcoming events</div>
+        ) : eventsList.map((ev, i) => (
+          <div key={i} className="dash-event-row">
+            <div className="dash-event-dot" style={{ background: ev.dot }} />
+            <div className="dash-event-time">{ev.time}</div>
+            <div className="dash-event-body">
+              <div className="dash-event-title">{ev.title}</div>
+              <div className="dash-event-loc"><MapPin size={12} /> {ev.loc}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 5. Quick Actions ── */}
+      <div className="dash-section-title">Quick Actions</div>
+      <div className="dash-quick-actions">
+        {quickActions.map((a, i) => (
+          <button key={i} className="dash-action-btn" onClick={() => navigate(a.path)} style={{ '--qa-accent': a.accent }}>
+            <div className="dash-action-icon">{a.icon}</div>
+            <span>{a.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── 6. Announcements ── */}
+      <div className="dash-section-title"><Megaphone size={16} /> Announcements</div>
+      <div className="dash-announce">
+        {announcements.map(a => (
+          <div key={a.id} className="dash-announce-item">
+            <div className="dash-announce-text">
+              <div className="dash-announce-title">{a.title}</div>
+              <div className="dash-announce-date">{a.date}</div>
+            </div>
+            {a.badge && <span className="dash-announce-badge" style={{ background: a.badgeColor }}>{a.badge}</span>}
+          </div>
+        ))}
+      </div>
+
+      {/* ── 7. Birthdays ── */}
+      <div className="dash-section-title"><Gift size={16} /> Upcoming Birthdays</div>
+      <div className="dash-birthdays">
+        {birthdays.map((b, i) => (
+          <div key={i} className="dash-bday-card">
+            <div className="dash-bday-avatar" style={{ background: b.bg }}>{b.initials}</div>
+            <div className="dash-bday-name">{b.name}</div>
+            <div className="dash-bday-date">{b.date}</div>
+          </div>
+        ))}
+      </div>
+
     </div>
   );
 };
@@ -706,7 +1009,7 @@ function App() {
             <Routes>
               <Route path="/login"        element={<Navigate to="/" replace />} />
               <Route path="/"             element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
-              <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage /></PageWrapper>} />
+              <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage userInfo={userInfo} /></PageWrapper>} />
               <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
               <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
               <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
