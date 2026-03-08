@@ -341,6 +341,105 @@
 }
 .hr-btn.reject:active { background: #fee2e2; }
 
+/* ─── Clickable card ─── */
+.hr-card-clickable { cursor: pointer; }
+.hr-card-clickable:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+
+/* ─── Detail Modal ─── */
+.hr-detail-overlay {
+  position: fixed; inset: 0;
+  background: rgba(10,5,25,0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 200;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+.hr-detail-box {
+  width: 100%; max-width: 480px;
+  max-height: 85vh;
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  padding: 20px 20px 96px;
+  animation: modal-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+  overflow-y: auto;
+  position: relative;
+}
+.hr-detail-handle {
+  width: 40px; height: 4px;
+  border-radius: 2px; background: #e5e7eb;
+  margin: 0 auto 16px;
+}
+.hr-detail-accent {
+  height: 4px;
+  margin: -4px -20px 16px -20px;
+  border-radius: 24px 24px 0 0;
+}
+.hr-detail-accent.pending   { background: linear-gradient(90deg, #2b1d62, #6c47d9); }
+.hr-detail-accent.approved  { background: linear-gradient(90deg, #059669, #10b981); }
+.hr-detail-accent.rejected  { background: linear-gradient(90deg, #dc2626, #ef4444); }
+.hr-detail-accent.cancelled { background: linear-gradient(90deg, #d97706, #f59e0b); }
+.hr-detail-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 18px;
+}
+.hr-detail-id {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 15px; font-weight: 800;
+  color: #1a1a2e;
+}
+.hr-detail-body {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: 20px;
+}
+.hr-detail-field {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.hr-detail-field.full { grid-column: 1 / -1; }
+.hr-detail-label {
+  font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  color: #aaa;
+}
+.hr-detail-value {
+  font-size: 14px; font-weight: 600;
+  color: #1a1a2e;
+  word-break: break-word;
+}
+.hr-detail-actions {
+  display: flex; gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f5;
+}
+.hr-detail-actions .hr-btn { flex: 1; }
+.hr-detail-close {
+  position: absolute;
+  top: 20px; right: 20px;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #f5f5f5;
+  border: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: #666;
+  transition: background 0.2s, color 0.2s;
+}
+.hr-detail-close:active { background: #e5e7eb; color: #333; }
+
+.hr-detail-field-image { margin-top: 4px; }
+.hr-detail-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 280px;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  object-fit: contain;
+  background: #f8f9fd;
+}
+
 /* ─── Reject Modal ─── */
 .hr-modal-overlay {
   position: fixed; inset: 0;
