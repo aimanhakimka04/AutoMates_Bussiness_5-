@@ -5,7 +5,7 @@ import { VoiceRecorder } from 'capacitor-voice-recorder';
 import './ChatBot.css';
 import { Capacitor } from '@capacitor/core';
 // ── CONFIG ────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'ttps://n8n.aimanhakimka.site/webhook-test/employee-assistant';
 const TENANT_ID       = 'chinhin_hq';
 const ELEVATED_PATHS  = ['/dashboard', '/info'];
 const SESSION_TIMEOUT_MS = 2 * 60 * 60 * 1000;

@@ -18,7 +18,7 @@ import {
 import './Chart.css';
 
 // ─── CONFIG (aligned with StaffClaim.js) ─────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 // ─── n8n API helper (same pattern as StaffClaim.js) ──────────────────────────
@@ -363,9 +363,9 @@ const Chart = ({ userInfo }) => {
         </div>
         <span className="nav-title">
           {view === 'main' ? 'CHART' :
-           view === 'calendar' ? 'Learning Calendar' :
-           view === 'upcoming' ? 'My Upcoming Trainings' :
-           view === 'programs' ? 'Learning Programs' : 'My Learning Request'}
+            view === 'calendar' ? 'Learning Calendar' :
+              view === 'upcoming' ? 'My Upcoming Trainings' :
+                view === 'programs' ? 'Learning Programs' : 'My Learning Request'}
         </span>
       </nav>
 

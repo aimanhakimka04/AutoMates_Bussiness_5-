@@ -12,7 +12,7 @@ import './Ticketing.css';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 // Replace with your actual n8n webhook URL
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || ''; // Assume token is stored in localStorage after MSAL login
 
 // ─── n8n API helper ─────────────────────────────────────────────────────────────
@@ -214,50 +214,50 @@ const Ticketing = ({ userInfo }) => {
     reader.onerror = error => reject(error);
   });*/
   // Fungsi ni akan resize gambar ke maksimum lebar 1024px dan compress jadi JPEG 70% kualiti
-const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
+  const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
 
-        // Resize jika gambar terlalu besar
-        if (width > maxWidth) {
-          height = Math.round((height * maxWidth) / width);
-          width = maxWidth;
-        }
+          // Resize jika gambar terlalu besar
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
 
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert ke base64 dengan format JPEG dan kualiti yang ditetapkan
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        // Buang prefix "data:image/jpeg;base64," untuk n8n
-        resolve(dataUrl.split(',')[1]);
+          // Convert ke base64 dengan format JPEG dan kualiti yang ditetapkan
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+          // Buang prefix "data:image/jpeg;base64," untuk n8n
+          resolve(dataUrl.split(',')[1]);
+        };
       };
-    };
-    reader.onerror = error => reject(error);
-  });
-};
+      reader.onerror = error => reject(error);
+    });
+  };
 
   useEffect(() => {
-  console.log("Ticketing Component Mounted!");
-}, []);
+    console.log("Ticketing Component Mounted!");
+  }, []);
 
   // ── submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setLoading(true);
     setApiError('');
     const now = new Date();
-    const ts  = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')} ${now.toTimeString().split(' ')[0]}`;
+    const ts = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${now.toTimeString().split(' ')[0]}`;
 
     const catIdx = CATEGORIES.findIndex(c => c.key === form.issueCategory);
     const issueTypeId = catIdx >= 0 ? catIdx + 1 : null;
@@ -276,26 +276,26 @@ const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
 
     const newTicket = {
       ...form,
-      id         : genId(),
-      date       : ts,
-      status     : 'Open',
+      id: genId(),
+      date: ts,
+      status: 'Open',
       issue_type_id: issueTypeId,
       // You can append the prefix back for immediate frontend rendering in the Success view
-      photo      : photoBase64 ? `data:${file.type};base64,${photoBase64}` : null 
+      photo: photoBase64 ? `data:${file.type};base64,${photoBase64}` : null
     };
 
     try {
       const res = await callN8N('create_ticket', {
         employee_email: userEmail,
-        employee_name : userName,
-        level            : form.level,
-        facility_area    : form.facilityArea,
-        zone             : form.zone,
-        issue_type_id    : issueTypeId,
-        description      : form.issueDescription,
-        remarks          : form.remarks,
-        priority         : form.priority,
-        photo            : photoBase64 // 2. Add the base64 string to the n8n payload
+        employee_name: userName,
+        level: form.level,
+        facility_area: form.facilityArea,
+        zone: form.zone,
+        issue_type_id: issueTypeId,
+        description: form.issueDescription,
+        remarks: form.remarks,
+        priority: form.priority,
+        photo: photoBase64 // 2. Add the base64 string to the n8n payload
       });
       if (res?.data?.ticket_id) newTicket.id = res.data.ticket_id;
     } catch {
@@ -424,7 +424,7 @@ const compressImage = (file, maxWidth = 1024, quality = 0.7) => {
                     <span className="tkt-stat-l">Resolved</span>
                   </div>
                   <div className="tkt-stat-div" />
-                  <div className="tkt-stat"> 
+                  <div className="tkt-stat">
                     <span className="tkt-stat-n">{tickets.filter(t => t.status === 'Open').length + tickets.filter(t => t.status === 'Closed').length}</span>
                     <span className="tkt-stat-l">Total</span>
                   </div>

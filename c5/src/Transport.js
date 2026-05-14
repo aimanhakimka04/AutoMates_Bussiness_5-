@@ -11,7 +11,7 @@ import {
 import './Transport.css';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 async function callN8N(action, payload = {}) {

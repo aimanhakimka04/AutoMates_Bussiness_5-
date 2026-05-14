@@ -9,33 +9,24 @@ import {
   Home as HomeIcon, LayoutDashboard, Info as InfoIcon, UserCircle,
   LogOut, Lock, User, ChevronRight, MapPin,
   Clock, Gift, Megaphone, Ticket, CalendarPlus,
-  DoorOpen, FileText, TrendingUp, Briefcase, Loader2, RefreshCw as RefreshCwIcon
+  DoorOpen, FileText, TrendingUp, Briefcase, Loader2, Eye, EyeOff
 } from 'lucide-react';
 
-import {
-  IS_MOBILE,
-  msalInstance,
-  ensureMsal,
-  doLogin,
-  mobileLogout,
-  getMobileSession,
-} from './MicrosoftAuth';
-
 import MeetingRoom from './MeetingRoom';
-import Transport   from './Transport';
-import EVisitor    from './EVisitor';
-import Ticketing   from './Ticketing';
-import Chart       from './Chart';
-import Wellness    from './Wellness';
-import Meal        from './Meal';
+import Transport from './Transport';
+import EVisitor from './EVisitor';
+import Ticketing from './Ticketing';
+import Chart from './Chart';
+import Wellness from './Wellness';
+import Meal from './Meal';
 //import Energy      from './Energy';
-import FlexHR      from './FlexHR';
+import FlexHR from './FlexHR';
 import HRRequestCenter from './HRRequestCenter';
-import Mynews      from './Mynews';
-import Childcare   from './Childcare';
-import EPP         from './EPP';
-import ChatBot     from './ChatBot';
-import StaffClaim  from './StaffClaim';
+import Mynews from './Mynews';
+import Childcare from './Childcare';
+import EPP from './EPP';
+import ChatBot from './ChatBot';
+import StaffClaim from './StaffClaim';
 import './App.css';
 
 // ══════════════════════════════════════════════════════════════════
@@ -47,9 +38,9 @@ const SplashScreen = () => (
       <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.splash.logo} />
     </div>
     <h1 style={S.splash.title}>ChinHin Connect</h1>
-    <p  style={S.splash.sub}>Loading your workspace…</p>
+    <p style={S.splash.sub}>Loading your workspace…</p>
     <div style={S.splash.dots}>
-      {[0,1,2].map(i => <span key={i} style={{...S.splash.dot, animationDelay:`${i*0.2}s`}} />)}
+      {[0, 1, 2].map(i => <span key={i} style={{ ...S.splash.dot, animationDelay: `${i * 0.2}s` }} />)}
     </div>
     <style>{`
       @keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(130,90,255,.45)}50%{box-shadow:0 0 70px rgba(130,90,255,.8)}}
@@ -67,7 +58,7 @@ const SplashScreen = () => (
 const SESSION_KEY = 'flexhr_user_session';
 
 const saveSession = (info) => {
-  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...info, savedAt: Date.now() })); } catch {}
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...info, savedAt: Date.now() })); } catch { }
 };
 
 const loadSession = () => {
@@ -85,11 +76,11 @@ const loadSession = () => {
 };
 
 const clearSession = () => {
-  try { localStorage.removeItem(SESSION_KEY); } catch {}
+  try { localStorage.removeItem(SESSION_KEY); } catch { }
 };
 
 // ── Sync user to DB via n8n (called once after login) ─────────────
-const N8N_WEBHOOK = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
 
 const syncUserToDB = async (info, token) => {
   if (!info?.email) return;
@@ -103,13 +94,13 @@ const syncUserToDB = async (info, token) => {
       body: JSON.stringify({
         input_type: 'direct_action',
         edited_plan: {
-          action:     'sync_user',
+          action: 'sync_user',
           sub_target: 'flexhr',
           user_email: info.email,
-          user_name:  info.name,
+          user_name: info.name,
         },
         // Also send at body level so VerifyTempToken + Upsert can read it
-        upn:  info.email,
+        upn: info.email,
         name: info.name,
       }),
     });
@@ -121,78 +112,57 @@ const syncUserToDB = async (info, token) => {
 // ══════════════════════════════════════════════════════════════════
 //  1. LOGIN
 // ══════════════════════════════════════════════════════════════════
+// Hardcoded demo credentials — replace with real API call as needed
+const DEMO_USERS = [
+  { email: 'admin@chinhin.com', password: 'Admin@123', name: 'Alan Tan Wai Loon' },
+  { email: 'hr@chinhin.com', password: 'HR@2026', name: 'Nurul Ain Binti Ahmad' },
+  { email: 'staff@chinhin.com', password: 'Staff@2026', name: 'Jason Khoo Weng Fatt' },
+];
+
 const Login = ({ setAuth, setUserInfo }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState('');
+  const [error, setError] = useState('');
+  const [focused, setFocused] = useState('');
 
-  useEffect(() => {
-    if (IS_MOBILE) return;
-
-    const handleRedirect = async () => {
-      await ensureMsal();
-      const response = await msalInstance.handleRedirectPromise();
-
-      if (response) {
-        const account = response.account;
-        const info    = { name: account.name, email: account.username };
-        const token   = response.accessToken || response.idToken || '';
-        if (token) localStorage.setItem('authToken', token);
-        saveSession(info);
-        syncUserToDB(info, token); // fire-and-forget
-        setUserInfo(info);
-        setAuth(true);
-      }
-    };
-
-    handleRedirect();
-  }, []);
-
-  const handleMicrosoftLogin = async () => {
-    setLoading(true);
+  const handleLogin = async (e) => {
+    e.preventDefault();
     setError('');
+    if (!email.trim() || !password) { setError('Please enter your email and password.'); return; }
+    setLoading(true);
 
-    if (IS_MOBILE) {
-      // ── APK flow — Capacitor Browser ──────────────────────────
-      doLogin(
-        async (info, token) => {
-          if (token) localStorage.setItem('authToken', token);
-          saveSession(info);
-          syncUserToDB(info, token); // fire-and-forget — ensures user in DB
-          setUserInfo(info);
-          setAuth(true);
-          setLoading(false);
-        },
-        (err) => {
-          setError('Sign-in failed: ' + err);
-          setLoading(false);
-        }
-      );
+    // Simulate network delay for UX polish
+    await new Promise(r => setTimeout(r, 900));
+
+    const match = DEMO_USERS.find(
+      u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
+    );
+
+    if (match) {
+      const info = { name: match.name, email: match.email };
+      const fakeToken = btoa(JSON.stringify(info) + ':' + Date.now());
+      localStorage.setItem('authToken', fakeToken);
+      saveSession(info);
+      syncUserToDB(info, fakeToken);
+      setUserInfo(info);
+      setAuth(true);
     } else {
-      // ── Web flow — MSAL redirect ───────────────────────────────
-      try {
-        await ensureMsal();
-        await msalInstance.loginRedirect({
-          scopes:      ['openid', 'profile', 'email'],
-          prompt:      'select_account',
-          //redirectUri: 'http://localhost:3000/login',
-        });
-        // Page redirects — code below won't run
-      } catch (err) {
-        if (err.errorCode !== 'user_cancelled' && err.errorCode !== 'access_denied') {
-          setError('Sign-in failed: ' + (err.errorCode || err.message || 'Unknown error'));
-        }
-        setLoading(false);
-      }
+      setError('Invalid email or password. Please try again.');
     }
+    setLoading(false);
   };
 
   return (
     <div style={S.login.page}>
+      {/* Animated background blobs */}
       <div style={S.login.blobTR} />
       <div style={S.login.blobBL} />
-      <div style={S.login.card}>
+      <div style={S.login.blobMid} />
 
-        {/* ── App Icon ── */}
+      <div style={S.login.card}>
+        {/* App Icon */}
         <div style={S.login.iconWrap}>
           <div style={S.login.iconRing}>
             <img src="/icon_img/flexhr.png" alt="FlexHR" style={S.login.iconImg} />
@@ -200,37 +170,82 @@ const Login = ({ setAuth, setUserInfo }) => {
         </div>
 
         <h1 style={S.login.appName}>ChinHin Connect</h1>
-        <p  style={S.login.tagline}>Your Intelligent Workplace Portal</p>
+        <p style={S.login.tagline}>Your Intelligent Workplace Portal</p>
         <div style={S.login.divider} />
-        <p  style={S.login.instruction}>Sign in with your Microsoft account to continue.</p>
 
-        {error && <div style={S.login.errorBox}>{error}</div>}
+        {error && (
+          <div style={S.login.errorBox}>
+            ⚠ {error}
+          </div>
+        )}
 
-        {/* ── Microsoft Button ── */}
-        <button
-          onClick={handleMicrosoftLogin}
-          disabled={loading}
-          style={{...S.login.msBtn, opacity: loading ? 0.72 : 1, cursor: loading ? 'not-allowed' : 'pointer'}}
-          onMouseEnter={e => { if(!loading) e.currentTarget.style.background='#f3f4f6'; }}
-          onMouseLeave={e => { if(!loading) e.currentTarget.style.background='#ffffff'; }}
-        >
-          {loading ? (
-            <><span style={S.login.spinner} /> Signing in…</>
-          ) : (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 23 23">
-                <path fill="#f35325" d="M1 1h10v10H1z"/>
-                <path fill="#81bc06" d="M12 1h10v10H12z"/>
-                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-                <path fill="#ffba08" d="M12 12h10v10H12z"/>
-              </svg>
-              Sign in with Microsoft
-            </>
-          )}
-        </button>
+        <form onSubmit={handleLogin} style={{ width: '100%' }} noValidate>
+          {/* Email field */}
+          <div style={{ ...S.login.field, boxShadow: focused === 'email' ? '0 0 0 2.5px #6c47d9' : 'none' }}>
+            <User size={17} color={focused === 'email' ? '#6c47d9' : '#aaa'} style={{ flexShrink: 0 }} />
+            <input
+              id="login-email"
+              type="email"
+              placeholder="Work Email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onFocus={() => setFocused('email')}
+              onBlur={() => setFocused('')}
+              style={S.login.fieldInput}
+              autoComplete="username"
+            />
+          </div>
+
+          {/* Password field */}
+          <div style={{ ...S.login.field, boxShadow: focused === 'pw' ? '0 0 0 2.5px #6c47d9' : 'none' }}>
+            <Lock size={17} color={focused === 'pw' ? '#6c47d9' : '#aaa'} style={{ flexShrink: 0 }} />
+            <input
+              id="login-password"
+              type={showPw ? 'text' : 'password'}
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              onFocus={() => setFocused('pw')}
+              onBlur={() => setFocused('')}
+              style={{ ...S.login.fieldInput, flex: 1 }}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw(v => !v)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', display: 'flex', alignItems: 'center' }}
+              tabIndex={-1}
+            >
+              {showPw
+                ? <EyeOff size={16} color="#aaa" />
+                : <Eye size={16} color="#aaa" />}
+            </button>
+          </div>
+
+          {/* Sign-in button */}
+          <button
+            id="login-submit"
+            type="submit"
+            disabled={loading}
+            style={{ ...S.login.signInBtn, opacity: loading ? 0.78 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+          >
+            {loading
+              ? <><span style={S.login.spinner} /> Signing in…</>
+              : 'Sign In'}
+          </button>
+        </form>
 
         <p style={S.login.footerNote}>🔒 Protected by Corporate Security Policy</p>
       </div>
+
+      <style>{`
+        @keyframes cardIn{from{opacity:0;transform:translateY(28px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+        @keyframes spinBtn{to{transform:rotate(360deg)}}
+        @keyframes blobFloat{0%,100%{transform:scale(1) translate(0,0)}50%{transform:scale(1.12) translate(10px,-10px)}}
+        @keyframes fadeSlideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes splashPulse{0%,100%{box-shadow:0 0 40px rgba(130,90,255,.45)}50%{box-shadow:0 0 70px rgba(130,90,255,.8)}}
+        @keyframes splashBounce{0%,80%,100%{transform:scale(.55);opacity:.4}40%{transform:scale(1);opacity:1}}
+      `}</style>
     </div>
   );
 };
@@ -262,7 +277,7 @@ const GlobalWelcomeBar = ({ userInfo, openNotifications }) => {
 // ══════════════════════════════════════════════════════════════════
 //  3. NOTIFICATION PANEL  (Live-data)
 // ══════════════════════════════════════════════════════════════════
-const NOTIF_N8N = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const NOTIF_N8N = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const notifAuth = () => localStorage.getItem('authToken') || '';
 
 async function callNotifN8N(action, subTarget, payload = {}) {
@@ -278,11 +293,11 @@ async function callNotifN8N(action, subTarget, payload = {}) {
 const timeAgo = (dateStr) => {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
-  const mins  = Math.floor(diff / 60000);
-  if (mins < 1)   return 'Just now';
-  if (mins < 60)  return `${mins}m ago`;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
+  if (hrs < 24) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   if (days === 1) return 'Yesterday';
   return `${days}d ago`;
@@ -290,8 +305,8 @@ const timeAgo = (dateStr) => {
 
 const NotificationPanel = ({ onClose, userInfo }) => {
   const userEmail = userInfo?.email || '';
-  const userName  = userInfo?.name  || '';
-  const [notifs, setNotifs]   = useState([]);
+  const userName = userInfo?.name || '';
+  const [notifs, setNotifs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -304,7 +319,7 @@ const NotificationPanel = ({ onClose, userInfo }) => {
         callNotifN8N('get_bookings', 'meeting_room', { employee_email: userEmail }),
         callNotifN8N('get_tickets', 'ticketing', { employee_email: userEmail }),
         callNotifN8N('get_bookings', 'transport', { employee_email: userEmail }),
-        callNotifN8N('list_leaves',  'flexhr',    { user_email: userEmail, user_name: userName }),
+        callNotifN8N('list_leaves', 'flexhr', { user_email: userEmail, user_name: userName }),
       ]);
       if (cancelled) return;
 
@@ -391,17 +406,17 @@ const NotificationPanel = ({ onClose, userInfo }) => {
       <div className="notification-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header-purple">
           <span className="modal-title">Notifications</span>
-          <X size={20} color="white" onClick={onClose} style={{cursor:'pointer'}} />
+          <X size={20} color="white" onClick={onClose} style={{ cursor: 'pointer' }} />
         </div>
         <div className="notification-list">
           {loading ? (
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', padding:'40px 0', gap: 10 }}>
-              <Loader2 size={24} color="#6c47d9" style={{ animation:'dashSpin 1s linear infinite' }} />
-              <span style={{ fontSize:12, color:'#aaa' }}>Loading notifications…</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0', gap: 10 }}>
+              <Loader2 size={24} color="#6c47d9" style={{ animation: 'dashSpin 1s linear infinite' }} />
+              <span style={{ fontSize: 12, color: '#aaa' }}>Loading notifications…</span>
               <style>{`@keyframes dashSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}`}</style>
             </div>
           ) : notifs.length === 0 ? (
-            <div style={{ padding:'40px 20px', textAlign:'center', color:'#bbb', fontSize:13 }}>
+            <div style={{ padding: '40px 20px', textAlign: 'center', color: '#bbb', fontSize: 13 }}>
               No new notifications
             </div>
           ) : notifs.map(n => (
@@ -420,7 +435,7 @@ const NotificationPanel = ({ onClose, userInfo }) => {
 // ══════════════════════════════════════════════════════════════════
 //  4. DASHBOARD  (Live-data fancy dashboard)
 // ══════════════════════════════════════════════════════════════════
-const DASH_N8N = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const DASH_N8N = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const dashAuthToken = () => localStorage.getItem('authToken') || '';
 
 async function callDashN8N(action, subTarget, payload = {}) {
@@ -437,21 +452,21 @@ const DashboardPage = ({ userInfo }) => {
   const navigate = useNavigate();
   const [now] = useState(new Date());
   const userEmail = userInfo?.email || '';
-  const userName  = userInfo?.name  || '';
+  const userName = userInfo?.name || '';
 
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
   const dateStr = now.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   // ── Live state ──────────────────────────────────────────────────
-  const [loading, setLoading]             = useState(true);
-  const [leaveBalance, setLeaveBalance]   = useState(null);   // object { annual: 14, ... } or null
-  const [openTickets, setOpenTickets]      = useState(0);
-  const [upcomingRides, setUpcomingRides]  = useState(0);
-  const [rideSub, setRideSub]             = useState('No rides');
-  const [trainingCount, setTrainingCount]  = useState(0);
-  const [meetings, setMeetings]            = useState([]);     // upcoming room bookings
-  const [attendance, setAttendance]         = useState(null);   // latest attendance record
+  const [loading, setLoading] = useState(true);
+  const [leaveBalance, setLeaveBalance] = useState(null);   // object { annual: 14, ... } or null
+  const [openTickets, setOpenTickets] = useState(0);
+  const [upcomingRides, setUpcomingRides] = useState(0);
+  const [rideSub, setRideSub] = useState('No rides');
+  const [trainingCount, setTrainingCount] = useState(0);
+  const [meetings, setMeetings] = useState([]);     // upcoming room bookings
+  const [attendance, setAttendance] = useState(null);   // latest attendance record
 
   // ── Fetch all dashboard data on mount ───────────────────────────
   useEffect(() => {
@@ -550,7 +565,7 @@ const DashboardPage = ({ userInfo }) => {
     catch { return '— : —'; }
   };
 
-  const clockIn  = attendance?.clock_in_time  ? fmtTime12(attendance.clock_in_time) : '— : —';
+  const clockIn = attendance?.clock_in_time ? fmtTime12(attendance.clock_in_time) : '— : —';
   const clockOut = attendance?.clock_out_time ? fmtTime12(attendance.clock_out_time) : '— : —';
   const isOnDuty = !!(attendance?.clock_in_time && !attendance?.clock_out_time);
 
@@ -594,32 +609,32 @@ const DashboardPage = ({ userInfo }) => {
 
   // Build stats array with live data
   const stats = [
-    { label: 'Leave Balance', value: leaveStr,              sub: leaveSub,                   color: '#6c47d9', gradient: 'linear-gradient(135deg,#6c47d9,#a855f7)', icon: <Calendar size={20} color="#fff" /> },
-    { label: 'My Training',   value: String(trainingCount),  sub: 'Upcoming in CHART',        color: '#1890ff', gradient: 'linear-gradient(135deg,#1890ff,#38bdf8)', icon: <TrendingUp size={20} color="#fff" /> },
-    { label: 'Open Tickets',  value: String(openTickets),    sub: 'Tickets Pending',          color: '#f39c12', gradient: 'linear-gradient(135deg,#f39c12,#fbbf24)', icon: <Ticket size={20} color="#fff" /> },
-    { label: 'Upcoming Ride', value: String(upcomingRides),  sub: rideSub,                    color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#34d399)', icon: <Briefcase size={20} color="#fff" /> },
+    { label: 'Leave Balance', value: leaveStr, sub: leaveSub, color: '#6c47d9', gradient: 'linear-gradient(135deg,#6c47d9,#a855f7)', icon: <Calendar size={20} color="#fff" /> },
+    { label: 'My Training', value: String(trainingCount), sub: 'Upcoming in CHART', color: '#1890ff', gradient: 'linear-gradient(135deg,#1890ff,#38bdf8)', icon: <TrendingUp size={20} color="#fff" /> },
+    { label: 'Open Tickets', value: String(openTickets), sub: 'Tickets Pending', color: '#f39c12', gradient: 'linear-gradient(135deg,#f39c12,#fbbf24)', icon: <Ticket size={20} color="#fff" /> },
+    { label: 'Upcoming Ride', value: String(upcomingRides), sub: rideSub, color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#34d399)', icon: <Briefcase size={20} color="#fff" /> },
   ];
 
   // Meeting events with colour dots
   const dotColors = ['#6c47d9', '#1890ff', '#10b981', '#f39c12'];
   const eventsList = meetings.map((m, i) => ({
-    time:  m.time ? m.time.split(' - ')[0] : (m.start ? new Date(m.start).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'),
+    time: m.time ? m.time.split(' - ')[0] : (m.start ? new Date(m.start).toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true }) : '—'),
     title: m.title || m.subject || 'Meeting',
-    loc:   m.room || m.location || '—',
-    dot:   dotColors[i % dotColors.length],
+    loc: m.room || m.location || '—',
+    dot: dotColors[i % dotColors.length],
   }));
 
   const quickActions = [
-    { label: 'Apply Leave',   icon: <CalendarPlus size={22} />, path: '/flexhr',       accent: '#6c47d9' },
-    { label: 'Book Room',     icon: <DoorOpen size={22} />,     path: '/meeting-room', accent: '#1890ff' },
-    { label: 'Submit Ticket', icon: <Ticket size={22} />,       path: '/ticketing',    accent: '#f39c12' },
-    { label: 'Staff Claim',   icon: <FileText size={22} />,     path: '/staff-claim',  accent: '#e11d48' },
+    { label: 'Apply Leave', icon: <CalendarPlus size={22} />, path: '/flexhr', accent: '#6c47d9' },
+    { label: 'Book Room', icon: <DoorOpen size={22} />, path: '/meeting-room', accent: '#1890ff' },
+    { label: 'Submit Ticket', icon: <Ticket size={22} />, path: '/ticketing', accent: '#f39c12' },
+    { label: 'Staff Claim', icon: <FileText size={22} />, path: '/staff-claim', accent: '#e11d48' },
   ];
 
   const announcements = [
-    { id: 1, title: 'Remote Work Policy Updated',     date: 'Mar 5, 2026', badge: 'New',       badgeColor: '#10b981' },
+    { id: 1, title: 'Remote Work Policy Updated', date: 'Mar 5, 2026', badge: 'New', badgeColor: '#10b981' },
     { id: 2, title: 'Annual Performance Review Open', date: 'Mar 1, 2026', badge: 'Important', badgeColor: '#f39c12' },
-    { id: 3, title: 'Office Renovation — Level 12',   date: 'Feb 28, 2026', badge: null,        badgeColor: null     },
+    { id: 3, title: 'Office Renovation — Level 12', date: 'Feb 28, 2026', badge: null, badgeColor: null },
   ];
 
   const birthdays = [
@@ -760,10 +775,10 @@ const DashboardPage = ({ userInfo }) => {
 const InfoPage = () => {
   const [selectedInfo, setSelectedInfo] = useState(null);
   const infoItems = [
-    { id:'1', label:'Data Protection Policy',       issuedDate:'2025-01-15', department:'IT Security', scope:'All Employees',        desc:'This policy outlines the requirements for handling personal and sensitive data...' },
-    { id:'2', label:'Remote Work Policy',           issuedDate:'2025-03-01', department:'HR',          scope:'Remote-Eligible Roles', desc:'Employees approved for remote work must maintain a secure home office environment...' },
-    { id:'3', label:'Code of Conduct',              issuedDate:'2024-12-10', department:'Legal',       scope:'All Employees',         desc:'The Code of Conduct sets expectations for professional behavior...' },
-    { id:'4', label:'Expense Reimbursement Policy', issuedDate:'2025-02-20', department:'Finance',     scope:'All Employees',         desc:'Employees may claim reasonable business expenses incurred during company activities...' },
+    { id: '1', label: 'Data Protection Policy', issuedDate: '2025-01-15', department: 'IT Security', scope: 'All Employees', desc: 'This policy outlines the requirements for handling personal and sensitive data...' },
+    { id: '2', label: 'Remote Work Policy', issuedDate: '2025-03-01', department: 'HR', scope: 'Remote-Eligible Roles', desc: 'Employees approved for remote work must maintain a secure home office environment...' },
+    { id: '3', label: 'Code of Conduct', issuedDate: '2024-12-10', department: 'Legal', scope: 'All Employees', desc: 'The Code of Conduct sets expectations for professional behavior...' },
+    { id: '4', label: 'Expense Reimbursement Policy', issuedDate: '2025-02-20', department: 'Finance', scope: 'All Employees', desc: 'Employees may claim reasonable business expenses incurred during company activities...' },
   ];
   return (
     <>
@@ -781,13 +796,13 @@ const InfoPage = () => {
           <div className="activity-details-modal">
             <div className="modal-header-purple">
               <span className="modal-title">Policy Details</span>
-              <X size={20} color="white" onClick={() => setSelectedInfo(null)} style={{cursor:'pointer'}} />
+              <X size={20} color="white" onClick={() => setSelectedInfo(null)} style={{ cursor: 'pointer' }} />
             </div>
             <div className="modal-body-content">
               <h2 className="activity-main-name">{selectedInfo.label}</h2>
               <div className="detail-item-row"><Calendar size={18} color="#1890ff" /><span>Issued: {selectedInfo.issuedDate}</span></div>
-              <div className="detail-item-row"><User     size={18} color="#1890ff" /><span>Department: {selectedInfo.department}</span></div>
-              <div className="detail-item-row"><MapPin   size={18} color="#1890ff" /><span>Scope: {selectedInfo.scope}</span></div>
+              <div className="detail-item-row"><User size={18} color="#1890ff" /><span>Department: {selectedInfo.department}</span></div>
+              <div className="detail-item-row"><MapPin size={18} color="#1890ff" /><span>Scope: {selectedInfo.scope}</span></div>
               <div className="modal-hr-line" />
               <div className="description-area"><h4>Description</h4><p>{selectedInfo.desc}</p></div>
             </div>
@@ -805,22 +820,9 @@ const InfoPage = () => {
 const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
-    // Always clear persisted session first
+  const handleLogout = () => {
     clearSession();
     localStorage.removeItem('authToken');
-
-    if (IS_MOBILE) {
-      mobileLogout();
-    } else {
-      try {
-        await ensureMsal();
-        const accounts = msalInstance.getAllAccounts();
-        if (accounts.length > 0) {
-          await msalInstance.logoutPopup({ account: accounts[0] });
-        }
-      } catch { /* skip */ }
-    }
     setAuth(false);
     navigate('/login');
   };
@@ -829,7 +831,7 @@ const ProfilePage = ({ setAuth, userInfo }) => {
     <>
       <div className="profile-section">
         <div className="profile-avatar-box"><UserCircle size={80} color="#2b1d62" /></div>
-        <h3>{userInfo?.name  || 'ALAN TAN WAI LOON'}</h3>
+        <h3>{userInfo?.name || 'ALAN TAN WAI LOON'}</h3>
         <p>{userInfo?.email || 'Software Engineer | CH-9920'}</p>
       </div>
       <div className="profile-menu">
@@ -851,40 +853,40 @@ const Home = () => {
     return () => clearInterval(t);
   }, []);
 
-  const timeStr = currentTime.toLocaleTimeString('en-MY', { hour:'2-digit', minute:'2-digit', hour12:true });
-  const dateStr = currentTime.toLocaleDateString('en-MY', { weekday:'long', day:'numeric', month:'long' });
+  const timeStr = currentTime.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr = currentTime.toLocaleDateString('en-MY', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const menuGroups = [
     {
       title: 'Workplace',
       color: '#2b1d62',
       items: [
-        { label:'Meeting Room', icon:'meeting room.png', path:'/meeting-room', accent:'#6c47d9' },
-        { label:'Transport',    icon:'transportation.png', path:'/transport',  accent:'#4c3aa3' },
-        { label:'e-Visitor',   icon:'evisitor.png',     path:'/evisitor',     accent:'#5e35b1' },
-        { label:'Ticketing',   icon:'ticketing.png',    path:'/ticketing',    accent:'#7c4dff' },
+        { label: 'Meeting Room', icon: 'meeting room.png', path: '/meeting-room', accent: '#6c47d9' },
+        { label: 'Transport', icon: 'transportation.png', path: '/transport', accent: '#4c3aa3' },
+        { label: 'e-Visitor', icon: 'evisitor.png', path: '/evisitor', accent: '#5e35b1' },
+        { label: 'Ticketing', icon: 'ticketing.png', path: '/ticketing', accent: '#7c4dff' },
       ]
     },
     {
       title: 'Wellbeing',
       color: '#0d7c66',
       items: [
-        { label:'CHART',       icon:'chart.png',        path:'/chart',        accent:'#00897b' },
-        { label:'Wellness',    icon:'wellness.png',     path:'/wellness',     accent:'#00acc1' },
-        { label:'Meal',        icon:'meal.png',         path:'/meal',         accent:'#26a69a' },
-        { label:'Childcare',   icon:'childcare.png',    path:'/childcare',    accent:'#0097a7' },
+        { label: 'CHART', icon: 'chart.png', path: '/chart', accent: '#00897b' },
+        { label: 'Wellness', icon: 'wellness.png', path: '/wellness', accent: '#00acc1' },
+        { label: 'Meal', icon: 'meal.png', path: '/meal', accent: '#26a69a' },
+        { label: 'Childcare', icon: 'childcare.png', path: '/childcare', accent: '#0097a7' },
       ]
     },
     {
       title: 'Resources',
       color: '#b5560a',
       items: [
-       // { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
-        { label:'flexHR',      icon:'flexhrlogo.png',       path:'/flexhr',       accent:'#d35400' },
-        { label:'Staff Claim',  icon:'claim.png',   path:'/staff-claim',  accent:'#e11d48' },
-        { label:'EPP',         icon:'epp.png',          path:'/epp',          accent:'#e74c3c' },
+        // { label:'Energy',      icon:'energy.png',       path:'/energy',       accent:'#e67e22' },
+        { label: 'flexHR', icon: 'flexhrlogo.png', path: '/flexhr', accent: '#d35400' },
+        { label: 'Staff Claim', icon: 'claim.png', path: '/staff-claim', accent: '#e11d48' },
+        { label: 'EPP', icon: 'epp.png', path: '/epp', accent: '#e74c3c' },
         // HR Request Center is mainly for HR; it will be shown when backend adds employee_role to userInfo.
-        { label:'Requests',    icon:'ticketing.png',    path:'/requests',     accent:'#111827' },
+        { label: 'Requests', icon: 'ticketing.png', path: '/requests', accent: '#111827' },
       ]
     }
   ];
@@ -906,7 +908,7 @@ const Home = () => {
         </div>
         <div className="home-hero-wave">
           <svg viewBox="0 0 480 40" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,20 C80,40 160,0 240,20 C320,40 400,0 480,20 L480,40 L0,40 Z" fill="#f4f6fb"/>
+            <path d="M0,20 C80,40 160,0 240,20 C320,40 400,0 480,20 L480,40 L0,40 Z" fill="#f4f6fb" />
           </svg>
         </div>
       </div>
@@ -954,7 +956,7 @@ const ScanPage = () => {
     let stream = null;
     const startCamera = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'environment' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         if (videoRef.current) videoRef.current.srcObject = stream;
       } catch {
         alert('Camera access denied.');
@@ -975,9 +977,9 @@ const ScanPage = () => {
         </div>
         <div className="scan-viewfinder">
           <div className="viewfinder-box">
-            <div className="corner top-left"/><div className="corner top-right"/>
-            <div className="corner bottom-left"/><div className="corner bottom-right"/>
-            <div className="scan-line"/>
+            <div className="corner top-left" /><div className="corner top-right" />
+            <div className="corner bottom-left" /><div className="corner bottom-right" />
+            <div className="scan-line" />
           </div>
         </div>
         <div className="scan-tip">Place QR code inside the frame</div>
@@ -1000,12 +1002,12 @@ const PageWrapper = ({ children, showTopBar }) => (
 // ══════════════════════════════════════════════════════════════════
 const FooterNav = ({ userInfo }) => {
   const location = useLocation();
-  const left  = [
-    { label: 'Home',      path: '/',          icon: <HomeIcon        size={22} /> },
+  const left = [
+    { label: 'Home', path: '/', icon: <HomeIcon size={22} /> },
     { label: 'Dashboard', path: '/dashboard', icon: <LayoutDashboard size={22} /> },
   ];
   const right = [
-    { label: 'Info',    path: '/info',    icon: <InfoIcon   size={22} /> },
+    { label: 'Info', path: '/info', icon: <InfoIcon size={22} /> },
     { label: 'Profile', path: '/profile', icon: <UserCircle size={22} /> },
   ];
   return (
@@ -1031,80 +1033,29 @@ const FooterNav = ({ userInfo }) => {
 //  11. ROOT APP
 // ══════════════════════════════════════════════════════════════════
 function App() {
-  const [isAppLoading,      setIsAppLoading]      = useState(true);
-  const [isAuthenticated,   setIsAuthenticated]   = useState(false);
-  const [userInfo,          setUserInfo]          = useState(null);
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
     let splashDone = false;
-    let authDone   = false;
-    const tryHide  = () => { if (splashDone && authDone) setIsAppLoading(false); };
+    let authDone = false;
+    const tryHide = () => { if (splashDone && authDone) setIsAppLoading(false); };
 
     // Splash timer
     const t = setTimeout(() => { splashDone = true; tryHide(); }, 2000);
 
-    const checkAuth = async () => {
+    const checkAuth = () => {
       try {
-        if (IS_MOBILE) {
-          // ── APK — restore from localStorage first (survives Android app close)
-          // then fall back to getMobileSession (sessionStorage)
-          const persisted = loadSession();
-          if (persisted) {
-            setUserInfo(persisted);
-            setIsAuthenticated(true);
-            return; // restored — no need for MSAL
-          }
-          // fallback: in-memory session from MicrosoftAuth
-          const session = getMobileSession();
-          if (session) {
-            saveSession(session); // migrate to localStorage for next time
-            setUserInfo(session);
-            setIsAuthenticated(true);
-          }
-        } else {
-          // ── Web — check localStorage first, then MSAL ──────────
-          const persisted = loadSession();
-          if (persisted) {
-            setUserInfo(persisted);
-            setIsAuthenticated(true);
-            // Still run MSAL in background to refresh token silently
-          }
-
-          await ensureMsal();
-
-          const redirectResult = await msalInstance.handleRedirectPromise();
-          if (redirectResult && redirectResult.account) {
-            const acct  = redirectResult.account;
-            const info  = { name: acct.name || acct.username, email: acct.username };
-            const token = redirectResult.accessToken || redirectResult.idToken || '';
-            if (token) localStorage.setItem('authToken', token);
-            saveSession(info);
-            syncUserToDB(info, token); // ensure user in DB
-            setUserInfo(info);
-            setIsAuthenticated(true);
-            window.history.replaceState({}, document.title, '/');
-            return;
-          }
-
-          const accounts = msalInstance.getAllAccounts();
-          if (accounts.length > 0) {
-            const acct = accounts[0];
-            const info = { name: acct.name || acct.username, email: acct.username };
-            saveSession(info); // keep localStorage fresh
-            setUserInfo(info);
-            setIsAuthenticated(true);
-          }
-        }
-      } catch (err) {
-        console.warn('Auth check error:', err.message);
-        // If MSAL fails but we have a cached session, stay logged in
         const persisted = loadSession();
         if (persisted) {
           setUserInfo(persisted);
           setIsAuthenticated(true);
         }
+      } catch (err) {
+        console.warn('Auth check error:', err.message);
       } finally {
         authDone = true;
         tryHide();
@@ -1117,8 +1068,8 @@ function App() {
 
   const hiddenPaths = ['/scan', '/login'];
   const topBarPaths = ['/', '/dashboard', '/info', '/profile'];
-  const showFooter  = isAuthenticated && !hiddenPaths.includes(location.pathname);
-  const showTopBar  = showFooter && topBarPaths.includes(location.pathname);
+  const showFooter = isAuthenticated && !hiddenPaths.includes(location.pathname);
+  const showTopBar = showFooter && topBarPaths.includes(location.pathname);
 
   if (isAppLoading) return <SplashScreen />;
 
@@ -1129,32 +1080,32 @@ function App() {
       {!isAuthenticated ? (
         <Routes>
           <Route path="/login" element={<Login setAuth={setIsAuthenticated} setUserInfo={setUserInfo} />} />
-          <Route path="*"      element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       ) : (
         <>
           {location.pathname === '/scan' ? <ScanPage /> : (
             <Routes>
-              <Route path="/login"        element={<Navigate to="/" replace />} />
-              <Route path="/"             element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
-              <Route path="/dashboard"    element={<PageWrapper showTopBar={showTopBar}><DashboardPage userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/info"         element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
-              <Route path="/profile"      element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/login" element={<Navigate to="/" replace />} />
+              <Route path="/" element={<PageWrapper showTopBar={showTopBar}><Home /></PageWrapper>} />
+              <Route path="/dashboard" element={<PageWrapper showTopBar={showTopBar}><DashboardPage userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/info" element={<PageWrapper showTopBar={showTopBar}><InfoPage /></PageWrapper>} />
+              <Route path="/profile" element={<PageWrapper showTopBar={showTopBar}><ProfilePage setAuth={setIsAuthenticated} userInfo={userInfo} /></PageWrapper>} />
               <Route path="/meeting-room" element={<PageWrapper showTopBar={false}><MeetingRoom userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/transport"    element={<PageWrapper showTopBar={false}><Transport userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/evisitor"     element={<PageWrapper showTopBar={false}><EVisitor userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/ticketing"    element={<PageWrapper showTopBar={false}><Ticketing userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/chart"        element={<PageWrapper showTopBar={false}><Chart userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/wellness"     element={<PageWrapper showTopBar={false}><Wellness userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/meal"         element={<PageWrapper showTopBar={false}><Meal userInfo={userInfo}/></PageWrapper>} />
+              <Route path="/transport" element={<PageWrapper showTopBar={false}><Transport userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/evisitor" element={<PageWrapper showTopBar={false}><EVisitor userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/ticketing" element={<PageWrapper showTopBar={false}><Ticketing userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/chart" element={<PageWrapper showTopBar={false}><Chart userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/wellness" element={<PageWrapper showTopBar={false}><Wellness userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/meal" element={<PageWrapper showTopBar={false}><Meal userInfo={userInfo} /></PageWrapper>} />
               {/* <Route path="/energy"       element={<PageWrapper showTopBar={false}><Energy userInfo={userInfo}/></PageWrapper>} /> */}
-              <Route path="/flexhr"       element={<PageWrapper showTopBar={false}><FlexHR userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/mynews"       element={<PageWrapper showTopBar={false}><Mynews userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/childcare"    element={<PageWrapper showTopBar={false}><Childcare userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/epp"          element={<PageWrapper showTopBar={false}><EPP userInfo={userInfo}/></PageWrapper>} />
-              <Route path="/staff-claim"  element={<PageWrapper showTopBar={false}><StaffClaim userInfo={userInfo} /></PageWrapper>} />
-              <Route path="/requests"     element={<PageWrapper showTopBar={false}><HRRequestCenter userInfo={userInfo} /></PageWrapper>} />
-              <Route path="*"             element={<Navigate to="/" replace />} />
+              <Route path="/flexhr" element={<PageWrapper showTopBar={false}><FlexHR userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/mynews" element={<PageWrapper showTopBar={false}><Mynews userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/childcare" element={<PageWrapper showTopBar={false}><Childcare userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/epp" element={<PageWrapper showTopBar={false}><EPP userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/staff-claim" element={<PageWrapper showTopBar={false}><StaffClaim userInfo={userInfo} /></PageWrapper>} />
+              <Route path="/requests" element={<PageWrapper showTopBar={false}><HRRequestCenter userInfo={userInfo} /></PageWrapper>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           )}
           {showFooter && <FooterNav userInfo={userInfo} />}        </>
@@ -1177,29 +1128,31 @@ export default function WrappedApp() {
 // ══════════════════════════════════════════════════════════════════
 const S = {
   splash: {
-    root:  { height:'100vh', width:'100vw', display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center', background:'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 55%,#3d2a8a 100%)', position:'fixed', top:0, left:0, zIndex:9999 },
-    ring:  { width:120, height:120, borderRadius:'50%', background:'rgba(255,255,255,0.07)', border:'2px solid rgba(255,255,255,0.18)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:22, animation:'splashPulse 2.4s ease-in-out infinite', boxShadow:'0 0 40px rgba(130,90,255,.45)' },
-    logo:  { width:120, height:120, objectFit:'contain' },
-    title: { color:'#fff', fontSize:30, fontWeight:800, margin:0, letterSpacing:1.5, animation:'fadeSlideUp .6s ease both' },
-    sub:   { color:'#a89bc9', fontSize:13, marginTop:8, animation:'fadeSlideUp .6s .18s ease both' },
-    dots:  { display:'flex', gap:7, marginTop:36 },
-    dot:   { display:'inline-block', width:8, height:8, borderRadius:'50%', background:'#a89bc9', animation:'splashBounce 1.4s ease-in-out infinite' },
+    root: { height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 55%,#3d2a8a 100%)', position: 'fixed', top: 0, left: 0, zIndex: 9999 },
+    ring: { width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.07)', border: '2px solid rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 22, animation: 'splashPulse 2.4s ease-in-out infinite', boxShadow: '0 0 40px rgba(130,90,255,.45)' },
+    logo: { width: 120, height: 120, objectFit: 'contain' },
+    title: { color: '#fff', fontSize: 30, fontWeight: 800, margin: 0, letterSpacing: 1.5, animation: 'fadeSlideUp .6s ease both' },
+    sub: { color: '#a89bc9', fontSize: 13, marginTop: 8, animation: 'fadeSlideUp .6s .18s ease both' },
+    dots: { display: 'flex', gap: 7, marginTop: 36 },
+    dot: { display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#a89bc9', animation: 'splashBounce 1.4s ease-in-out infinite' },
   },
   login: {
-    page:        { minHeight:'100vh', width:'100%', display:'flex', justifyContent:'center', alignItems:'center', background:'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 50%,#3d2a8a 100%)', padding:20, position:'relative', overflow:'hidden' },
-    blobTR:      { position:'absolute', top:-140, right:-140, width:320, height:320, borderRadius:'50%', background:'rgba(120,80,255,.14)', filter:'blur(70px)', pointerEvents:'none' },
-    blobBL:      { position:'absolute', bottom:-120, left:-120, width:280, height:280, borderRadius:'50%', background:'rgba(40,120,255,.12)', filter:'blur(65px)', pointerEvents:'none' },
-    card:        { position:'relative', zIndex:2, background:'#fff', borderRadius:24, padding:'44px 32px 36px', width:'100%', maxWidth:380, boxShadow:'0 24px 80px rgba(0,0,0,.36)', display:'flex', flexDirection:'column', alignItems:'center', animation:'cardIn .55s cubic-bezier(.22,1,.36,1) both' },
-    iconWrap:    { display:'flex', justifyContent:'center', marginBottom:20 },
-    iconRing:    { width:120, height:120, borderRadius:'50%', background:'linear-gradient(135deg,#2b1d62,#5a3faa)', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 10px 32px rgba(43,29,98,.38)' },
-    iconImg:     { width:120, height:120, objectFit:'contain' },
-    appName:     { fontSize:27, fontWeight:800, color:'#2b1d62', margin:'0 0 4px', letterSpacing:.5 },
-    tagline:     { fontSize:13, color:'#7c6fa0', margin:'0 0 20px' },
-    divider:     { width:'100%', height:1, background:'#ede9f6', margin:'2px 0 20px' },
-    instruction: { fontSize:14, color:'#555', textAlign:'center', marginBottom:22, lineHeight:1.65 },
-    errorBox:    { width:'100%', padding:'10px 14px', borderRadius:8, background:'#fff1f0', border:'1px solid #ffd6d6', color:'#c0392b', fontSize:13, marginBottom:14, textAlign:'center' },
-    msBtn:       { display:'flex', alignItems:'center', justifyContent:'center', gap:12, width:'100%', padding:'14px 20px', background:'#fff', color:'#3c3c3c', border:'1.5px solid #d1d5db', borderRadius:10, fontSize:15, fontWeight:600, transition:'background .18s ease, box-shadow .18s ease', boxShadow:'0 2px 6px rgba(0,0,0,.06)' },
-    spinner:     { display:'inline-block', width:18, height:18, border:'2.5px solid #ddd', borderTop:'2.5px solid #2b1d62', borderRadius:'50%', animation:'spinBtn .7s linear infinite' },
-    footerNote:  { marginTop:26, fontSize:11, color:'#aaa' },
+    page: { minHeight: '100vh', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(160deg,#1a0f3c 0%,#2b1d62 50%,#3d2a8a 100%)', padding: 20, position: 'relative', overflow: 'hidden' },
+    blobTR: { position: 'absolute', top: -140, right: -140, width: 340, height: 340, borderRadius: '50%', background: 'rgba(120,80,255,.18)', filter: 'blur(80px)', pointerEvents: 'none', animation: 'blobFloat 9s ease-in-out infinite' },
+    blobBL: { position: 'absolute', bottom: -120, left: -120, width: 300, height: 300, borderRadius: '50%', background: 'rgba(40,120,255,.14)', filter: 'blur(70px)', pointerEvents: 'none', animation: 'blobFloat 11s ease-in-out infinite reverse' },
+    blobMid: { position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 200, height: 200, borderRadius: '50%', background: 'rgba(168,100,255,.08)', filter: 'blur(60px)', pointerEvents: 'none' },
+    card: { position: 'relative', zIndex: 2, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(20px)', borderRadius: 28, padding: '44px 32px 38px', width: '100%', maxWidth: 380, boxShadow: '0 32px 90px rgba(0,0,0,.42)', display: 'flex', flexDirection: 'column', alignItems: 'center', animation: 'cardIn .6s cubic-bezier(.22,1,.36,1) both' },
+    iconWrap: { display: 'flex', justifyContent: 'center', marginBottom: 18 },
+    iconRing: { width: 110, height: 110, borderRadius: '50%', background: 'linear-gradient(135deg,#2b1d62,#6c3fc7)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 12px 36px rgba(43,29,98,.45)' },
+    iconImg: { width: 110, height: 110, objectFit: 'contain' },
+    appName: { fontSize: 26, fontWeight: 800, color: '#2b1d62', margin: '0 0 4px', letterSpacing: .5 },
+    tagline: { fontSize: 13, color: '#7c6fa0', margin: '0 0 18px' },
+    divider: { width: '100%', height: 1, background: 'linear-gradient(90deg,transparent,#d8cef0,transparent)', margin: '2px 0 22px' },
+    errorBox: { width: '100%', padding: '11px 14px', borderRadius: 10, background: '#fff1f0', border: '1px solid #ffc9c9', color: '#c0392b', fontSize: 13, marginBottom: 14, textAlign: 'center', fontWeight: 500 },
+    field: { display: 'flex', alignItems: 'center', gap: 10, background: '#f4f1fb', borderRadius: 12, padding: '13px 16px', marginBottom: 14, transition: 'box-shadow .2s ease', border: '1.5px solid transparent', width: '100%' },
+    fieldInput: { border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: 14, color: '#333', fontFamily: 'inherit' },
+    signInBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', padding: '15px 20px', background: 'linear-gradient(135deg,#2b1d62,#6c3fc7)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 15, fontWeight: 700, marginTop: 6, boxShadow: '0 8px 24px rgba(43,29,98,.38)', transition: 'transform .15s ease, box-shadow .15s ease', letterSpacing: .3 },
+    spinner: { display: 'inline-block', width: 18, height: 18, border: '2.5px solid rgba(255,255,255,.35)', borderTop: '2.5px solid #fff', borderRadius: '50%', animation: 'spinBtn .7s linear infinite' },
+    footerNote: { marginTop: 24, fontSize: 11, color: '#b0a8c9' },
   },
 };

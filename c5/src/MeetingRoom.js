@@ -9,22 +9,22 @@ import {
 import './MeetingRoom.css';
 
 // ── CONFIG ─────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
-const TENANT_ID       = 'chinhin_hq';
-const TIMEZONE        = 'Asia/Kuala_Lumpur';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
+const TENANT_ID = 'chinhin_hq';
+const TIMEZONE = 'Asia/Kuala_Lumpur';
 
 const ROOM_DIRECTORY = {
-  'idea lab 1':  'idealab1@chinhin.com',
-  'idea lab 2':  'idealab2@chinhin.com',
-  'idea lab 3':  'idealab3@chinhin.com',
-  'idea lab 4':  'idealab4@chinhin.com',
-  'idea lab 5':  'idealab5@chinhin.com',
-  'idea lab 6':  'idealab6@chinhin.com',
-  'idea lab 7':  'idealab7@chinhin.com',
-  'idea lab 8':  'idealab8@chinhin.com',
-  'idea lab 9':  'idealab9@chinhin.com',
+  'idea lab 1': 'idealab1@chinhin.com',
+  'idea lab 2': 'idealab2@chinhin.com',
+  'idea lab 3': 'idealab3@chinhin.com',
+  'idea lab 4': 'idealab4@chinhin.com',
+  'idea lab 5': 'idealab5@chinhin.com',
+  'idea lab 6': 'idealab6@chinhin.com',
+  'idea lab 7': 'idealab7@chinhin.com',
+  'idea lab 8': 'idealab8@chinhin.com',
+  'idea lab 9': 'idealab9@chinhin.com',
   'idea lab 10': 'idealab10@chinhin.com',
-  'boardroom':   'boardroom@chinhin.com',
+  'boardroom': 'boardroom@chinhin.com',
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────
@@ -71,16 +71,16 @@ const callN8n = async (body, user) => {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization:  `Bearer ${buildUserJWT(user)}`,
+      Authorization: `Bearer ${buildUserJWT(user)}`,
     },
     body: JSON.stringify({
       ...body,
-      id:        user?.email || '',
-      upn:       user?.email || '',
-      name:      user?.name  || '',
-      roles:     ['employee'],
+      id: user?.email || '',
+      upn: user?.email || '',
+      name: user?.name || '',
+      roles: ['employee'],
       tenant_id: TENANT_ID,
-      platform:  'web',
+      platform: 'web',
       timestamp: new Date().toISOString(),
       client_request_id: `req-${Date.now()}`,
     }),
@@ -106,42 +106,42 @@ const callN8n = async (body, user) => {
 // Fetch the user's real room bookings from Microsoft Graph (via n8n)
 const fetchMyBookings = (user) =>
   callN8n({
-    text:        'get_bookings',
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `getbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: 'get_bookings',
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `getbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'get_bookings',
-      sub_target:         'meeting_room',
-      risk_level:         'low',
+      action: 'get_bookings',
+      sub_target: 'meeting_room',
+      risk_level: 'low',
       needs_confirmation: false,
-      summary:            'Fetching room bookings',
-      parameters:         {},
+      summary: 'Fetching room bookings',
+      parameters: {},
     },
   }, user);
 
 // Book a room — confirm:true bypasses AI, goes straight to Graph Create
 const bookRoomViaN8n = async ({ roomName, startISO, endISO, subject, appointmentType, participants, user }) => {
-  const roomEmail     = ROOM_DIRECTORY[roomName.toLowerCase()] || 'bilik_test@chinhin.com';
+  const roomEmail = ROOM_DIRECTORY[roomName.toLowerCase()] || 'bilik_test@chinhin.com';
   const attendeeEmails = participants.map(p => p.email).filter(Boolean);
   return callN8n({
-    text:        `Book ${roomName} for ${subject}`,
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `form_${(user?.email||'anon').replace(/[^a-z0-9]/gi,'_')}_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: `Book ${roomName} for ${subject}`,
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `form_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'book_meeting_room',
-      risk_level:         'low',
+      action: 'book_meeting_room',
+      risk_level: 'low',
       needs_confirmation: false,
-      summary: `${subject} — ${roomName} ${startISO?.slice(11,16)} to ${endISO?.slice(11,16)}`,
+      summary: `${subject} — ${roomName} ${startISO?.slice(11, 16)} to ${endISO?.slice(11, 16)}`,
       parameters: {
         subject, start: startISO, end: endISO, timezone: TIMEZONE,
-        room_name:        roomName, room_email: roomEmail,
-        attendees:        attendeeEmails,
+        room_name: roomName, room_email: roomEmail,
+        attendees: attendeeEmails,
         appointment_type: appointmentType || '',
         body: appointmentType
           ? `Type: ${appointmentType}\nBooked via Meeting Room app`
@@ -153,42 +153,42 @@ const bookRoomViaN8n = async ({ roomName, startISO, endISO, subject, appointment
 
 const cancelBookingViaN8n = (eventId, pgId, title, user) =>
   callN8n({
-    text:        `Cancel booking ${title}`,
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `cancel_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: `Cancel booking ${title}`,
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `cancel_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'cancel_event',
-      risk_level:         'low',
+      action: 'cancel_event',
+      risk_level: 'low',
       needs_confirmation: false,
-      summary:            `${title} cancelled`,
-      parameters:         { event_id: eventId, pg_booking_id: pgId || null },
+      summary: `${title} cancelled`,
+      parameters: { event_id: eventId, pg_booking_id: pgId || null },
     },
   }, user);
 
 const updateRoomViaN8n = async ({ eventId, pgId, roomName, startISO, endISO, subject, appointmentType, participants, user }) => {
-  const roomEmail      = ROOM_DIRECTORY[roomName.toLowerCase()] || 'bilik_test@chinhin.com';
+  const roomEmail = ROOM_DIRECTORY[roomName.toLowerCase()] || 'bilik_test@chinhin.com';
   const attendeeEmails = participants.map(p => p.email).filter(Boolean);
   return callN8n({
-    text:        `Update booking ${subject}`,
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `edit_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: `Update booking ${subject}`,
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `edit_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'update_event',
-      risk_level:         'low',
+      action: 'update_event',
+      risk_level: 'low',
       needs_confirmation: false,
       summary: `Updated: ${subject} — ${roomName} ${startISO?.slice(11, 16)} to ${endISO?.slice(11, 16)}`,
       parameters: {
-        event_id:         eventId,
-        pg_booking_id:    pgId || null,
+        event_id: eventId,
+        pg_booking_id: pgId || null,
         subject, start: startISO, end: endISO, timezone: TIMEZONE,
-        room_name:        roomName, room_email: roomEmail,
-        attendees:        attendeeEmails,
+        room_name: roomName, room_email: roomEmail,
+        attendees: attendeeEmails,
         appointment_type: appointmentType || '',
         body: appointmentType
           ? `Type: ${appointmentType}\nBooked via Meeting Room app`
@@ -201,21 +201,21 @@ const updateRoomViaN8n = async ({ eventId, pgId, roomName, startISO, endISO, sub
 // Check room conflict via Postgres (server-side double-check)
 const checkConflictViaN8n = async ({ roomName, startISO, endISO, excludeEventId, user }) =>
   callN8n({
-    text:        `Check conflict ${roomName} ${startISO} to ${endISO}`,
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `conflict_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: `Check conflict ${roomName} ${startISO} to ${endISO}`,
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `conflict_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'check_conflict',
-      risk_level:         'low',
+      action: 'check_conflict',
+      risk_level: 'low',
       needs_confirmation: false,
-      summary:            `Check room availability for ${roomName}`,
+      summary: `Check room availability for ${roomName}`,
       parameters: {
-        room_name:        roomName,
-        start:            startISO,
-        end:              endISO,
+        room_name: roomName,
+        start: startISO,
+        end: endISO,
         exclude_event_id: excludeEventId || null,
       },
     },
@@ -224,74 +224,74 @@ const checkConflictViaN8n = async ({ roomName, startISO, endISO, excludeEventId,
 // Fetch ALL room bookings from Postgres (used for rich availability display)
 const fetchAllRoomBookings = (user) =>
   callN8n({
-    text:        'get_all_room_bookings',
-    input_type:  'form',
-    confirm:     true,
-    state:       {},
-    session_id:  `allbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
-    event_type:  'direct_booking',
+    text: 'get_all_room_bookings',
+    input_type: 'form',
+    confirm: true,
+    state: {},
+    session_id: `allbookings_${(user?.email || 'anon').replace(/[^a-z0-9]/gi, '_')}_${Date.now()}`,
+    event_type: 'direct_booking',
     edited_plan: {
-      action:             'get_bookings',
-      sub_target:         'meeting_room',
-      risk_level:         'low',
+      action: 'get_bookings',
+      sub_target: 'meeting_room',
+      risk_level: 'low',
       needs_confirmation: false,
-      summary:            'Fetching all room bookings',
-      parameters:         { scope: 'all_rooms' },
+      summary: 'Fetching all room bookings',
+      parameters: { scope: 'all_rooms' },
     },
   }, user);
 
 // ── COMPONENT ──────────────────────────────────────────────────────
 const MeetingRoom = ({ userInfo: propUserInfo }) => {
-  const navigate    = useNavigate();
+  const navigate = useNavigate();
   // Priority: prop from App.jsx (MSAL web) → sessionStorage (Capacitor mobile)
   const currentUser = propUserInfo || getSessionUser();
 
-  const now           = new Date();
-  const today         = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayStr      = formatLocalDate(today);
-  const currentHour   = now.getHours();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayStr = formatLocalDate(today);
+  const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
 
   // ── View ─────────────────────────────────────────────────────────
-  const [view,         setView]         = useState('list');
+  const [view, setView] = useState('list');
   const [selectedRoom, setSelectedRoom] = useState(null);
-  const [attendees,    setAttendees]    = useState(0);
-  const [activeTab,    setActiveTab]    = useState('All');
-  const [openMenuId,   setOpenMenuId]   = useState(null);
-  const [isEditing,      setIsEditing]      = useState(false);
+  const [attendees, setAttendees] = useState(0);
+  const [activeTab, setActiveTab] = useState('All');
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState(null); // stores full meeting object being edited
 
   // ── Meetings list — loaded from Graph, empty until fetch completes ─
-  const [meetingsData,    setMeetingsData]    = useState([]);
-  const [isFetching,      setIsFetching]      = useState(true);
-  const [fetchError,      setFetchError]      = useState('');
+  const [meetingsData, setMeetingsData] = useState([]);
+  const [isFetching, setIsFetching] = useState(true);
+  const [fetchError, setFetchError] = useState('');
 
   // ── Local bookings cache (correct times, not affected by timezone bug) ──
-  const [localBookings,  setLocalBookings]  = useState([]);
-  const [roomBookings,   setRoomBookings]   = useState([]); // all-rooms view for conflict display
-  const [isSubmitting,  setIsSubmitting]  = useState(false);
-  const [submitResult,  setSubmitResult]  = useState(null);
+  const [localBookings, setLocalBookings] = useState([]);
+  const [roomBookings, setRoomBookings] = useState([]); // all-rooms view for conflict display
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState(null);
   const [submitMessage, setSubmitMessage] = useState('');
-  const [isCancelling,  setIsCancelling]  = useState(null);
+  const [isCancelling, setIsCancelling] = useState(null);
 
   // ── Calendar ─────────────────────────────────────────────────────
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [selectedDate,   setSelectedDate]   = useState(today);
-  const [viewDate,       setViewDate]       = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
 
   // ── Form ──────────────────────────────────────────────────────────
-  const [selectedStartTime,    setSelectedStartTime]    = useState('');
-  const [selectedEndTime,      setSelectedEndTime]      = useState('');
-  const [selectedDuration,     setSelectedDuration]     = useState('');
-  const [selectedFloor,        setSelectedFloor]        = useState('');
-  const [meetingTitle,         setMeetingTitle]         = useState('');
-  const [appointmentType,      setAppointmentType]      = useState('');
+  const [selectedStartTime, setSelectedStartTime] = useState('');
+  const [selectedEndTime, setSelectedEndTime] = useState('');
+  const [selectedDuration, setSelectedDuration] = useState('');
+  const [selectedFloor, setSelectedFloor] = useState('');
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [appointmentType, setAppointmentType] = useState('');
   const [selectedParticipants, setSelectedParticipants] = useState([]);
 
   // ── External participant modal ────────────────────────────────────
   const [isExtModalOpen, setIsExtModalOpen] = useState(false);
-  const [extName,        setExtName]        = useState('');
-  const [extEmail,       setExtEmail]       = useState('');
+  const [extName, setExtName] = useState('');
+  const [extEmail, setExtEmail] = useState('');
 
   const allFeatures = ['Projector', 'Interactive TV', 'Non-Interactive TV', '180° Camera', 'Conference Camera', 'Tabletop Teams Panel', 'Wireless Mic'];
 
@@ -305,8 +305,8 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
         // Normalize: ensure pgId is set for every DB-sourced booking
         const bookings = (result.bookings || []).map(b => ({
           ...b,
-          pgId:   b.pgId   || b.n8nRef || b.id || null,
-          n8nRef: b.n8nRef || b.id     || null,
+          pgId: b.pgId || b.n8nRef || b.id || null,
+          n8nRef: b.n8nRef || b.id || null,
         }));
         setMeetingsData(bookings);
         // Also cache all-rooms bookings for conflict detection
@@ -394,10 +394,10 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   // ── Navigation ────────────────────────────────────────────────────
   const handleBack = () => {
     setSubmitResult(null);
-    if      (view === 'form' && isEditing) { setView('list'); setIsEditing(false); }
-    else if (view === 'form')    setView('booking');
+    if (view === 'form' && isEditing) { setView('list'); setIsEditing(false); }
+    else if (view === 'form') setView('booking');
     else if (view === 'booking') setView('results');
-    else if (view === 'filter')  setView('results');
+    else if (view === 'filter') setView('results');
     else if (view === 'results') setView('list');
     else navigate('/');
   };
@@ -457,7 +457,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     };
     const normRoom = (r) => (r || '').toLowerCase().replace(/\s/g, '');
     const newStart = parseTime(startTime);
-    const newEnd   = parseTime(endTime);
+    const newEnd = parseTime(endTime);
     if (newStart < 0 || newEnd < 0) return false;
 
     const checkList = (list) => list.some(m => {
@@ -466,7 +466,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       if (editingMeeting && (m.id === editingMeeting.id || m.n8nRef === editingMeeting.n8nRef)) return false;
       const [rawStart, rawEnd] = (m.time || '').split(' - ');
       let eStart = parseTime(rawStart?.trim());
-      let eEnd   = parseTime(rawEnd?.trim());
+      let eEnd = parseTime(rawEnd?.trim());
       if (eStart < 0 || eEnd < 0) return false;
       if (eEnd <= eStart) return false; // skip corrupted entries
       return newStart < eEnd && newEnd > eStart;
@@ -491,15 +491,15 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     };
     const normRoom = (r) => (r || '').toLowerCase().replace(/\s/g, '');
     const newStart = parseTime(startTime);
-    const newEnd   = parseTime(endTime);
-    const allData  = [...meetingsData, ...roomBookings, ...localBookings];
+    const newEnd = parseTime(endTime);
+    const allData = [...meetingsData, ...roomBookings, ...localBookings];
     return allData.find(m => {
       if (normRoom(m.room) !== normRoom(roomName)) return false;
       if (m.date !== dateStr) return false;
       if (editingMeeting && (m.id === editingMeeting.id || m.n8nRef === editingMeeting.n8nRef)) return false;
       const [rawStart, rawEnd] = (m.time || '').split(' - ');
       let eStart = parseTime(rawStart?.trim());
-      let eEnd   = parseTime(rawEnd?.trim());
+      let eEnd = parseTime(rawEnd?.trim());
       if (eStart < 0 || eEnd < 0 || eEnd <= eStart) return false;
       return newStart < eEnd && newEnd > eStart;
     }) || null;
@@ -515,7 +515,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
     }
     const roomName = `Idea Lab ${selectedRoom}`;
     const startISO = timeToISO(selectedDate, selectedStartTime);
-    const endISO   = timeToISO(selectedDate, selectedEndTime);
+    const endISO = timeToISO(selectedDate, selectedEndTime);
 
     // ── Layer 1: Client-side conflict check (fast, uses cached data) ─
     if (hasConflict(roomName, formatLocalDate(selectedDate), selectedStartTime, selectedEndTime)) {
@@ -561,13 +561,13 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       // ── EDIT MODE: update existing event ─────────────────────────
       if (isEditing && editingMeeting) {
         const result = await updateRoomViaN8n({
-          eventId:        editingMeeting.n8nRef,
-          pgId:           editingMeeting.pgId || null,
+          eventId: editingMeeting.n8nRef,
+          pgId: editingMeeting.pgId || null,
           roomName, startISO, endISO,
-          subject:        meetingTitle.trim(),
+          subject: meetingTitle.trim(),
           appointmentType,
-          participants:   selectedParticipants,
-          user:           currentUser,
+          participants: selectedParticipants,
+          user: currentUser,
         });
 
         const isSuccess = result.type === 'receipt' || result.type === 'empty';
@@ -588,25 +588,25 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       // ── NEW BOOKING ───────────────────────────────────────────────
       const result = await bookRoomViaN8n({
         roomName, startISO, endISO,
-        subject:        meetingTitle.trim(),
+        subject: meetingTitle.trim(),
         appointmentType,
-        participants:   selectedParticipants,
-        user:           currentUser,
+        participants: selectedParticipants,
+        user: currentUser,
       });
 
       if (result.type === 'receipt') {
         // ✅ Real success — Graph API confirmed the booking
         const newBooking = {
-          id:        result.pg_booking_id || result.reference_id || `local-${Date.now()}`,
-          title:     meetingTitle.trim(),
-          host:      currentUser?.name || currentUser?.email || 'Me',
+          id: result.pg_booking_id || result.reference_id || `local-${Date.now()}`,
+          title: meetingTitle.trim(),
+          host: currentUser?.name || currentUser?.email || 'Me',
           hostEmail: currentUser?.email || '',
-          room:      roomName,
-          date:      formatLocalDate(selectedDate),
-          time:      `${selectedStartTime} - ${selectedEndTime}`,
+          room: roomName,
+          date: formatLocalDate(selectedDate),
+          time: `${selectedStartTime} - ${selectedEndTime}`,
           attendees: selectedParticipants.length,
-          pgId:      result.pg_booking_id || null,
-          n8nRef:    result.graph_event_id || result.event_details?.id || result.reference_id || null,
+          pgId: result.pg_booking_id || null,
+          n8nRef: result.graph_event_id || result.event_details?.id || result.reference_id || null,
         };
         setMeetingsData(prev => [newBooking, ...prev]);
         setLocalBookings(prev => [...prev, newBooking]);
@@ -632,15 +632,15 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       } else if (result.type === 'empty') {
         // n8n returned 200 OK with empty body — booking went through successfully
         const newBooking = {
-          id:        `local-${Date.now()}`,
-          title:     meetingTitle.trim(),
-          host:      currentUser?.name || currentUser?.email || 'Me',
+          id: `local-${Date.now()}`,
+          title: meetingTitle.trim(),
+          host: currentUser?.name || currentUser?.email || 'Me',
           hostEmail: currentUser?.email || '',
-          room:      `Idea Lab ${selectedRoom}`,
-          date:      formatLocalDate(selectedDate),
-          time:      `${selectedStartTime} - ${selectedEndTime}`,
+          room: `Idea Lab ${selectedRoom}`,
+          date: formatLocalDate(selectedDate),
+          time: `${selectedStartTime} - ${selectedEndTime}`,
           attendees: selectedParticipants.length,
-          n8nRef:    null,
+          n8nRef: null,
         };
         setMeetingsData(prev => [newBooking, ...prev]);
         setLocalBookings(prev => [...prev, newBooking]);
@@ -662,8 +662,8 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
       setIsSubmitting(false);
     }
   }, [meetingTitle, selectedStartTime, selectedEndTime, selectedRoom,
-      selectedDate, appointmentType, selectedParticipants, currentUser,
-      meetingsData, roomBookings, loadBookings, isEditing, editingMeeting, localBookings]);
+    selectedDate, appointmentType, selectedParticipants, currentUser,
+    meetingsData, roomBookings, loadBookings, isEditing, editingMeeting, localBookings]);
 
   // ── CANCEL BOOKING ────────────────────────────────────────────────
   const handleCancelBooking = useCallback(async (meeting) => {
@@ -693,14 +693,14 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
   // ── Check if current user is the host of a booking ───────────────
   const isMyBooking = (meeting) => {
     if (!currentUser) return false;
-    const email     = (currentUser.email || '').toLowerCase().trim();
-    const name      = (currentUser.name  || '').toLowerCase().trim();
+    const email = (currentUser.email || '').toLowerCase().trim();
+    const name = (currentUser.name || '').toLowerCase().trim();
     const hostEmail = (meeting.hostEmail != null ? String(meeting.hostEmail) : '').toLowerCase().trim();
-    const host      = (meeting.host      != null ? String(meeting.host)      : '').toLowerCase().trim();
+    const host = (meeting.host != null ? String(meeting.host) : '').toLowerCase().trim();
     return (
       (hostEmail && hostEmail === email) ||
-      (host      && host      === email) ||
-      (host      && host      === name)
+      (host && host === email) ||
+      (host && host === name)
     );
   };
 
@@ -712,15 +712,15 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
 
   const renderCalendarDays = () => {
     const year = viewDate.getFullYear(), month = viewDate.getMonth();
-    const firstDay    = new Date(year, month, 1).getDay();
+    const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const startOffset = firstDay === 0 ? 6 : firstDay - 1;
     const days = [];
     for (let i = 0; i < startOffset; i++) days.push(<span key={`e-${i}`} className="day-empty" />);
     for (let d = 1; d <= daysInMonth; d++) {
-      const cellDate  = new Date(year, month, d);
+      const cellDate = new Date(year, month, d);
       const isSelected = formatLocalDate(selectedDate) === formatLocalDate(cellDate);
-      const isPast     = cellDate < today;
+      const isPast = cellDate < today;
       days.push(
         <div key={d}
           className={`calendar-day ${isSelected ? 'selected' : ''} ${isPast ? 'past' : ''}`}
@@ -740,10 +740,10 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
           <ChevronLeft size={24} color="#ffffff" strokeWidth={2.5} />
         </div>
         <span className="nav-title">
-          {view === 'form'    ? (isEditing ? 'Edit Booking' : 'Booking Detail')
-           : view === 'booking' ? 'Meeting Room Details'
-           : view === 'filter'  ? 'Searching'
-           : 'Meeting Room'}
+          {view === 'form' ? (isEditing ? 'Edit Booking' : 'Booking Detail')
+            : view === 'booking' ? 'Meeting Room Details'
+              : view === 'filter' ? 'Searching'
+                : 'Meeting Room'}
         </span>
         {view === 'list' && (
           <button style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
@@ -814,12 +814,12 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                   <h3>{meeting.title}</h3>
                   <div className="more-options-container">
                     {canManageBooking(meeting) && (
-                    <button className="more-options"
-                      onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === meeting.id ? null : meeting.id); }}>
-                      {isCancelling === meeting.id
-                        ? <Loader size={18} color="#999" style={{ animation: 'spin 1s linear infinite' }} />
-                        : <MoreVertical size={20} color="#999" />}
-                    </button>
+                      <button className="more-options"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === meeting.id ? null : meeting.id); }}>
+                        {isCancelling === meeting.id
+                          ? <Loader size={18} color="#999" style={{ animation: 'spin 1s linear infinite' }} />
+                          : <MoreVertical size={20} color="#999" />}
+                      </button>
                     )}
                     {canManageBooking(meeting) && openMenuId === meeting.id && (
                       <div className="card-dropdown-menu">
@@ -949,10 +949,10 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                 </div>
                 {/* Occupied slots for this room on selected date */}
                 {(() => {
-                  const roomName  = `Idea Lab ${selectedRoom}`;
-                  const dateStr   = formatLocalDate(selectedDate);
-                  const normRoom  = (r) => (r || '').toLowerCase().replace(/\s/g, '');
-                  const occupied  = [...meetingsData, ...roomBookings, ...localBookings].filter(
+                  const roomName = `Idea Lab ${selectedRoom}`;
+                  const dateStr = formatLocalDate(selectedDate);
+                  const normRoom = (r) => (r || '').toLowerCase().replace(/\s/g, '');
+                  const occupied = [...meetingsData, ...roomBookings, ...localBookings].filter(
                     m => normRoom(m.room) === normRoom(roomName) && m.date === dateStr
                   );
                   if (occupied.length === 0) return <p className="no-booking-msg">No bookings for this day — room is free!</p>;
@@ -969,8 +969,10 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
                         }}>
                           <Clock size={14} color="#e53935" />
                           <span style={{ fontSize: '12px', fontWeight: 600, color: '#c62828' }}>{m.time}</span>
-                          <span style={{ fontSize: '12px', color: '#555', flex: 1, textAlign: 'right',
-                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <span style={{
+                            fontSize: '12px', color: '#555', flex: 1, textAlign: 'right',
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                          }}>
                             {m.title}
                           </span>
                         </div>
@@ -1105,7 +1107,7 @@ const MeetingRoom = ({ userInfo: propUserInfo }) => {
               <button className="nav-arrow" onClick={() => changeMonth(1)}>{'>'}</button>
             </div>
             <div className="weekday-row">
-              {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => <span key={d}>{d}</span>)}
+              {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(d => <span key={d}>{d}</span>)}
             </div>
             <div className="days-grid">{renderCalendarDays()}</div>
             <div className="calendar-footer">

@@ -11,7 +11,7 @@ import {
 import './EVisitor.css';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 // ─── n8n API helper ─────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ const getInitial = (name = '') => (name || '?').charAt(0).toUpperCase();
 const statusClass = (s = '') => {
   const l = s.toLowerCase();
   if (l === 'approved') return 'approved';
-  if (l === 'pending')  return 'pending';
+  if (l === 'pending') return 'pending';
   if (l === 'cancelled') return 'cancelled';
   if (l === 'rejected') return 'rejected';
   return 'pending';
@@ -69,19 +69,19 @@ const statusClass = (s = '') => {
 const EVisitor = ({ userInfo }) => {
   const navigate = useNavigate();
 
-  const hostName  = userInfo?.name  || '';
+  const hostName = userInfo?.name || '';
   const hostEmail = userInfo?.email || '';
 
   // ── view state ─────────────────────────────────────────────────────────────
-  const [view, setView]             = useState('menu');  // menu | list | form | detail
+  const [view, setView] = useState('menu');  // menu | list | form | detail
   const [activeListTab, setActiveListTab] = useState('All');
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [searchQuery, setSearchQuery]   = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading]           = useState(false);
-  const [apiError, setApiError]         = useState('');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [selectedItem, setSelectedItem] = useState(null);
-  const [cancelModal, setCancelModal]   = useState(false);
+  const [cancelModal, setCancelModal] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
 
   // ── form state ─────────────────────────────────────────────────────────────
@@ -93,14 +93,14 @@ const EVisitor = ({ userInfo }) => {
   };
   const [formData, setFormData] = useState(blankForm);
   const [fromDate, setFromDate] = useState(null);
-  const [toDate, setToDate]     = useState(null);
+  const [toDate, setToDate] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError]   = useState('');
+  const [formError, setFormError] = useState('');
 
   // ── calendar state ─────────────────────────────────────────────────────────
-  const now   = new Date();
+  const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const [isCalendarOpen, setIsCalendarOpen]   = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [activeDateField, setActiveDateField] = useState('from');
   const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
 
@@ -112,7 +112,7 @@ const EVisitor = ({ userInfo }) => {
     try {
       const res = await callN8N('list', {
         user_email: hostEmail,
-        user_name:  hostName,
+        user_name: hostName,
       });
       if (res?.data && Array.isArray(res.data)) {
         setAppointments(res.data);
@@ -148,15 +148,15 @@ const EVisitor = ({ userInfo }) => {
   const openForm = (item = null) => {
     if (item) {
       setFormData({
-        appointment_id:  item.appointment_id,
-        visitor_name:    item.visitor_name    || '',
-        ic_number:       item.ic_number       || '',
-        contact_number:  item.contact_number  || '',
-        official_email:  item.official_email  || '',
-        company:         item.company         || '',
-        purpose:         item.purpose_of_visit || '',
-        location:        item.meeting_location || '',
-        remarks:         item.remarks         || '',
+        appointment_id: item.appointment_id,
+        visitor_name: item.visitor_name || '',
+        ic_number: item.ic_number || '',
+        contact_number: item.contact_number || '',
+        official_email: item.official_email || '',
+        company: item.company || '',
+        purpose: item.purpose_of_visit || '',
+        location: item.meeting_location || '',
+        remarks: item.remarks || '',
       });
       setFromDate(item.visit_date ? new Date(item.visit_date) : null);
       setToDate(null);
@@ -182,18 +182,18 @@ const EVisitor = ({ userInfo }) => {
       const isEdit = !!formData.appointment_id;
       const action = isEdit ? 'update' : 'pre_register';
       const payload = {
-        user_email:       hostEmail,
-        user_name:        hostName,
-        visitor_name:     visitor_name.toUpperCase(),
+        user_email: hostEmail,
+        user_name: hostName,
+        visitor_name: visitor_name.toUpperCase(),
         ic_number,
         contact_number,
-        email:            official_email,
+        email: official_email,
         company,
-        purpose:          formData.purpose,
+        purpose: formData.purpose,
         meeting_location: location,
-        visit_date:       formatDateISO(fromDate),
-        to_date:          toDate ? formatDateISO(toDate) : formatDateISO(fromDate),
-        remarks:          formData.remarks,
+        visit_date: formatDateISO(fromDate),
+        to_date: toDate ? formatDateISO(toDate) : formatDateISO(fromDate),
+        remarks: formData.remarks,
       };
       if (isEdit) payload.appointment_id = formData.appointment_id;
 
@@ -227,9 +227,9 @@ const EVisitor = ({ userInfo }) => {
     try {
       await callN8N('cancel', {
         appointment_id: selectedItem.appointment_id,
-        reason:         'Cancelled by host',
-        user_email:     hostEmail,
-        user_name:      hostName,
+        reason: 'Cancelled by host',
+        user_email: hostEmail,
+        user_name: hostName,
       });
       const updated = { ...selectedItem, status: 'Cancelled' };
       setAppointments(prev => prev.map(a =>
@@ -263,11 +263,11 @@ const EVisitor = ({ userInfo }) => {
     for (let i = 0; i < startOffset; i++) days.push(<span key={`e-${i}`} className="day-empty" />);
     for (let d = 1; d <= daysInMonth; d++) {
       const cellDate = new Date(year, month, d);
-      const isPast       = cellDate < today;
+      const isPast = cellDate < today;
       const isBeforeFrom = activeDateField === 'to' && fromDate && cellDate < fromDate;
-      const isSelected   = activeDateField === 'from'
+      const isSelected = activeDateField === 'from'
         ? (fromDate && formatDateISO(fromDate) === formatDateISO(cellDate))
-        : (toDate   && formatDateISO(toDate)   === formatDateISO(cellDate));
+        : (toDate && formatDateISO(toDate) === formatDateISO(cellDate));
       const inRange = fromDate && toDate && cellDate > fromDate && cellDate < toDate;
       days.push(
         <div key={d}
@@ -291,28 +291,28 @@ const EVisitor = ({ userInfo }) => {
   const filteredList = appointments.filter(app => {
     const matchTab =
       activeListTab === 'Approved' ? app.status?.toLowerCase() === 'approved' :
-      activeListTab === 'Pending'  ? app.status?.toLowerCase() === 'pending'  :
-      activeListTab === 'Cancelled'? app.status?.toLowerCase() === 'cancelled' :
-      activeListTab === 'Rejected' ? app.status?.toLowerCase() === 'rejected' : true;
+        activeListTab === 'Pending' ? app.status?.toLowerCase() === 'pending' :
+          activeListTab === 'Cancelled' ? app.status?.toLowerCase() === 'cancelled' :
+            activeListTab === 'Rejected' ? app.status?.toLowerCase() === 'rejected' : true;
     const q = searchQuery.toLowerCase();
     const matchSearch = !q ||
       (app.visitor_name || '').toLowerCase().includes(q) ||
-      (app.company      || '').toLowerCase().includes(q);
+      (app.company || '').toLowerCase().includes(q);
     return matchTab && matchSearch;
   });
 
   const stats = {
-    total:     appointments.length,
-    approved:  appointments.filter(a => a.status?.toLowerCase() === 'approved').length,
-    pending:   appointments.filter(a => a.status?.toLowerCase() === 'pending').length,
+    total: appointments.length,
+    approved: appointments.filter(a => a.status?.toLowerCase() === 'approved').length,
+    pending: appointments.filter(a => a.status?.toLowerCase() === 'pending').length,
     cancelled: appointments.filter(a => a.status?.toLowerCase() === 'cancelled').length,
-    rejected:  appointments.filter(a => a.status?.toLowerCase() === 'rejected').length,
+    rejected: appointments.filter(a => a.status?.toLowerCase() === 'rejected').length,
   };
 
   const navTitle = {
-    menu:   'eVisitor',
-    list:   'Appointments',
-    form:   formData.appointment_id ? 'Edit Registration' : 'Pre-Register Visitor',
+    menu: 'eVisitor',
+    list: 'Appointments',
+    form: formData.appointment_id ? 'Edit Registration' : 'Pre-Register Visitor',
     detail: 'Appointment Detail',
   }[view] || 'eVisitor';
 
@@ -455,10 +455,10 @@ const EVisitor = ({ userInfo }) => {
                   {tab}
                   <span className="ev-tab-count">
                     {tab === 'All' ? appointments.length :
-                     tab === 'Approved' ? stats.approved :
-                     tab === 'Pending'  ? stats.pending  :
-                     tab === 'Rejected' ? stats.rejected :
-                     stats.cancelled}
+                      tab === 'Approved' ? stats.approved :
+                        tab === 'Pending' ? stats.pending :
+                          tab === 'Rejected' ? stats.rejected :
+                            stats.cancelled}
                   </span>
                 </button>
               ))}
@@ -494,10 +494,10 @@ const EVisitor = ({ userInfo }) => {
                         <div>
                           <div className="ev-visitor-name">{item.visitor_name}</div>
                           <span className={`ev-status-badge ${statusClass(item.status)}`}>
-                            {statusClass(item.status) === 'approved'  ? <CheckCircle size={10}/> :
-                             statusClass(item.status) === 'cancelled' ? <Ban size={10}/> :
-                             statusClass(item.status) === 'rejected'   ? <XCircle size={10}/> :
-                             <AlertCircle size={10}/>}
+                            {statusClass(item.status) === 'approved' ? <CheckCircle size={10} /> :
+                              statusClass(item.status) === 'cancelled' ? <Ban size={10} /> :
+                                statusClass(item.status) === 'rejected' ? <XCircle size={10} /> :
+                                  <AlertCircle size={10} />}
                             {item.status}
                           </span>
                         </div>
@@ -511,7 +511,7 @@ const EVisitor = ({ userInfo }) => {
                           {openMenuId === item.appointment_id && (
                             <div className="ev-dropdown">
                               <div className="ev-dropdown-item" onClick={() => openForm(item)}>
-                                <Edit3 size={13}/><span>Edit</span>
+                                <Edit3 size={13} /><span>Edit</span>
                               </div>
                               <div className="ev-dropdown-item ev-dropdown-delete"
                                 onClick={() => {
@@ -519,7 +519,7 @@ const EVisitor = ({ userInfo }) => {
                                   setOpenMenuId(null);
                                   setCancelModal(true);
                                 }}>
-                                <Ban size={13}/><span>Cancel</span>
+                                <Ban size={13} /><span>Cancel</span>
                               </div>
                             </div>
                           )}
@@ -528,10 +528,10 @@ const EVisitor = ({ userInfo }) => {
                     </div>
                     <div className="ev-card-divider" />
                     <div className="ev-card-body">
-                      <div className="ev-info-row"><Building2 size={13} color="#6c47d9"/><span>{item.company}</span></div>
-                      <div className="ev-info-row"><Calendar size={13} color="#6c47d9"/><span>{formatDateDisplay(item.visit_date)}</span></div>
-                      {item.meeting_location && <div className="ev-info-row"><MapPin size={13} color="#6c47d9"/><span>{item.meeting_location}</span></div>}
-                      {item.purpose_of_visit && <div className="ev-info-row"><FileText size={13} color="#6c47d9"/><span>{item.purpose_of_visit}</span></div>}
+                      <div className="ev-info-row"><Building2 size={13} color="#6c47d9" /><span>{item.company}</span></div>
+                      <div className="ev-info-row"><Calendar size={13} color="#6c47d9" /><span>{formatDateDisplay(item.visit_date)}</span></div>
+                      {item.meeting_location && <div className="ev-info-row"><MapPin size={13} color="#6c47d9" /><span>{item.meeting_location}</span></div>}
+                      {item.purpose_of_visit && <div className="ev-info-row"><FileText size={13} color="#6c47d9" /><span>{item.purpose_of_visit}</span></div>}
                     </div>
                   </div>
                 ))}
@@ -568,7 +568,7 @@ const EVisitor = ({ userInfo }) => {
                 onClick={() => { setActiveDateField('from'); setIsCalendarOpen(true); }}>
                 <Calendar size={16} color="#6c47d9" />
                 <div className="ev-date-content">
-                  <span className="ev-date-label">From Date <span style={{color:'#ef4444'}}>*</span></span>
+                  <span className="ev-date-label">From Date <span style={{ color: '#ef4444' }}>*</span></span>
                   <span className="ev-date-value">{fromDate ? formatDateISO(fromDate) : '— Select —'}</span>
                 </div>
               </div>
@@ -587,33 +587,33 @@ const EVisitor = ({ userInfo }) => {
             <p className="ev-form-section-label">Visitor Information</p>
             <div className="ev-form-card">
               <div className="ev-field-group">
-                <label className="ev-label"><User size={13}/> Full Name <span className="ev-req">*</span></label>
+                <label className="ev-label"><User size={13} /> Full Name <span className="ev-req">*</span></label>
                 <input className="ev-input" placeholder="Full name as per IC"
                   value={formData.visitor_name}
                   onChange={e => setFormData(f => ({ ...f, visitor_name: e.target.value }))} />
               </div>
               <div className="ev-field-group">
-                <label className="ev-label"><IdCard size={13}/> Identity No. <span className="ev-req">*</span></label>
+                <label className="ev-label"><IdCard size={13} /> Identity No. <span className="ev-req">*</span></label>
                 <input className="ev-input" placeholder="e.g. 900101-14-5566"
                   value={formData.ic_number}
                   onChange={e => setFormData(f => ({ ...f, ic_number: e.target.value }))} />
               </div>
               <div className="ev-field-row">
                 <div className="ev-field-group ev-field-half">
-                  <label className="ev-label"><Phone size={13}/> Contact <span className="ev-req">*</span></label>
+                  <label className="ev-label"><Phone size={13} /> Contact <span className="ev-req">*</span></label>
                   <input className="ev-input" placeholder="01X-XXXXXXX"
                     value={formData.contact_number}
                     onChange={e => setFormData(f => ({ ...f, contact_number: e.target.value }))} />
                 </div>
                 <div className="ev-field-group ev-field-half">
-                  <label className="ev-label"><Mail size={13}/> Email <span className="ev-req">*</span></label>
+                  <label className="ev-label"><Mail size={13} /> Email <span className="ev-req">*</span></label>
                   <input className="ev-input" type="email" placeholder="email@domain.com"
                     value={formData.official_email}
                     onChange={e => setFormData(f => ({ ...f, official_email: e.target.value }))} />
                 </div>
               </div>
               <div className="ev-field-group">
-                <label className="ev-label"><Building2 size={13}/> Company <span className="ev-req">*</span></label>
+                <label className="ev-label"><Building2 size={13} /> Company <span className="ev-req">*</span></label>
                 <input className="ev-input" placeholder="Organisation name"
                   value={formData.company}
                   onChange={e => setFormData(f => ({ ...f, company: e.target.value }))} />
@@ -624,7 +624,7 @@ const EVisitor = ({ userInfo }) => {
             <p className="ev-form-section-label">Visit Details</p>
             <div className="ev-form-card">
               <div className="ev-field-group">
-                <label className="ev-label"><FileText size={13}/> Purpose of Visit</label>
+                <label className="ev-label"><FileText size={13} /> Purpose of Visit</label>
                 <div className="ev-select-wrap">
                   <select className="ev-select" value={formData.purpose}
                     onChange={e => setFormData(f => ({ ...f, purpose: e.target.value }))}>
@@ -635,7 +635,7 @@ const EVisitor = ({ userInfo }) => {
                 </div>
               </div>
               <div className="ev-field-group">
-                <label className="ev-label"><MapPin size={13}/> Meeting Location <span className="ev-req">*</span></label>
+                <label className="ev-label"><MapPin size={13} /> Meeting Location <span className="ev-req">*</span></label>
                 <div className="ev-select-wrap">
                   <select className="ev-select" value={formData.location}
                     onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}>
@@ -646,7 +646,7 @@ const EVisitor = ({ userInfo }) => {
                 </div>
               </div>
               <div className="ev-field-group">
-                <label className="ev-label"><FileText size={13}/> Remarks (Optional)</label>
+                <label className="ev-label"><FileText size={13} /> Remarks (Optional)</label>
                 <textarea className="ev-textarea" rows={3} placeholder="Any special instructions…"
                   value={formData.remarks}
                   onChange={e => setFormData(f => ({ ...f, remarks: e.target.value }))} />
@@ -683,10 +683,10 @@ const EVisitor = ({ userInfo }) => {
                   <div className="ev-detail-banner-company">{t.company}</div>
                 </div>
                 <span className={`ev-status-badge ${sc} ev-status-badge-lg`}>
-                  {sc === 'approved'  ? <CheckCircle size={11}/> :
-                   sc === 'cancelled' ? <Ban size={11}/> :
-                   sc === 'rejected'  ? <XCircle size={11}/> :
-                   <AlertCircle size={11}/>}
+                  {sc === 'approved' ? <CheckCircle size={11} /> :
+                    sc === 'cancelled' ? <Ban size={11} /> :
+                      sc === 'rejected' ? <XCircle size={11} /> :
+                        <AlertCircle size={11} />}
                   {t.status}
                 </span>
               </div>
@@ -753,7 +753,7 @@ const EVisitor = ({ userInfo }) => {
                 {/* Cancellation Reason */}
                 {t.cancellation_reason && (
                   <div className="ev-detail-section">
-                    <h4 className="ev-detail-section-title" style={{color:'#ef4444'}}>Cancellation Reason</h4>
+                    <h4 className="ev-detail-section-title" style={{ color: '#ef4444' }}>Cancellation Reason</h4>
                     <p className="ev-detail-remarks">{t.cancellation_reason}</p>
                   </div>
                 )}
@@ -761,7 +761,7 @@ const EVisitor = ({ userInfo }) => {
                 {/* Rejection Reason */}
                 {sc === 'rejected' && (t.rejection_reason || t.reject_reason) && (
                   <div className="ev-detail-section">
-                    <h4 className="ev-detail-section-title" style={{color:'#dc2626'}}>Rejection Reason</h4>
+                    <h4 className="ev-detail-section-title" style={{ color: '#dc2626' }}>Rejection Reason</h4>
                     <p className="ev-detail-remarks">{t.rejection_reason || t.reject_reason}</p>
                   </div>
                 )}

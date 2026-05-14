@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import './HRRequestCenter.css';
 
-const N8N_WEBHOOK_URL = 'https://20.17.177.221.nip.io/webhook/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 async function callN8NGeneric(action, subTarget, payload = {}) {
@@ -197,8 +197,8 @@ function StatusBadge({ status }) {
   const l = String(status || '').toLowerCase();
   let cls = 'pending', label = status || 'Pending', Icon = Clock;
   if (l.includes('approve')) { cls = 'approved'; label = status; Icon = CheckCircle; }
-  else if (l.includes('reject'))  { cls = 'rejected'; label = status; Icon = XCircle; }
-  else if (l.includes('cancel'))  { cls = 'cancelled'; label = status; Icon = AlertTriangle; }
+  else if (l.includes('reject')) { cls = 'rejected'; label = status; Icon = XCircle; }
+  else if (l.includes('cancel')) { cls = 'cancelled'; label = status; Icon = AlertTriangle; }
   return (
     <span className={`hr-status ${cls}`}>
       <span className="hr-status-dot" />
@@ -211,14 +211,14 @@ function StatusBadge({ status }) {
 const HRRequestCenter = ({ userInfo }) => {
   const navigate = useNavigate();
   const employeeEmail = userInfo?.email || '';
-  const employeeName  = userInfo?.name  || '';
+  const employeeName = userInfo?.name || '';
 
-  const [tab, setTab]   = useState('claims');
+  const [tab, setTab] = useState('claims');
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
+  const [error, setError] = useState('');
 
-  const [claims,   setClaims]   = useState([]);
-  const [tickets,  setTickets]  = useState([]);
+  const [claims, setClaims] = useState([]);
+  const [tickets, setTickets] = useState([]);
   const [visitors, setVisitors] = useState([]);
 
   const [actionLoadingId, setActionLoadingId] = useState(null);
@@ -297,9 +297,9 @@ const HRRequestCenter = ({ userInfo }) => {
   /* ── action handler ── */
   const handleDecision = async (kind, item, decision, reason = '') => {
     const id =
-      kind === 'claims'   ? item.claim_id ?? item.id
-      : kind === 'tickets'  ? item.id
-      : item.appointment_id;
+      kind === 'claims' ? item.claim_id ?? item.id
+        : kind === 'tickets' ? item.id
+          : item.appointment_id;
     if (!id) return;
 
     const loadKey = `${kind}-${id}-${decision}`;
@@ -351,16 +351,16 @@ const HRRequestCenter = ({ userInfo }) => {
   const statusClass = (s) => {
     const l = String(s || '').toLowerCase();
     if (l.includes('approve')) return 'approved';
-    if (l.includes('reject'))  return 'rejected';
-    if (l.includes('cancel'))  return 'cancelled';
+    if (l.includes('reject')) return 'rejected';
+    if (l.includes('cancel')) return 'cancelled';
     return 'pending';
   };
 
   /* ── counts ── */
-  const pendingClaims   = claims.filter((c) => statusClass(c.status ?? c.status_code) === 'pending').length;
-  const pendingTickets  = tickets.filter((t) => statusClass(t.status) === 'pending').length;
+  const pendingClaims = claims.filter((c) => statusClass(c.status ?? c.status_code) === 'pending').length;
+  const pendingTickets = tickets.filter((t) => statusClass(t.status) === 'pending').length;
   const pendingVisitors = visitors.filter((v) => statusClass(v.status) === 'pending').length;
-  const totalPending    = tab === 'claims' ? pendingClaims : tab === 'tickets' ? pendingTickets : pendingVisitors;
+  const totalPending = tab === 'claims' ? pendingClaims : tab === 'tickets' ? pendingTickets : pendingVisitors;
 
   /* ── renderers ── */
   const Empty = ({ icon: Icon, label }) => (
@@ -514,9 +514,9 @@ const HRRequestCenter = ({ userInfo }) => {
   };
 
   const TABS = [
-    { id: 'claims',   label: 'Claims',   Icon: CreditCard, count: pendingClaims },
-    { id: 'tickets',  label: 'Tickets',  Icon: Ticket,     count: pendingTickets },
-    { id: 'visitors', label: 'Visitors', Icon: Users,      count: pendingVisitors },
+    { id: 'claims', label: 'Claims', Icon: CreditCard, count: pendingClaims },
+    { id: 'tickets', label: 'Tickets', Icon: Ticket, count: pendingTickets },
+    { id: 'visitors', label: 'Visitors', Icon: Users, count: pendingVisitors },
   ];
 
   return (
@@ -583,8 +583,8 @@ const HRRequestCenter = ({ userInfo }) => {
           </div>
         ) : (
           <>
-            {tab === 'claims'   && renderClaims()}
-            {tab === 'tickets'  && renderTickets()}
+            {tab === 'claims' && renderClaims()}
+            {tab === 'tickets' && renderTickets()}
             {tab === 'visitors' && renderVisitors()}
           </>
         )}
@@ -597,7 +597,7 @@ const HRRequestCenter = ({ userInfo }) => {
           onClose={() => setDetailItem(null)}
           statusClass={statusClass}
           onApprove={handleApproveFromDetail}
-          onReject={() => {}}
+          onReject={() => { }}
           openRejectModal={openRejectModal}
           actionLoadingId={actionLoadingId}
         />
