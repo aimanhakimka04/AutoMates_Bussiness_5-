@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\nreturn [{\n  json: {\n    action,\n    user_email:    clean(input.user_email)    || clean(plan.user_email),\n    user_name:     clean(input.user_name)     || clean(plan.user_name),\n    leave_type:    data.leave_type    || '',\n    start_date:    data.start_date    || '',\n    end_date:      data.end_date      || '',\n    total_days:    data.total_days    || 0,\n    reason:        data.reason        || '',\n    leave_id:      data.leave_id      || null,\n    attendance_id: data.attendance_id || null,\n    hours:         data.hours         || 0,\n    work_date:     data.work_date     || '',\n    employee_id:   input.employee_id  || null,\n    // Auth fields\n    email:         clean(data.email)        || clean(input.user_email),\n    password:      clean(data.password)     || '',\n    role:          clean(data.role)         || 'staff',\n    is_active:     data.is_active !== undefined ? data.is_active : true,\n    target_email:  clean(data.target_email) || '',\n    new_email:     clean(data.new_email)    || '',\n    name:          clean(data.name)         || clean(data.user_name) || '',\n  }\n}];"
+        "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\n// Core fields\nconst user_email   = clean(input.user_email)    || clean(plan.user_email);\nconst user_name    = clean(input.user_name)     || clean(plan.user_name);\nconst leave_type   = data.leave_type    || '';\nconst start_date   = data.start_date    || '';\nconst end_date     = data.end_date      || '';\nconst total_days   = data.total_days    || 0;\nconst reason       = data.reason        || '';\nconst leave_id     = data.leave_id      || null;\nconst attendance_id = data.attendance_id || null;\nconst hours        = data.hours         || 0;\nconst work_date    = data.work_date     || '';\nconst employee_id  = input.employee_id  || null;\n\n// Auth fields\nconst email        = clean(data.email)        || clean(input.user_email);\nconst password     = clean(data.password)     || '';\nconst role         = clean(data.role)         || 'staff';\nconst is_active    = data.is_active !== undefined ? data.is_active : true;\nconst target_email = clean(data.target_email) || '';\nconst new_email    = clean(data.new_email)    || '';\nconst name         = clean(data.name)         || clean(data.user_name) || '';\n\n// Timetable fields\nconst month_start        = clean(data.month_start)  || clean(input.month_start) || '';\nconst month_end          = clean(data.month_end)    || clean(input.month_end)   || '';\nconst shift_id           = data.shift_id            || input.shift_id           || null;\nconst shift_name         = clean(data.shift_name)   || '';\nconst start_time         = clean(data.start_time)   || '';\nconst end_time           = clean(data.end_time)     || '';\nconst target_employee_id = data.target_employee_id  || input.target_employee_id || null;\nconst weekdays_only      = data.weekdays_only        || false;\nconst is_off             = data.is_off               || false;\n\nreturn [{\n  json: {\n    action,\n    user_email, user_name,\n    leave_type, start_date, end_date, total_days, reason,\n    leave_id, attendance_id, hours, work_date, employee_id,\n    email, password, role, is_active, target_email, new_email, name,\n    month_start, month_end, shift_id, shift_name, start_time, end_time,\n    target_employee_id, weekdays_only, is_off,\n  }\n}];\n"
       },
       "id": "5cc53372-ac91-426f-a015-0915e535384b",
       "name": "Parse Input",
@@ -339,6 +339,121 @@
               },
               "renameOutput": true,
               "outputKey": "delete_user"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_shifts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_shifts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "create_shift",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_shift"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "get_my_timetable",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "get_my_timetable"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "get_all_timetable",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "get_all_timetable"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "assign_timetable",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "assign_timetable"
             }
           ]
         },
@@ -1006,6 +1121,204 @@
         2600,
         480
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT shift_id, shift_name, start_time::text, end_time::text, created_at FROM public.work_shifts ORDER BY shift_id ASC"
+      },
+      "id": "tt-pg-Query List Shifts",
+      "name": "Query List Shifts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.work_shifts (shift_name, start_time, end_time, created_by) VALUES ('{{ $json.shift_name }}', '{{ $json.start_time }}'::time, '{{ $json.end_time }}'::time, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1)) RETURNING shift_id, shift_name, start_time::text, end_time::text"
+      },
+      "id": "tt-pg-Query Create Shift",
+      "name": "Query Create Shift",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        220
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT et.timetable_id, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text AS start_time, ws.end_time::text AS end_time, ea.attendance_id, ea.clock_in_time, ea.clock_out_time, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN TRUE ELSE FALSE END AS is_ot, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2) ELSE 0 END AS ot_hours FROM public.employee_timetable et JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC"
+      },
+      "id": "tt-pg-Query My Timetable",
+      "name": "Query My Timetable",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        340
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT et.timetable_id, et.employee_id, e.employee_name, e.email, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text, ws.end_time::text, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status FROM public.employee_timetable et JOIN public.employees e ON e.employee_id = et.employee_id JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC, e.employee_name ASC"
+      },
+      "id": "tt-pg-Query All Timetable",
+      "name": "Query All Timetable",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        460
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.employee_timetable (employee_id, shift_id, work_date, is_off, created_by) SELECT {{ $json.target_employee_id }}, {{ $json.shift_id }}, gs::date, {{ $json.is_off || false }}, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) FROM generate_series('{{ $json.start_date }}'::date, '{{ $json.end_date }}'::date, '1 day'::interval) gs WHERE ({{ $json.weekdays_only || false }} = false OR EXTRACT(DOW FROM gs) NOT IN (0, 6)) ON CONFLICT (employee_id, work_date) DO UPDATE SET shift_id = EXCLUDED.shift_id, is_off = EXCLUDED.is_off, created_by = EXCLUDED.created_by RETURNING timetable_id, work_date::text, shift_id, is_off"
+      },
+      "id": "tt-pg-Query Assign Timetable",
+      "name": "Query Assign Timetable",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        580
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.employee_overtime (employee_id, status_id, work_date, hours, reason) SELECT ea.employee_id, (SELECT status_id FROM leave_status WHERE LOWER(status_code) = 'pending' LIMIT 1), CURRENT_DATE, ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2), 'Auto-detected OT (timetable check-out)' FROM public.employee_attendance ea JOIN public.employee_timetable et ON et.employee_id = ea.employee_id AND et.work_date = CURRENT_DATE JOIN public.work_shifts ws ON ws.shift_id = et.shift_id WHERE ea.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND ea.clock_in_time::date = CURRENT_DATE AND ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time ON CONFLICT DO NOTHING RETURNING overtime_id, hours"
+      },
+      "id": "tt-pg-Query Auto OT",
+      "name": "Query Auto OT",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        3000,
+        700
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i=>i.json).filter(r=>r&&r.shift_id);\nreturn [{json:{success:true,data:rows}}];"
+      },
+      "id": "tt-cd-Format List Shifts",
+      "name": "Format List Shifts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row=$input.first()?.json||{};\nif(!row?.shift_id)return[{json:{success:false,message:'Create shift failed'}}];\nreturn[{json:{success:true,message:`Shift created: ${row.shift_name}`,data:row}}];"
+      },
+      "id": "tt-cd-Format Create Shift",
+      "name": "Format Create Shift",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
+      },
+      "id": "tt-cd-Format My Timetable",
+      "name": "Format My Timetable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
+      },
+      "id": "tt-cd-Format All Timetable",
+      "name": "Format All Timetable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.timetable_id);\nif(!rows.length)return[{json:{success:false,message:'Assignment failed \u2014 check date range or employee ID'}}];\nreturn[{json:{success:true,message:`Assigned ${rows.length} day(s)`,data:rows}}];"
+      },
+      "id": "tt-cd-Format Assign Timetable",
+      "name": "Format Assign Timetable",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        580
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row=$input.first()?.json||{};\nreturn[{json:{success:true,ot_detected:!!row?.overtime_id,ot_hours:row?.hours||0}}];"
+      },
+      "id": "tt-cd-Format Auto OT",
+      "name": "Format Auto OT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3200,
+        700
+      ]
     }
   ],
   "pinData": {},
@@ -1123,6 +1436,41 @@
         ],
         [
           {
+            "node": "Query List Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Create Shift",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query My Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query All Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Assign Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Unknown Action",
             "type": "main",
             "index": 0
@@ -1178,7 +1526,7 @@
       "main": [
         [
           {
-            "node": "Format Punch Out",
+            "node": "Query Auto OT",
             "type": "main",
             "index": 0
           }
@@ -1514,6 +1862,138 @@
         [
           {
             "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query List Shifts": {
+      "main": [
+        [
+          {
+            "node": "Format List Shifts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List Shifts": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Create Shift": {
+      "main": [
+        [
+          {
+            "node": "Format Create Shift",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Create Shift": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query My Timetable": {
+      "main": [
+        [
+          {
+            "node": "Format My Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format My Timetable": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query All Timetable": {
+      "main": [
+        [
+          {
+            "node": "Format All Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format All Timetable": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Assign Timetable": {
+      "main": [
+        [
+          {
+            "node": "Format Assign Timetable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Assign Timetable": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Auto OT": {
+      "main": [
+        [
+          {
+            "node": "Format Auto OT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Auto OT": {
+      "main": [
+        [
+          {
+            "node": "Format Punch Out",
             "type": "main",
             "index": 0
           }

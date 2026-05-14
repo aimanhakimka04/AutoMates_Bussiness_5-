@@ -5,7 +5,7 @@ import {
   Clock, ChevronRight, CheckCircle, XCircle, Info,
   FileText, Umbrella, ClipboardList, TrendingUp,
   Loader2, RefreshCw, AlertCircle, Send, Ban, ChevronDown, User,
-  Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2
+  Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2, CalendarDays
 } from 'lucide-react';
 import './FlexHR.css';
 
@@ -267,6 +267,94 @@ const FlexHR = ({ userInfo }) => {
   const [umEditTarget, setUmEditTarget] = useState(null); // user being edited
   const [deleteId, setDeleteId] = useState(null); // email being deleted
 
+  // ── Timetable ──────────────────────────────────────────────────────────────
+  const nowD = new Date();
+  const [ttMonth, setTtMonth] = useState({ year: nowD.getFullYear(), month: nowD.getMonth() });
+  const [ttData, setTtData] = useState([]);
+  const [ttLoad, setTtLoad] = useState(false);
+  const [ttErr, setTtErr] = useState('');
+  const [ttDetail, setTtDetail] = useState(null);
+
+  // HR Manage Timetable
+  const [mttMonth, setMttMonth] = useState({ year: nowD.getFullYear(), month: nowD.getMonth() });
+  const [mttShifts, setMttShifts] = useState([]);
+  const [mttAllData, setMttAllData] = useState([]);
+  const [mttLoad, setMttLoad] = useState(false);
+  const [mttErr, setMttErr] = useState('');
+  const [mttOK, setMttOK] = useState('');
+  const [mttSubView, setMttSubView] = useState('calendar'); // 'calendar' | 'assign' | 'createShift'
+  const [mttSelEmp, setMttSelEmp] = useState('');
+  const initAssignForm = { startDate: '', endDate: '', shiftId: '', targetEmpId: '', isOff: false, weekdaysOnly: true };
+  const [mttAssign, setMttAssign] = useState(initAssignForm);
+  const [mttAssignLoad, setMttAssignLoad] = useState(false);
+  const [newShift, setNewShift] = useState({ shift_name: '', start_time: '08:00', end_time: '17:00' });
+  const [newShiftLoad, setNewShiftLoad] = useState(false);
+
+  const getMonthRange = (y, m) => {
+    const s = new Date(y, m, 1), e = new Date(y, m + 1, 0);
+    const p = (n) => String(n).padStart(2, '0');
+    return { start: `${y}-${p(m + 1)}-01`, end: `${y}-${p(m + 1)}-${p(e.getDate())}`, days: e.getDate() };
+  };
+
+  const fetchMyTT = useCallback(async () => {
+    setTtLoad(true); setTtErr('');
+    const { start, end } = getMonthRange(ttMonth.year, ttMonth.month);
+    try {
+      const r = await callN8N('get_my_timetable', { user_email: userEmail, month_start: start, month_end: end });
+      const d = r?.data || (Array.isArray(r) ? r : []);
+      setTtData(Array.isArray(d) ? d : []);
+    } catch { setTtErr('Failed to load timetable'); }
+    setTtLoad(false);
+  }, [ttMonth, userEmail]);
+
+  const fetchShifts = useCallback(async () => {
+    try {
+      const r = await callN8N('list_shifts', { user_email: userEmail });
+      setMttShifts(Array.isArray(r?.data) ? r.data : []);
+    } catch { }
+  }, [userEmail]);
+
+  const fetchAllTT = useCallback(async () => {
+    setMttLoad(true); setMttErr('');
+    const { start, end } = getMonthRange(mttMonth.year, mttMonth.month);
+    try {
+      const r = await callN8N('get_all_timetable', { user_email: userEmail, month_start: start, month_end: end });
+      const d = r?.data || (Array.isArray(r) ? r : []);
+      setMttAllData(Array.isArray(d) ? d : []);
+    } catch { setMttErr('Failed to load timetable'); }
+    setMttLoad(false);
+  }, [mttMonth, userEmail]);
+
+  const submitAssignTT = async () => {
+    if (!mttAssign.startDate || !mttAssign.endDate || !mttAssign.shiftId || !mttAssign.targetEmpId) {
+      setMttErr('Please fill all fields'); return;
+    }
+    setMttAssignLoad(true); setMttErr(''); setMttOK('');
+    try {
+      const r = await callN8N('assign_timetable', {
+        user_email: userEmail, target_employee_id: Number(mttAssign.targetEmpId),
+        shift_id: Number(mttAssign.shiftId), start_date: mttAssign.startDate,
+        end_date: mttAssign.endDate, is_off: mttAssign.isOff, weekdays_only: mttAssign.weekdaysOnly,
+      });
+      if (r?.success === false) throw new Error(r?.message || 'Failed');
+      setMttOK(r?.message || 'Assigned!'); setMttAssign(initAssignForm); setMttSubView('calendar'); fetchAllTT();
+      setTimeout(() => setMttOK(''), 4000);
+    } catch (e) { setMttErr(e.message || 'Assign failed'); }
+    setMttAssignLoad(false);
+  };
+
+  const submitNewShift = async () => {
+    if (!newShift.shift_name || !newShift.start_time || !newShift.end_time) { setMttErr('Fill all shift fields'); return; }
+    setNewShiftLoad(true); setMttErr('');
+    try {
+      const r = await callN8N('create_shift', { user_email: userEmail, ...newShift });
+      if (r?.success === false) throw new Error(r?.message || 'Failed');
+      setMttOK(`Shift "${newShift.shift_name}" created!`); setNewShift({ shift_name: '', start_time: '08:00', end_time: '17:00' });
+      fetchShifts(); setMttSubView('calendar'); setTimeout(() => setMttOK(''), 4000);
+    } catch (e) { setMttErr(e.message || 'Failed'); }
+    setNewShiftLoad(false);
+  };
+
   const initRegForm = { name: '', email: '', password: '', role: 'staff' };
   const [regForm, setRegForm] = useState(initRegForm);
   const [regLoad, setRegLoad] = useState(false);
@@ -399,11 +487,13 @@ const FlexHR = ({ userInfo }) => {
     if (view === 'applyLeave') fetchBal();
     if (view === 'applications') fetchApps();
     if (view === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
+    if (view === 'timetable') { fetchMyTT(); }
+    if (view === 'manageTT') { fetchShifts(); fetchAllTT(); fetchUsers(); }
   }, [view]); // eslint-disable-line
 
   const pendingCount = apps.filter(a => (a.status_code || a.status || '').toLowerCase() === 'pending').length;
   const filteredApps = apps.filter(a => appsTab === 'All' || (a.status_code || a.status || '').toLowerCase() === appsTab.toLowerCase());
-  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications', userAdmin: 'User Management' };
+  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications', userAdmin: 'User Management', timetable: 'My Timetable', manageTT: 'Manage Timetable' };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -449,6 +539,19 @@ const FlexHR = ({ userInfo }) => {
                 <span className="card-text">My Applications</span>
                 {pendingCount > 0 && <span className="task-badge">{pendingCount}</span>}
               </div>
+            </div>
+            {/* Timetable card — all users */}
+            <div className="card-grid" style={{ marginTop: 0 }}>
+              <div className="action-card" onClick={() => goTo('timetable')}>
+                <div className="card-icon-wrap" style={{ background: 'rgba(16,185,129,0.15)' }}><CalendarDays size={26} color="#10b981" /></div>
+                <span className="card-text">My Timetable</span>
+              </div>
+              {isHR ? (
+                <div className="action-card" onClick={() => goTo('manageTT')} style={{ background: 'linear-gradient(135deg,#0f2027,#1a3a4a)', border: '2px solid #0ea5e9' }}>
+                  <div className="card-icon-wrap" style={{ background: 'rgba(14,165,233,0.2)' }}><CalendarDays size={26} color="#38bdf8" /></div>
+                  <span className="card-text" style={{ color: '#bae6fd' }}>Manage Timetable</span>
+                </div>
+              ) : <div style={{ flex: 1 }} />}
             </div>
             {/* HR-only User Management card */}
             {isHR && (
@@ -770,6 +873,239 @@ const FlexHR = ({ userInfo }) => {
           </div>)}
         </div>
       )}
+
+        {/* ── MY TIMETABLE ──────────────────────────────────────────────── */}
+        {view === 'timetable' && (() => {
+          const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          const DAYS_HDR = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+          const STATUS_STYLE = {
+            on_time:   { bg:'#f0fdf4', border:'#16a34a', dot:'#16a34a', label:'On Time' },
+            late:      { bg:'#fef2f2', border:'#dc2626', dot:'#dc2626', label:'Late' },
+            absent:    { bg:'#eff6ff', border:'#3b82f6', dot:'#3b82f6', label:'Absent' },
+            scheduled: { bg:'#faf5ff', border:'#a78bfa', dot:'#a78bfa', label:'Scheduled' },
+            rest_day:  { bg:'#f9fafb', border:'#d1d5db', dot:'#d1d5db', label:'Rest Day' },
+          };
+          const { days, start } = getMonthRange(ttMonth.year, ttMonth.month);
+          const firstDow = (new Date(ttMonth.year, ttMonth.month, 1).getDay() + 6) % 7; // 0=Mon
+          const dayMap = {};
+          ttData.forEach(d => { if (d.work_date) dayMap[d.work_date.slice(0, 10)] = d; });
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const padDays = Array(firstDow).fill(null);
+          const allCells = [...padDays, ...Array.from({ length: days }, (_, i) => i + 1)];
+          while (allCells.length % 7 !== 0) allCells.push(null);
+          const prevM = () => setTtMonth(m => m.month === 0 ? { year: m.year - 1, month: 11 } : { ...m, month: m.month - 1 });
+          const nextM = () => setTtMonth(m => m.month === 11 ? { year: m.year + 1, month: 0 } : { ...m, month: m.month + 1 });
+          return (
+            <div className="review-module">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <button onClick={prevM} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', padding: 6 }}>‹</button>
+                <span style={{ fontWeight: 700, fontSize: 16, color: '#2b1d62' }}>{MONTHS[ttMonth.month]} {ttMonth.year}</span>
+                <button onClick={nextM} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', padding: 6 }}>›</button>
+              </div>
+              <div style={{ display: 'flex', marginBottom: 4 }}>
+                {DAYS_HDR.map(d => <div key={d} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#aaa' }}>{d}</div>)}
+              </div>
+              {ttLoad ? <Spinner /> : ttErr ? <ErrBanner msg={ttErr} onRetry={fetchMyTT} /> : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                  {allCells.map((day, idx) => {
+                    if (!day) return <div key={`e-${idx}`} />;
+                    const p = n => String(n).padStart(2, '0');
+                    const dateStr = `${ttMonth.year}-${p(ttMonth.month + 1)}-${p(day)}`;
+                    const entry = dayMap[dateStr];
+                    const st = entry?.punch_status || null;
+                    const ss = STATUS_STYLE[st] || {};
+                    const isToday = dateStr === todayStr;
+                    return (
+                      <div key={dateStr} onClick={() => entry && setTtDetail(entry)}
+                        style={{ border: `2px solid ${isToday ? '#2b1d62' : ss.border || '#e5e7eb'}`, borderRadius: 8, minHeight: 44, padding: '4px 2px', background: ss.bg || '#fff', cursor: entry ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: isToday ? 800 : 500, color: isToday ? '#2b1d62' : '#333' }}>{day}</span>
+                        {st && <div style={{ width: 8, height: 8, borderRadius: '50%', background: ss.dot }} />}
+                        {entry?.is_ot && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b' }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 14, justifyContent: 'center' }}>
+                {Object.entries(STATUS_STYLE).map(([k, s]) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#666' }}>
+                    <div style={{ width: 10, height: 10, borderRadius: '50%', background: s.dot }} />
+                    {s.label}
+                  </div>
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#666' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} />OT
+                </div>
+              </div>
+              {ttDetail && (
+                <div className="cal-overlay" onClick={() => setTtDetail(null)}>
+                  <div className="cal-modal" onClick={e => e.stopPropagation()}>
+                    <div className="cal-header">
+                      <span className="cal-title">{ttDetail.work_date}</span>
+                      <button onClick={() => setTtDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }}><X size={18} /></button>
+                    </div>
+                    <div style={{ padding: '14px 16px' }}>
+                      <div className="detail-row"><label>Shift</label><span>{ttDetail.shift_name || '--'}</span></div>
+                      <div className="detail-row"><label>Work Hours</label><span>{ttDetail.start_time?.slice(0,5)} – {ttDetail.end_time?.slice(0,5)}</span></div>
+                      <div className="detail-row"><label>Status</label>
+                        <span style={{ fontWeight: 700, color: {on_time:'#16a34a',late:'#dc2626',absent:'#3b82f6',scheduled:'#7c3aed',rest_day:'#9ca3af'}[ttDetail.punch_status] || '#333' }}>
+                          {({on_time:'✅ On Time',late:'🔴 Late',absent:'🔵 Absent',scheduled:'📅 Scheduled',rest_day:'⚪ Rest Day'})[ttDetail.punch_status] || '--'}
+                        </span>
+                      </div>
+                      {ttDetail.clock_in_time && <div className="detail-row"><label>Clock In</label><span>{new Date(ttDetail.clock_in_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span></div>}
+                      {ttDetail.clock_out_time && <div className="detail-row"><label>Clock Out</label><span>{new Date(ttDetail.clock_out_time).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span></div>}
+                      {ttDetail.is_ot && <div className="detail-row"><label>OT</label><span style={{ color:'#f59e0b', fontWeight:700 }}>🟡 {ttDetail.ot_hours}h overtime</span></div>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* ── MANAGE TIMETABLE (HR only) ─────────────────────────────────── */}
+        {view === 'manageTT' && isHR && (() => {
+          const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+          const DAYS_HDR = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+          const STATUS_DOT = { on_time:'#16a34a', late:'#dc2626', absent:'#3b82f6', scheduled:'#a78bfa', rest_day:'#d1d5db' };
+          const { days } = getMonthRange(mttMonth.year, mttMonth.month);
+          const firstDow = (new Date(mttMonth.year, mttMonth.month, 1).getDay() + 6) % 7;
+          const allEmployees = umUsers.filter(u => u.email && u.email !== 'undefined');
+          // Build day map for selected employee
+          const selEmpData = mttSelEmp ? mttAllData.filter(d => String(d.employee_id) === String(mttSelEmp)) : mttAllData;
+          const dayMap = {};
+          selEmpData.forEach(d => {
+            if (!d.work_date) return;
+            const dk = d.work_date.slice(0, 10);
+            if (!dayMap[dk]) dayMap[dk] = [];
+            dayMap[dk].push(d);
+          });
+          const padDays = Array(firstDow).fill(null);
+          const allCells = [...padDays, ...Array.from({ length: days }, (_, i) => i + 1)];
+          while (allCells.length % 7 !== 0) allCells.push(null);
+          const prevM = () => setMttMonth(m => m.month === 0 ? { year: m.year - 1, month: 11 } : { ...m, month: m.month - 1 });
+          const nextM = () => setMttMonth(m => m.month === 11 ? { year: m.year + 1, month: 0 } : { ...m, month: m.month + 1 });
+          return (
+            <div className="review-module">
+              {mttOK && <div className="success-banner" style={{ marginBottom: 10 }}><CheckCircle size={14} /><span>{mttOK}</span></div>}
+              {mttErr && <ErrBanner msg={mttErr} />}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                <button className={`app-tab ${mttSubView === 'calendar' ? 'active' : ''}`} onClick={() => setMttSubView('calendar')} style={{ flex: 1 }}>Calendar</button>
+                <button className={`app-tab ${mttSubView === 'assign' ? 'active' : ''}`} onClick={() => setMttSubView('assign')} style={{ flex: 1 }}>Assign Shift</button>
+                <button className={`app-tab ${mttSubView === 'createShift' ? 'active' : ''}`} onClick={() => setMttSubView('createShift')} style={{ flex: 1 }}>New Shift</button>
+              </div>
+
+              {mttSubView === 'calendar' && (<>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <button onClick={prevM} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', padding: 6 }}>‹</button>
+                  <span style={{ fontWeight: 700, fontSize: 15, color: '#2b1d62' }}>{MONTHS[mttMonth.month]} {mttMonth.year}</span>
+                  <button onClick={nextM} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', padding: 6 }}>›</button>
+                </div>
+                <div style={{ marginBottom: 10 }}>
+                  <select className="form-select" value={mttSelEmp} onChange={e => setMttSelEmp(e.target.value)}>
+                    <option value="">All Employees</option>
+                    {allEmployees.map(u => <option key={u.user_id} value={u.user_id}>{u.name || u.email}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', marginBottom: 4 }}>
+                  {DAYS_HDR.map(d => <div key={d} style={{ flex: 1, textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#aaa' }}>{d}</div>)}
+                </div>
+                {mttLoad ? <Spinner /> : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                    {allCells.map((day, idx) => {
+                      if (!day) return <div key={`e-${idx}`} />;
+                      const p = n => String(n).padStart(2, '0');
+                      const dateStr = `${mttMonth.year}-${p(mttMonth.month + 1)}-${p(day)}`;
+                      const entries = dayMap[dateStr] || [];
+                      const dots = [...new Set(entries.map(e => e.punch_status))].slice(0, 3);
+                      return (
+                        <div key={dateStr} style={{ border: '1px solid #e5e7eb', borderRadius: 8, minHeight: 44, padding: '4px 2px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>{day}</span>
+                          <div style={{ display: 'flex', gap: 2 }}>
+                            {dots.map((s, i) => <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[s] || '#ccc' }} />)}
+                            {entries.length > 3 && <span style={{ fontSize: 9, color: '#aaa' }}>+{entries.length - 3}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                  <button onClick={fetchAllTT} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}><RefreshCw size={13} /> Refresh</button>
+                </div>
+              </>)}
+
+              {mttSubView === 'assign' && (
+                <div className="leave-form-card">
+                  <div className="form-section-title"><CalendarDays size={15} color="#2b1d62" style={{ marginRight: 6 }} />Assign Shift</div>
+                  <div className="input-group"><label>Employee *</label>
+                    <div className="select-wrap">
+                      <select className="form-select" value={mttAssign.targetEmpId} onChange={e => setMttAssign(f => ({ ...f, targetEmpId: e.target.value }))}>
+                        <option value="">Select employee…</option>
+                        {allEmployees.map(u => <option key={u.user_id} value={u.user_id}>{u.name || u.email}</option>)}
+                      </select>
+                      <ChevronDown size={15} className="select-arrow" />
+                    </div>
+                  </div>
+                  <div className="input-group"><label>Shift *</label>
+                    <div className="select-wrap">
+                      <select className="form-select" value={mttAssign.shiftId} onChange={e => setMttAssign(f => ({ ...f, shiftId: e.target.value }))}>
+                        <option value="">Select shift…</option>
+                        {mttShifts.map(s => <option key={s.shift_id} value={s.shift_id}>{s.shift_name} ({s.start_time?.slice(0,5)}–{s.end_time?.slice(0,5)})</option>)}
+                      </select>
+                      <ChevronDown size={15} className="select-arrow" />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div className="input-group" style={{ flex: 1 }}><label>From *</label><input className="form-select" type="date" value={mttAssign.startDate} onChange={e => setMttAssign(f => ({ ...f, startDate: e.target.value }))} /></div>
+                    <div className="input-group" style={{ flex: 1 }}><label>To *</label><input className="form-select" type="date" value={mttAssign.endDate} onChange={e => setMttAssign(f => ({ ...f, endDate: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 14, margin: '8px 0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={mttAssign.weekdaysOnly} onChange={e => setMttAssign(f => ({ ...f, weekdaysOnly: e.target.checked }))} />
+                      Weekdays only (skip Sat/Sun)
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={mttAssign.isOff} onChange={e => setMttAssign(f => ({ ...f, isOff: e.target.checked }))} />
+                      Mark as Rest Day
+                    </label>
+                  </div>
+                  <button className={`submit-btn ${mttAssignLoad ? 'disabled' : ''}`} onClick={submitAssignTT} disabled={mttAssignLoad}>
+                    {mttAssignLoad ? <><Loader2 size={14} style={{ animation: 'fhr-spin 1s linear infinite', marginRight: 7 }} />Assigning…</> : <><CheckCircle size={14} style={{ marginRight: 7 }} />Assign Shift</>}
+                  </button>
+                </div>
+              )}
+
+              {mttSubView === 'createShift' && (
+                <div className="leave-form-card">
+                  <div className="form-section-title"><CalendarDays size={15} color="#2b1d62" style={{ marginRight: 6 }} />Create New Shift</div>
+                  <div className="input-group"><label>Shift Name *</label><input className="form-select" placeholder="e.g. Standard 8AM-5PM" value={newShift.shift_name} onChange={e => setNewShift(f => ({ ...f, shift_name: e.target.value }))} /></div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <div className="input-group" style={{ flex: 1 }}><label>Start Time *</label><input className="form-select" type="time" value={newShift.start_time} onChange={e => setNewShift(f => ({ ...f, start_time: e.target.value }))} /></div>
+                    <div className="input-group" style={{ flex: 1 }}><label>End Time *</label><input className="form-select" type="time" value={newShift.end_time} onChange={e => setNewShift(f => ({ ...f, end_time: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ background: '#f5f3ff', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#6c47d9', marginBottom: 10 }}>
+                    Preview: {newShift.start_time} – {newShift.end_time} ({newShift.shift_name || 'Unnamed'})
+                  </div>
+                  <button className={`submit-btn ${newShiftLoad ? 'disabled' : ''}`} onClick={submitNewShift} disabled={newShiftLoad}>
+                    {newShiftLoad ? <><Loader2 size={14} style={{ animation: 'fhr-spin 1s linear infinite', marginRight: 7 }} />Creating…</> : <><CheckCircle size={14} style={{ marginRight: 7 }} />Create Shift</>}
+                  </button>
+                  {mttShifts.length > 0 && (
+                    <div style={{ marginTop: 16 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: '#888', marginBottom: 6 }}>EXISTING SHIFTS</div>
+                      {mttShifts.map(s => (
+                        <div key={s.shift_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f0f0f4', fontSize: 13, color: '#333' }}>
+                          <span>{s.shift_name}</span>
+                          <span style={{ color: '#888' }}>{s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── DETAIL MODAL ──────────────────────────────────────────────────── */}
