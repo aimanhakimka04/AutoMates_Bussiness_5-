@@ -11,7 +11,7 @@ import {
 import './Transport.css';
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 async function callN8N(action, payload = {}) {
@@ -49,7 +49,7 @@ const fmtTime = (t) => {
   const s = String(t);
   if (s.includes('T')) {
     const dt = new Date(s);
-    if (!isNaN(dt)) return `${String(dt.getUTCHours()).padStart(2,'0')}:${String(dt.getUTCMinutes()).padStart(2,'0')}`;
+    if (!isNaN(dt)) return `${String(dt.getUTCHours()).padStart(2, '0')}:${String(dt.getUTCMinutes()).padStart(2, '0')}`;
   }
   if (/^\d{1,2}:\d{2}/.test(s)) return s.slice(0, 5);
   return s;
@@ -65,7 +65,7 @@ const getHour = (t) => {
 const statusMeta = (s = '') => {
   const l = s.toLowerCase();
   if (l === 'confirmed' || l === 'approved') return { color: '#10b981', bg: '#dcfce7', dot: '#10b981', label: 'Confirmed' };
-  if (l === 'pending')  return { color: '#f59e0b', bg: '#fef3c7', dot: '#f59e0b', label: 'Pending' };
+  if (l === 'pending') return { color: '#f59e0b', bg: '#fef3c7', dot: '#f59e0b', label: 'Pending' };
   if (l === 'cancelled') return { color: '#ef4444', bg: '#fee2e2', dot: '#ef4444', label: 'Cancelled' };
   return { color: '#6b7280', bg: '#f3f4f6', dot: '#9ca3af', label: s || 'Unknown' };
 };
@@ -129,18 +129,18 @@ const SeatBar = ({ available, total = 40 }) => {
 const Transport = ({ userInfo }) => {
   const navigate = useNavigate();
   const userEmail = userInfo?.email || '';
-  const userName  = userInfo?.name  || '';
+  const userName = userInfo?.name || '';
 
   // ── view & tab ────────────────────────────────────────────────────────────
-  const [view, setView]           = useState('main');
+  const [view, setView] = useState('main');
   const [activeTab, setActiveTab] = useState('Booking');
 
   // ── data ──────────────────────────────────────────────────────────────────
-  const [bookings, setBookings]   = useState([]);
-  const [sessions, setSessions]   = useState([]);
-  const [loading, setLoading]     = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [apiError, setApiError]   = useState('');
+  const [apiError, setApiError] = useState('');
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
   const [cancelModal, setCancelModal] = useState(false);
@@ -154,22 +154,22 @@ const Transport = ({ userInfo }) => {
   const [transportRoutes, setTransportRoutes] = useState([]);
 
   // ── form ──────────────────────────────────────────────────────────────────
-  const [pickup,      setPickup]      = useState('');
-  const [dropoff,     setDropoff]     = useState('');
+  const [pickup, setPickup] = useState('');
+  const [dropoff, setDropoff] = useState('');
   const [bookingDate, setBookingDate] = useState(todayISO);
-  const [submitting,  setSubmitting]  = useState(false);
-  const [formError,   setFormError]   = useState('');
-  const [swapping,    setSwapping]    = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [swapping, setSwapping] = useState(false);
 
   // ── calendar ──────────────────────────────────────────────────────────────
   const [isCalOpen, setIsCalOpen] = useState(false);
-  const [viewDate,  setViewDate]  = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+  const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
 
   // ── booking history (show cancelled) ─────────────────────────────────────
-  const [showHistory, setShowHistory]     = useState(false);
-  const [statusFilter, setStatusFilter]   = useState('all'); // all | confirmed | pending
-  const [searchQuery, setSearchQuery]     = useState('');
-  const [showSearch, setShowSearch]       = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // all | confirmed | pending
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
 
   // ── toast ─────────────────────────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
@@ -207,7 +207,7 @@ const Transport = ({ userInfo }) => {
       const list = Array.isArray(raw) ? raw : [];
       const routes = list.map(r => ({
         from_location: r.from_location ?? r.from ?? r.pickup,
-        to_location:   r.to_location   ?? r.to   ?? r.dropoff,
+        to_location: r.to_location ?? r.to ?? r.dropoff,
       })).filter(r => r.from_location && r.to_location);
       setTransportRoutes(routes);
       return routes;
@@ -300,15 +300,15 @@ const Transport = ({ userInfo }) => {
     try {
       const res = await callN8N('create_booking', {
         // field names match exactly what the n8n DB query uses
-        email:          userEmail,
+        email: userEmail,
         employee_email: userEmail,
-        employee_name:  userName,
-        session_id:     session.session_id,
-        sessionId:      session.session_id,   // alias for n8n extractor
-        seatNumber:     session.seat_number ?? 0,
-        booking_date:   bookingDate,
-        from_location:  pickup,
-        to_location:    dropoff,
+        employee_name: userName,
+        session_id: session.session_id,
+        sessionId: session.session_id,   // alias for n8n extractor
+        seatNumber: session.seat_number ?? 0,
+        booking_date: bookingDate,
+        from_location: pickup,
+        to_location: dropoff,
       });
 
       // Explicit failure check — backend returns success:false without throwing
@@ -319,12 +319,12 @@ const Transport = ({ userInfo }) => {
 
       const data = res?.data ?? res?.result?.data ?? res ?? {};
       setLastBooking({
-        booking_id:      data.booking_id    || '—',
-        from_location:   pickup,
-        to_location:     dropoff,
-        session_time:    session.session_time,
-        booking_date:    bookingDate,
-        status:          data.status        || 'Confirmed',
+        booking_id: data.booking_id || '—',
+        from_location: pickup,
+        to_location: dropoff,
+        session_time: session.session_time,
+        booking_date: bookingDate,
+        status: data.status || 'Confirmed',
         seats_available: session.seats_available,
       });
       setView('success');
@@ -333,7 +333,7 @@ const Transport = ({ userInfo }) => {
     } finally {
       setSubmitting(false);
       // Refresh in background — don't let this failure affect the booking result
-      fetchBookings().catch(() => {});
+      fetchBookings().catch(() => { });
     }
   };
 
@@ -368,7 +368,7 @@ const Transport = ({ userInfo }) => {
 
   // ── copy booking ID ───────────────────────────────────────────────────────
   const handleCopyId = (id) => {
-    navigator.clipboard?.writeText(String(id)).catch(() => {});
+    navigator.clipboard?.writeText(String(id)).catch(() => { });
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
     addToast(`Booking ID #${id} copied!`);
@@ -388,8 +388,8 @@ const Transport = ({ userInfo }) => {
     for (let d = 1; d <= daysInMonth; d++) {
       const ds = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const isPast = new Date(y, m, d, 23, 59) < now;
-      const isSel  = bookingDate === ds;
-      const isTod  = ds === todayISO;
+      const isSel = bookingDate === ds;
+      const isTod = ds === todayISO;
       days.push(
         <div key={d}
           className={`tr-cal-day${isSel ? ' selected' : ''}${isPast ? ' past' : ''}${isTod && !isSel ? ' today' : ''}`}
@@ -403,9 +403,9 @@ const Transport = ({ userInfo }) => {
 
   const handleBack = () => {
     if (view === 'results') { setView('form'); return; }
-    if (view === 'form')    { setView('main'); return; }
+    if (view === 'form') { setView('main'); return; }
     if (view === 'success') { setView('main'); return; }
-    if (view === 'detail')  { setView('main'); return; }
+    if (view === 'detail') { setView('main'); return; }
     navigate('/');
   };
 
@@ -417,10 +417,10 @@ const Transport = ({ userInfo }) => {
   const openDetail = (b) => { setSelectedBooking(b); setView('detail'); };
 
   // ── derived stats ─────────────────────────────────────────────────────────
-  const activeBookings    = bookings.filter(b => b.status?.toLowerCase() !== 'cancelled');
+  const activeBookings = bookings.filter(b => b.status?.toLowerCase() !== 'cancelled');
   const cancelledBookings = bookings.filter(b => b.status?.toLowerCase() === 'cancelled');
-  const todayBookings     = activeBookings.filter(b => isToday(b.booking_date || b.booking_time));
-  const upcomingToday     = todayBookings.length;
+  const todayBookings = activeBookings.filter(b => isToday(b.booking_date || b.booking_time));
+  const upcomingToday = todayBookings.length;
 
   // ── filtered bookings ─────────────────────────────────────────────────────
   const filteredBookings = activeBookings.filter(b => {
@@ -428,7 +428,7 @@ const Transport = ({ userInfo }) => {
     const q = searchQuery.toLowerCase();
     const matchSearch = !q ||
       (b.from_location || '').toLowerCase().includes(q) ||
-      (b.to_location   || '').toLowerCase().includes(q) ||
+      (b.to_location || '').toLowerCase().includes(q) ||
       String(b.booking_id || '').toLowerCase().includes(q);
     return matchStatus && matchSearch;
   });

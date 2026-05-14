@@ -1,0 +1,1703 @@
+{
+  "name": "C5-EmployeeAssistant-Main",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/employee-assistant",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "5e381e96-e434-4ac2-b098-f328758e5956",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -20576,
+        10160
+      ],
+      "webhookId": "4e0dc8fa-09b3-49f4-ba64-7ad7412fcb1c",
+      "executeOnce": false,
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items || items.length === 0) {\n  return [{ json: { error: 'No data received', token_valid: false } }];\n}\n\nconst firstItem = items[0].json;\nconst body = $('Webhook Trigger').item.json.body || {};\nconst plan  = body.edited_plan || {};\nconst action = (plan.action || '').toLowerCase();\n\n// \u2500\u2500 For login_user: no token required yet (user is authenticating) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nif (action === 'login_user') {\n  return [{\n    json: {\n      user_id:     '',\n      email:       plan.email || '',\n      name:        '',\n      role:        'guest',\n      token_valid: true,\n      is_login_request: true\n    }\n  }];\n}\n\nconst authHeader = firstItem.headers?.authorization || firstItem.headers?.Authorization || '';\n\nif (!authHeader.startsWith('Bearer ')) {\n  return [{ json: { error: 'Missing Authorization header', token_valid: false } }];\n}\n\nconst token = authHeader.substring(7);\nconst parts = token.split('.');\n\ntry {\n  // \u2500\u2500 Standard JWT (3 parts) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  if (parts.length === 3) {\n    let payloadBase64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');\n    while (payloadBase64.length % 4 !== 0) payloadBase64 += '=';\n    const decoded = JSON.parse(Buffer.from(payloadBase64, 'base64').toString('utf-8'));\n    const bodyName = body.name || '';\n    return [{\n      json: {\n        user_id:     decoded.sub    || decoded.oid || '',\n        email:       decoded.upn    || decoded.preferred_username || decoded.email || '',\n        name:        decoded.name   || bodyName || '',\n        role:        decoded.role   || 'staff',\n        roles:       decoded.roles  || ['employee'],\n        tenant_id:   decoded.tid    || 'chinhin_hq',\n        token_valid: true\n      }\n    }];\n  }\n\n  // \u2500\u2500 Custom base64 token (App.jsx fakeToken: btoa(JSON+':'+timestamp)) \u2500\u2500\u2500\u2500\u2500\n  const raw = Buffer.from(token, 'base64').toString('utf-8');\n  const colonIdx = raw.lastIndexOf(':');\n  const jsonStr  = colonIdx > 0 ? raw.substring(0, colonIdx) : raw;\n  const info = JSON.parse(jsonStr);\n  return [{\n    json: {\n      user_id:     info.email || '',\n      email:       info.email || '',\n      name:        info.name  || '',\n      role:        info.role  || 'staff',\n      token_valid: true\n    }\n  }];\n\n} catch (error) {\n  return [{ json: { error: error.message, token_valid: false } }];\n}\n"
+      },
+      "id": "83374f71-98a6-498c-972c-51a6f69a80d6",
+      "name": "VerifyTempToken",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -19680,
+        10160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "context",
+              "value": "={{ ({ \n  user: { \n    id: $json.user_id, \n    upn: $json.email, \n    roles: $json.roles, \n    tenant_id: $json.tenant_id \n  }, \n  request: { \n    text: $if($('Edit Fields').isExecuted, $('Edit Fields').item.json.body.text, $('Webhook Trigger').item.json.body.text), \n    input_type: $('Webhook Trigger').item.json.body.input_type, \n    state: $('Webhook Trigger').item.json.body.state, \n    confirm: $('Webhook Trigger').item.json.body.confirm, \n    edited_plan: $('Webhook Trigger').item.json.body.edited_plan, \n    client_request_id: $('Webhook Trigger').item.json.body.client_request_id, \n    graph_access_token: $('Webhook Trigger').item.json.body.graph_access_token \n  } \n}) }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7886a70e-c100-472b-b960-ae3a5d426323",
+      "name": "BuildContext",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -18784,
+        10576
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.needs_clarification }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2f79e2f0-3044-4181-be9a-7dc17035fee6",
+      "name": "NeedsClarification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -17984,
+        10576
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ type: 'clarify', question: $json.clarification_question, state: { intent: $json.intent, slots: $json.slots } }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6f932672-a24c-4987-ae7e-f067d97c3495",
+      "name": "Respond Clarification",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16416,
+        10720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.final_plan?.risk_level !== 'low' || $json.needs_confirmation === true || (['book_meeting_room', 'create_calendar_event', 'update_event', 'cancel_event'].includes($json.final_plan?.action) && $('Webhook Trigger').item.json.body.event_type !== 'direct_booking') }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d6226e23-8898-45e0-be7b-b5affca07609",
+      "name": "NeedsConfirmation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -17536,
+        10480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ type: 'confirm', summary: $json.final_plan.summary, plan: $json.final_plan, confirm_token: $json.confirm_token }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "99108d88-21fe-46ff-9f85-94f01eb383a0",
+      "name": "Respond Confirmation Card",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16416,
+        10528
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the audit_log object to console\nfor (const item of $input.all()) {\n  if (item.json.audit_log) {\n    console.log('Audit Log:', JSON.stringify(item.json.audit_log, null, 2));\n  }\n}\n\n// Return items unchanged\nreturn $input.all();"
+      },
+      "id": "65f5ed9b-a149-4451-913f-7d245bc734a2",
+      "name": "Log Audit",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -15968,
+        10720
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const incomingRequest = $('Webhook Trigger').item.json.body || {};\nconst aiResponse = $('Code (Parse JSON)').item.json;\n\nlet final_plan;\nif (incomingRequest.confirm === true && incomingRequest.edited_plan) {\n  final_plan = incomingRequest.edited_plan;\n} else {\n  final_plan = aiResponse.action_plan || {};\n}\n\n// Determine which sub to call\nconst action = (final_plan.action || '').toLowerCase();\nlet sub_target = final_plan.sub_target || aiResponse.sub_target || '';\n\nif (!sub_target) {\n  if (['book_meeting_room','create_calendar_event','update_event','cancel_event','get_bookings'].includes(action)) {\n    sub_target = 'meeting_room';\n  } else if (action.startsWith('visitor') || action.includes('register_visitor')) {\n    sub_target = 'visitor';\n  } else if (action.startsWith('wellness') || action.startsWith('health')) {\n    sub_target = 'wellness';\n  } else if (action.startsWith('transport') || action.startsWith('book_transport')) {\n    sub_target = 'transport';\n  } else if (action.startsWith('training') || action.startsWith('enroll')) {\n    sub_target = 'training';\n  } else if (action.startsWith('flexhr') || action.startsWith('leave') || action.startsWith('payroll') || action.startsWith('hr_')) {\n    sub_target = 'flexhr';\n  } else if (action.startsWith('ticket') || action.startsWith('support') || action.startsWith('it_')) {\n    sub_target = 'ticketing';\n  } else {\n    sub_target = aiResponse.sub_target || 'unknown';\n  }\n}\n\nreturn [{\n  json: {\n    ...aiResponse,\n    final_plan:  final_plan,\n    sub_target:  sub_target,\n  }\n}];"
+      },
+      "id": "fed9210a-1464-49b0-b6c1-b403723e9080",
+      "name": "FinalizePlan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -17760,
+        10480
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ ({ type: 'auth_error', message: 'Authentication failed', error: $json.error }) }}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "084c95c4-9a14-4045-ba4f-278d815a9f79",
+      "name": "Respond Auth Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16416,
+        11104
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "type",
+              "value": "error",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "message",
+              "value": "={{ $json.error_message || 'Action failed' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "suggestions",
+              "value": "={{ $json.suggestions || ['Try again with date/time/room name'] }}",
+              "type": "array"
+            },
+            {
+              "id": "id-4",
+              "name": "error_details",
+              "value": "={{ $json.error || 'Unknown error' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9bc534fa-05f2-40f6-8f5a-d1ebaaaf151d",
+      "name": "Build Error Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16640,
+        10912
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "31b35cfd-6696-4122-9f04-0293d95d6ac5",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -16416,
+        10912
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.AUDIT_LOG_ENDPOINT }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.audit_log }}",
+        "options": {}
+      },
+      "id": "724d0b62-4157-49af-9e72-6bcacfa7634f",
+      "name": "Send Audit Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -15744,
+        10720
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI Agent JSON response safely\nconst raw = $input.first().json.output || '';\nlet parsed;\ntry {\n  // Strip markdown code fences if AI wrapped in ```json\n  const clean = raw.replace(/^```json\\s*/i, '').replace(/```\\s*$/,'').trim();\n  parsed = JSON.parse(clean);\n} catch(e) {\n  return [{ json: {\n    intent: 'unknown',\n    sub_target: 'unknown',\n    needs_clarification: true,\n    clarification_question: 'Sorry, I could not understand your request. Could you rephrase it?',\n    needs_confirmation: false,\n    action_plan: { action: 'unknown', sub_target: 'unknown', risk_level: 'low', parameters: {} }\n  }}];\n}\n\n// Ensure sub_target exists \u2014 fallback derive from intent if AI missed it\nif (!parsed.sub_target) {\n  const action = (parsed.intent || parsed.action_plan?.action || '').toLowerCase();\n  if (['book_meeting_room','create_calendar_event','update_event','cancel_event','get_bookings'].includes(action)) {\n    parsed.sub_target = 'meeting_room';\n  } else if (action.includes('visitor')) {\n    parsed.sub_target = 'visitor';\n  } else if (action.includes('wellness') || action.includes('health')) {\n    parsed.sub_target = 'wellness';\n  } else if (action.includes('transport')) {\n    parsed.sub_target = 'transport';\n  } else if (action.includes('training') || action.includes('enroll')) {\n    parsed.sub_target = 'training';\n  } else if (action.includes('leave') || action.includes('payslip') || action.includes('hr_') || action.includes('flexhr')) {\n    parsed.sub_target = 'flexhr';\n  } else if (action.includes('ticket') || action.includes('support')) {\n    parsed.sub_target = 'ticketing';\n  } else {\n    parsed.sub_target = 'unknown';\n  }\n}\n\n// Mirror sub_target into action_plan\nif (parsed.action_plan) {\n  parsed.action_plan.sub_target = parsed.action_plan.sub_target || parsed.sub_target;\n}\n\nreturn [{ json: parsed }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -18208,
+        10576
+      ],
+      "id": "afd3a070-fc8f-44ba-ac31-30939a363cb8",
+      "name": "Code (Parse JSON)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ $json.context.request.text }}",
+        "options": {
+          "systemMessage": "You are an enterprise employee assistant for Chin Hin Group's internal Employee App.\nToday's date and time is: {{$now.format('dddd, MMMM D, YYYY')}}.\nYour job:\n- Read the user's transcript and optional state.\n- Determine intent and which MODULE handles it.\n- Extract required slots.\n- If missing required info, ask ONLY ONE clarification question.\n- If enough info, produce an action_plan with the correct sub_target for n8n to route.\n- Output ONLY valid JSON. No markdown. No extra text.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMODULES & SUPPORTED INTENTS\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nMODULE: meeting_room\n  Intents:\n  - book_meeting_room        \u2192 book a room for a meeting\n  - create_calendar_event    \u2192 create a calendar event (no room)\n  - update_event             \u2192 update/reschedule an existing event\n  - cancel_event             \u2192 cancel an existing event\n  - get_bookings             \u2192 list user's current room bookings\nMODULE: evisitor\n  Intents:\n  - pre_register         \u2192 register an external visitor / guest\n  - cancel           \u2192 cancel a visitor registration\n  - list         \u2192 list upcoming visitor registrations\nMODULE: wellness\n  Intents:\n  - book_wellness            \u2192 book a wellness appointment (gym, clinic, counselling)\n  - cancel_wellness          \u2192 cancel a wellness booking\n  - get_wellness_status      \u2192 check wellness benefit balance\nMODULE: transport\n  Intents:\n  - create_booking           \u2192 request company transport / car pool\n  - cancel_booking\u2192 cancel a transport booking\n  - get_bookings    \u2192 check transport request status\n  - get_sessions -> check transport session, list the session one by one\nMODULE: training\n  Intents:\n  - enroll_training          \u2192 enrol in an employee training / course\n  - cancel_training          \u2192 withdraw from a training\n  - get_chart_overview    \u2192 list available or enrolled trainings\nMODULE: flexhr\n  Intents:\n  - apply_leave              \u2192 submit a leave application\n  - cancel_leave             \u2192 cancel a leave application\n  - check_leave_balance      \u2192 check remaining leave days\n  - get_payslip              \u2192 retrieve payslip information\n  - hr_enquiry               \u2192 general HR policy / procedure question\nMODULE: ticketing\n  Intents:\n  - create_ticket            \u2192 raise an IT / facilities support ticket\n  - check_ticket_status      \u2192 check status of an existing ticket\n  - cancel_ticket            \u2192 cancel a support ticket\nIf the user's request does not match any module: intent = \"unknown\".\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nROOM RULE (CRITICAL)\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nOnly the following rooms exist. If user mentions a room NOT in this list,\ndo NOT proceed \u2014 set needs_clarification = true and ask them to choose from the list.\nValid rooms:\n  - Idea Lab 1\n  - Idea Lab 2\n  - Idea Lab 3\n  - Idea Lab 4\n  - Idea Lab 5\n  - Idea Lab 6\n  - Idea Lab 7\n  - Idea Lab 8\n  - Idea Lab 9\n  - Idea Lab 10\n  - Boardroom\nMatching is case-insensitive. \"idea lab 3\", \"Idea Lab 3\", \"idealab3\" all map to \"Idea Lab 3\".\nNever invent or guess a room name. Never use a room not in the list above.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nSTAFF CLAIM (submit_claim):\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n- Required: claim_type (Mileage/Meal/Entertainment/Medical), start_date, end_date (or receipt_date for non-date-range claims).\n- When start_date and end_date are provided: total_days is auto-calculated (end_date - start_date, inclusive).\n- User does not need to provide total_days.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nTRAINING ENROLLMENT FLOW (enroll_training)\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nStep 1 \u2013 Get available courses (not yet signed up)\n- When the user says they want to enroll in training (e.g. \"enroll in a course\", \"sign up for training\", \"I want to join a course\"):\n  - Call get_available_courses (or get_chart_overview with filter for courses not yet enrolled).\n  - Do NOT ask for course name first \u2014 fetch the list first.\n\nStep 2 \u2013 List courses and ask user to pick\n- When the response contains a \"data\" array of courses (or course_info / training_info):\n  - Do NOT reply with only \"Found X course(s).\"\n  - List each course with: course_id / program_id, title, date, venue, trainer (if present).\n  - Format example:\n    \"Here are the courses you haven't signed up for yet:\n     1. Course #12 \u2013 Leadership Fundamentals (Mar 15, 2026, Training Room)\n     2. Course #15 \u2013 Excel Advanced (Mar 18, 2026, Idea Lab 5)\n     3. Course #18 \u2013 Project Management (Mar 22, 2026, Boardroom)\n     Which course would you like to enroll in? (Reply with the number or course ID)\"\n  - Include course_id / program_id so the user can select by number or ID.\n\nStep 3 \u2013 User picks a course\n- When the user selects a course (by number or course_id / program_id), store: program_id or course_id.\n  - If user said \"1\", map to the first course's program_id.\n  - If user said \"12\" or \"Course 12\", use program_id 12.\n- Confirm: \"I'll enroll you in [course title] on [date]. Confirm?\"\n- Set needs_confirmation = true with parameters: program_id (or course_id), course_name, preferred_date.\n\nStep 4 \u2013 Final confirmation\n- On confirmation, call enroll_training with: program_id (or course_id), employee_email.\n- The action_plan.parameters must include: program_id or course_id.\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nTRANSPORT BOOKING FLOW (create_booking)\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n\nStep 1 \u2013 List locations and ask for pickup, destination, date\n- When the user says they want to book transport (e.g. \"book transport\", \"I need a ride\", \"book van\"):\n  - First list the available locations:\n    \"Available locations: 8th & Stellar, Naga Emas, Sri Petaling\"\n  - Then ask in one question:\n    \"Please provide your pickup location, destination, and travel date.\"\n- Do NOT ask for pickup/destination/date until you have shown the location list.\n- Valid locations only: 8th & Stellar, Naga Emas, Sri Petaling.\n\nStep 2 \u2013 Fetch sessions and show options\n- When pickup, destination, and date are provided, call get_sessions with those values.\n- When the response contains a \"data\" array of sessions:\n  - List each session with session_id, session_time, from_location, to_location, session_type.\n  - Format example:\n    \"Here are the available sessions for 8th & Stellar \u2192 Naga Emas on 2026-03-12:\n     1. Session #107 \u2013 08:00 (Morning)\n     2. Session #108 \u2013 17:00 (Evening)\n     Which session would you like to book? (Reply with the number or session ID)\"\n- Include session_id so the user can select by number or session ID.\n\nStep 3 \u2013 User picks a session\n- When the user selects a session, store: pickup_location, destination, travel_date, session_id, session_time.\n- Confirm: \"I'll book transport from [pickup] to [destination] on [date] at [time]. Confirm?\"\n- Set needs_confirmation = true with parameters: pickup_location, destination, travel_date, travel_time, session_id.\n\nStep 4 \u2013 Final confirmation\n- On confirmation, call create_booking with: pickup_location, destination, travel_date, session_id.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nTIMEZONE RULE\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nDefault timezone: Asia/Kuala_Lumpur (UTC+8).\nIf user says relative time (\"tomorrow 2pm\", \"next Monday\"), convert to absolute ISO 8601.\nIf date is ambiguous, ask for exact date as the ONE clarification question.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nCLARIFICATION RULE\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n- Ask only ONE question per turn.\n- Ask for the MINIMUM missing fields in a single question.\n- Never ask multiple questions in one response.\n- needs_clarification = true \u2192 needs_confirmation must be false.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nCONFIRMATION RULE\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n- Set needs_confirmation = true ONLY when ALL required slots are filled.\n- Destructive actions (cancel, delete): risk_level = \"high\"\n- Create / update / book: risk_level = \"medium\"\n- Read-only (get, check, list): risk_level = \"low\", needs_confirmation = false\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nREQUIRED SLOTS PER INTENT\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nbook_meeting_room:\n  subject, start, end, timezone, room_name (must be from valid list above)\ncreate_calendar_event:\n  subject, start, end, timezone, attendees (optional)\nupdate_event:\n  event_id (or enough info to identify it), and whichever fields are changing\ncancel_event:\n  event_id (or subject + date to identify it)\nregister_visitor:\n  name, IC, email, contact, start_date, end_date, host_name, purpose, location\nbook_transport:\n  pickup_location, destination, travel_date\nget_session:\npickup_location, destination, date\nenroll_training:\n  course_name (or course_id), preferred_date (if applicable)\napply_leave:\n  leave_type, start_date, end_date, reason\ncreate_ticket:\n  level, category (IT/Facilities/HR), facility area, zonem, issue category, issue description, remarks\nFor get/check/list/status intents: no required slots \u2014 proceed immediately.\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\nOUTPUT JSON SCHEMA\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n{\n  \"intent\": \"\",\n  \"sub_target\": \"\",\n  \"slots\": {\n    \"subject\": null,\n    \"start\": null,\n    \"end\": null,\n    \"timezone\": \"Asia/Kuala_Lumpur\",\n    \"room_name\": null,\n    \"attendees\": [],\n    \"extra\": {}\n  },\n  \"needs_clarification\": false,\n  \"clarification_question\": null,\n  \"needs_confirmation\": false,\n  \"action_plan\": {\n    \"action\": \"\",\n    \"sub_target\": \"\",\n    \"summary\": \"\",\n    \"risk_level\": \"low\",\n    \"needs_confirmation\": false,\n    \"parameters\": {\n      \"subject\": null,\n      \"start\": null,\n      \"end\": null,\n      \"timezone\": \"Asia/Kuala_Lumpur\",\n      \"room_name\": null,\n      \"attendees\": [],\n      \"data\":[]\n    }\n  }\n}\nFIELD RULES:\n- intent        : exact intent string from the list above\n- sub_target    : module name (meeting_room / visitor / transport / training / flexhr / ticketing)\n- action_plan.action     : same as intent (e.g. \"book_meeting_room\", \"apply_leave\")\n- action_plan.sub_target : same as sub_target field above\n- action_plan.parameters : include ONLY relevant fields for that intent, omit nulls\n- If unknown intent: intent = \"unknown\", sub_target = \"unknown\", needs_clarification = true\nEXAMPLES:\nUser: \"Book Idea Lab 5 tomorrow 10am to 11am for sprint planning\"\n\u2192 intent = \"book_meeting_room\", sub_target = \"meeting_room\"\n\u2192 room_name = \"Idea Lab 5\" \u2713 (valid room)\n\u2192 action_plan.action = \"book_meeting_room\"\nUser: \"Book room USA2345 for tomorrow\"\n\u2192 needs_clarification = true\n\u2192 clarification_question = \"USA2345 is not a valid room. Please choose from: Idea Lab 1\u201310 or Boardroom.\"\nUser: \"I want to apply for annual leave next week Monday to Wednesday\"\n\u2192 intent = \"apply_leave\", sub_target = \"flexhr\"\n\u2192 action_plan.action = \"apply_leave\"\nUser: \"Register visitor John Doe from Acme Corp visiting me on March 5\"\n\u2192 intent = \"register_visitor\", sub_target = \"evisitor\"\n\u2192 needs_clarification = true (missing visitor contact & purpose)\nUser: \"What's my leave balance?\"\n\u2192 intent = \"check_leave_balance\", sub_target = \"flexhr\"\n\u2192 risk_level = \"low\", needs_confirmation = false"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -18560,
+        10576
+      ],
+      "id": "d13b4400-a94a-459f-a4cf-68ee9e8d9b4a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -18560,
+        10800
+      ],
+      "id": "6188745a-d460-4975-9b41-aaa8ed0e01ad",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "BdwOECmNXrVTjQjr",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f53d695-79b5-48b4-ad3f-0341835f7c67",
+              "name": "=audit_log",
+              "value": "={{ {\n  \"timestamp\": $now.toISO(),\n  \"user_id\":    $('Webhook Trigger').item.json.body.upn || $('Webhook Trigger').item.json.body.id || '',\n  \"upn\":        $('Webhook Trigger').item.json.body.upn || '',\n  \"tenant_id\":  $('Webhook Trigger').item.json.body.tenant_id || '',\n  \"roles\":      $('Webhook Trigger').item.json.body.roles || [],\n  \"client_request_id\": $('Webhook Trigger').item.json.body.client_request_id || '',\n  \"intent\":     $if($('Code (Parse JSON)').isExecuted, $('Code (Parse JSON)').item.json.intent,\n                    $if($('DirectFinalizePlan').isExecuted, $('DirectFinalizePlan').item.json.intent, 'direct_action')),\n  \"action\":     $if($('Code (Parse JSON)').isExecuted, $('Code (Parse JSON)').item.json.action_plan?.action || 'none',\n                    $if($('DirectFinalizePlan').isExecuted, $('DirectFinalizePlan').item.json.final_plan.action || 'none', 'none')),\n  \"sub_target\": $if($('Prepare Sub Input').isExecuted, $('Prepare Sub Input').item.json.sub_target, 'unknown'),\n  \"risk_level\": $if($('Code (Parse JSON)').isExecuted, $('Code (Parse JSON)').item.json.action_plan?.risk_level || 'unknown', 'low'),\n  \"status\":     $json.type === 'receipt' ? 'success' : $json.type === 'bookings_list' ? 'success' : $json.type === 'clarify' ? 'clarify_asked' : $json.type === 'confirm' ? 'awaiting_confirmation' : 'failed',\n  \"reference_id\": $json.reference_id || null,\n  \"workflow_execution_id\": $execution.id,\n  \"transcript_length\": $('Webhook Trigger').item.json.body.text?.length || 0\n} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8ef5fdb1-5b51-4d2d-830f-5975e5359976",
+      "name": "Prepare Audit Log",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16192,
+        10720
+      ]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "=customKey",
+        "sessionKey": "={{ $('Webhook Trigger').item.json.body.session_id }}",
+        "tableName": "n8n_chat_histories_employee"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        -18432,
+        10800
+      ],
+      "id": "74597d53-3f32-4e82-9f8e-c7a85c4b216a",
+      "name": "Postgres Chat Memory",
+      "credentials": {
+        "postgres": {
+          "id": "4BUCaUQ0XbiZJDY7",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Direct action from any UI form.\n// edited_plan is fully constructed \u2014 bypass AI Agent.\nconst body = $('Webhook Trigger').item.json.body || {};\nconst plan  = body.edited_plan || {};\n\nif (!plan.action) {\n  throw new Error('direct_action: edited_plan.action is missing');\n}\n\n// Determine which sub to call based on action prefix\nconst action = plan.action.toLowerCase();\nlet sub_target = plan.sub_target || ''; // allow explicit override\n\nif (!sub_target) {\n  if (['book_meeting_room','create_calendar_event','update_event','cancel_event','get_bookings'].includes(action)) {\n    sub_target = 'meeting_room';\n  } else if (action.startsWith('visitor') || action.includes('register_visitor')) {\n    sub_target = 'visitor';\n  } else if (action.startsWith('wellness') || action.startsWith('health')) {\n    sub_target = 'wellness';\n  } else if (action.startsWith('transport') || action.startsWith('book_transport')) {\n    sub_target = 'transport';\n  } else if (action.startsWith('training') || action.startsWith('enroll')) {\n    sub_target = 'training';\n  } else if (action.startsWith('flexhr') || action.startsWith('leave') || action.startsWith('payroll') || action.startsWith('hr_')) {\n    sub_target = 'flexhr';\n  } else if (plan.sub_target === 'auth' || ['login_user','list_users','create_user','update_user'].includes(action)) {\n    sub_target = 'auth';\n  } else if (action.startsWith('ticket') || action.startsWith('support') || action.startsWith('it_')) {\n    sub_target = 'ticketing';\n  } else {\n    sub_target = 'unknown';\n  }\n}\n\nreturn [{\n  json: {\n    intent:              action,\n    needs_clarification: false,\n    needs_confirmation:  false,\n    final_plan:          plan,\n    sub_target:          sub_target,\n    user_email:          body.upn || body.id || $input.first().json.email || '',\n    user_name:           body.name || $input.first().json.name || '',\n    session_id:          body.session_id || '',\n    employee_id:         (() => { try { return $('Upsert Employee').first().json.employee_id; } catch { return null; } })(),\n  }\n}];"
+      },
+      "id": "56d716bd-8a2c-4be4-ae83-edffb06c3079",
+      "name": "DirectFinalizePlan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -17536,
+        9536
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "a07de674-5874-424b-afc2-678b6a120d8f",
+      "name": "Respond Action Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        -15920,
+        9392
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-eventtype",
+              "leftValue": "={{ $('Webhook Trigger').item.json.body.event_type }}",
+              "rightValue": "direct_booking",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "bcc87f26-e8ba-4c9c-b73e-d6edd716adf8",
+              "leftValue": "={{ $('Webhook Trigger').item.json.body.input_type }}",
+              "rightValue": "direct_action",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "bb1befb5-50c4-4a63-816c-694c80052676",
+      "name": "Is Direct Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -19008,
+        10160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d3a1268e-1ae2-436e-a92b-3a3f1d5fb4aa",
+              "name": "final_plan",
+              "value": "={{ $json.final_plan }}",
+              "type": "object"
+            },
+            {
+              "id": "b95db668-4b45-4245-82c5-98c20f93bef9",
+              "name": "sub_target",
+              "value": "={{ $json.sub_target }}",
+              "type": "string"
+            },
+            {
+              "id": "2630992b-8362-4ebb-9b2b-b21fe96671d5",
+              "name": "user_email",
+              "value": "={{ $('Webhook Trigger').item.json.body.upn || $('Webhook Trigger').item.json.body.id || $json.user_email || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a9f29cdd-f17a-4283-bdf6-da8de7d871aa",
+              "name": "user_name",
+              "value": "={{ $('Webhook Trigger').item.json.body.name || $json.user_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "608ba18c-ae80-47d0-94a5-2d7f4b35cfbd",
+              "name": "session_id",
+              "value": "={{ $('Webhook Trigger').item.json.body.session_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9bda1585-028a-4fd7-b7bf-c47151dff7f1",
+              "name": "request_text",
+              "value": "={{ $('Webhook Trigger').item.json.body.text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "04f397f5-79ad-49fb-a624-549dfb8b9824",
+              "name": "employee_id",
+              "value": "={{ $json.employee_id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4fea594d-8893-4995-8789-d204e8331b70",
+      "name": "Prepare Sub Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -17312,
+        9584
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "meeting_room",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f2b2512f-cb27-4d92-955d-ce2289889560"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Meeting Room"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "evisitor",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a73f0e02-0a8e-407c-be2c-729ba47ed7fa"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Evisitor"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "wellness",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7f6b7a2b-460b-452d-a177-307c0140c1ae"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Wellness"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "transport",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cc990979-536e-4f31-9fab-14ff2f44682a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Transport"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "training",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f819596b-9865-4d84-abc2-0ac464ea4568"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Training"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "flexhr",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "709ae6c2-9912-41e2-9e9a-11ad36f1daed"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "FlexHR"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "ticketing",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "8d8b338a-2cfb-47a8-b195-3102ab1442f3"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ticketing"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "53acca10-5edb-4cdc-b6d5-a8414023e7d3",
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "request_center",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "request_center"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "cc2996e4-92f6-44f4-9b7d-0487e488965d",
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "staff_claim",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "staffclaim"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.sub_target }}",
+                    "rightValue": "auth",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "auth"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unknown Sub"
+        }
+      },
+      "id": "d90f3beb-1dc9-469b-bfb4-904475b25ffd",
+      "name": "Route by Sub",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -17088,
+        9456
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "RHr30TIWADfbnJSD",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/RHr30TIWADfbnJSD",
+          "cachedResultName": "C5-E_Visitor-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "deac42fa-1ebd-42bb-b2a0-8efc220ca75e",
+      "name": "Execute Visitor Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        9008
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "ii74SGnJUuwMS2El",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ii74SGnJUuwMS2El",
+          "cachedResultName": "C6-Transport-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "dcf9beec-0a82-45f1-ab48-e5f5b21668ad",
+      "name": "Execute Transport Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16624,
+        9408
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "PzHCjGBcppgo18TW",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/PzHCjGBcppgo18TW",
+          "cachedResultName": "C5-Employee_Training-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "a13613c0-ecb6-45fb-9648-53b9b19437ad",
+      "name": "Execute Training Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        9584
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "PoK1FacYlLjfXcQx",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/PoK1FacYlLjfXcQx",
+          "cachedResultName": "C5-FlexHR-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "e69430c9-14e0-4535-bbab-a6c6d77b58b8",
+      "name": "Execute FlexHR Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        9776
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "AEEdK1tVcQV6bRbY",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/AEEdK1tVcQV6bRbY",
+          "cachedResultName": "C5-Ticketing-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "d09bbef8-60a7-4b97-9559-8bf0e44626cb",
+      "name": "Execute Ticketing Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        9968
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DJ1MlJ68qADLaTGe",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DJ1MlJ68qADLaTGe",
+          "cachedResultName": "C5-Wellness-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "5e755970-ffa5-40aa-ae88-45454f2147e5",
+      "name": "Execute Wellness Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        9200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "599c6366-3888-491c-a34b-2cf9b4cc40da",
+              "leftValue": "={{ $('Webhook Trigger').item.json.body.input_type }}",
+              "rightValue": "audio",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -20352,
+        10160
+      ],
+      "id": "c0620a20-9297-4f8c-aff7-483fbb44867d",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\n\nif (!body.audio_base64) {\n    return [{ json: $input.first().json }];\n}\n\nlet rawBase64 = body.audio_base64;\nif (rawBase64.includes(',')) {\n    rawBase64 = rawBase64.split(',')[1];\n}\n\nconst binaryData = Buffer.from(rawBase64, 'base64');\nconst isAndroid = body.platform === 'android';\n\n// TRICK: Kita tipu API Groq dengan menggunakan nama .wav\nconst ext = isAndroid ? 'wav' : 'webm';\nconst namaFail = `voice.${ext}`;\nconst jenisMime = isAndroid ? 'audio/wav' : 'audio/webm';\n\nreturn [{\n    json: $input.first().json,\n    binary: {\n        data: {\n            data: binaryData.toString('base64'),\n            mimeType: jenisMime,\n            fileName: namaFail,\n            fileExtension: ext\n        }\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -20576,
+        8368
+      ],
+      "id": "2366821c-a22d-4098-9e05-480c50fd99e8",
+      "name": "Code in JavaScript",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer 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"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "whisper-large-v3"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "prompt",
+              "value": "Voice command for Chin Hin Group Employee App (Malaysia). Languages: English, Malay, Manglish. Keywords: book meeting room, Idea Lab 1, Idea Lab 2, Idea Lab 3, Idea Lab 4, Idea Lab 5, Idea Lab 6, Idea Lab 7, Idea Lab 8, Idea Lab 9, Idea Lab 10, Boardroom, apply leave, flexhr, payslip, visitor, wellness, transport, training, IT ticket, cuti, esok."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -20576,
+        8592
+      ],
+      "id": "beac8641-9d4c-4136-a6cf-f5781c9c3b52",
+      "name": "HTTP Request",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1e03fa9-0eda-4faf-8ae4-746f9ebef874",
+              "name": "body.text",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -19904,
+        10096
+      ],
+      "id": "5b54ecf6-a524-4324-8315-3a1bf79e8edc",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -20352,
+        8368
+      ],
+      "id": "dff4cd39-8b00-4b2f-a5fe-9ba5c754e7a1",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "0NvP6BlIU7a17fhZ",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://converter-api:5005/transcribe",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "audio_base64",
+              "value": "={{ $json.body.audio_base64.replace(/\\n/g, '').replace(/\\r/g, '').trim() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -20128,
+        10096
+      ],
+      "id": "0b99b795-6b08-462a-8f9e-927c54f567a0",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO employees (employee_name, email, employee_type)\nVALUES (\n  '{{ $json.name }}',\n  '{{ $json.email }}',\n  'staff'\n)\nON CONFLICT (email) DO UPDATE SET\n  employee_name = CASE WHEN EXCLUDED.employee_name != '' THEN EXCLUDED.employee_name ELSE employees.employee_name END\nRETURNING employee_id, employee_name, email, employee_role",
+        "options": {}
+      },
+      "id": "0a2f8d78-27b3-47e6-bc13-3654ed3e32d0",
+      "name": "Upsert Employee",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        -19456,
+        10160
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge the verified token data with the upserted employee_id\nconst verify = $('VerifyTempToken').first().json;\nconst empRow  = $input.first().json;\n\nreturn [{\n  json: {\n    user_id:     empRow.employee_id || verify.user_id,\n    email:       empRow.email       || verify.email,\n    name:        empRow.employee_name || verify.name,\n    roles:       verify.roles,\n    tenant_id:   verify.tenant_id,\n    token_valid: verify.token_valid,\n  }\n}];\n"
+      },
+      "id": "0269b557-d2d9-4d6d-8cca-fd8d5dcf22b9",
+      "name": "Merge Auth + Employee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -19232,
+        10160
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "Aa4QxlxkzTJclcXX",
+          "mode": "list",
+          "cachedResultName": "My Sub-Workflow 3",
+          "cachedResultUrl": "/workflow/Aa4QxlxkzTJclcXX"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "21886dd3-2505-45cb-8fdc-d7365a96b178",
+      "name": "request_center",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        10160
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YYvwUckepuM6gujm",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/YYvwUckepuM6gujm",
+          "cachedResultName": "C5-MeetingRoom-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "4fb9fac4-463f-43f3-ab8a-ce6c21a092ed",
+      "name": "Execute Meeting Room Sub",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        8816
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "zcxuMoIlaTmr0FWP",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zcxuMoIlaTmr0FWP",
+          "cachedResultName": "C5-StaffClaim-Sub"
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "5c87e277-3088-472f-9a36-d9eadc434ac4",
+      "name": "Execute Meeting Room Sub1",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [
+        -16640,
+        10352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst result = item.result || item;\nconst data = result.data;\nconst action = result.action || item.action;\n\nif (action === 'get_sessions' && Array.isArray(data) && data.length > 0) {\n  const lines = data.map((s, i) => {\n    const time = s.session_time\n      ? new Date(s.session_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })\n      : '\u2014';\n    return `${i + 1}. Session #${s.session_id} \u2013 ${time}, ${s.from_location || '\u2014'} \u2192 ${s.to_location || '\u2014'} (${s.session_type || 'shuttle'})`;\n  });\n  const formattedMessage = `Found ${data.length} session(s):\\n${lines.join('\\n')}\\n\\nWhich session would you like to book? (Reply with the number or session ID)`;\n\n  return [{\n    json: {\n      ...item,\n      result: {\n        ...result,\n        message: formattedMessage,\n        formatted_sessions: data.map(s => ({ session_id: s.session_id, session_time: s.session_time, from_location: s.from_location, to_location: s.to_location, session_type: s.session_type })),\n        data: result.data,\n      },\n      message: formattedMessage,\n      type: 'sessions_list',\n      success: true,\n    },\n  }];\n}\n\nreturn [{ json: { ...item, type: item.type || (result.success ? 'receipt' : 'failed') } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16416,
+        9392
+      ],
+      "id": "83333609-c465-489b-8f97-a270c935dda2",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VerifyTempToken": {
+      "main": [
+        [
+          {
+            "node": "Upsert Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuildContext": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NeedsClarification?": {
+      "main": [
+        [
+          {
+            "node": "Respond Clarification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FinalizePlan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NeedsConfirmation?": {
+      "main": [
+        [
+          {
+            "node": "Respond Confirmation Card",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Sub Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Confirmation Card": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Audit": {
+      "main": [
+        [
+          {
+            "node": "Send Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FinalizePlan": {
+      "main": [
+        [
+          {
+            "node": "NeedsConfirmation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Error": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Auth Error": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code (Parse JSON)": {
+      "main": [
+        [
+          {
+            "node": "NeedsClarification?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code (Parse JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Clarification": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Audit Log": {
+      "main": [
+        [
+          {
+            "node": "Log Audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DirectFinalizePlan": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sub Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond Action Result": {
+      "main": [
+        [
+          {
+            "node": "Prepare Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Direct Action?": {
+      "main": [
+        [
+          {
+            "node": "DirectFinalizePlan",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "BuildContext",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sub Input": {
+      "main": [
+        [
+          {
+            "node": "Route by Sub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Sub": {
+      "main": [
+        [
+          {
+            "node": "Execute Meeting Room Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Visitor Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Wellness Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Transport Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Training Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute FlexHR Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Ticketing Sub",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "request_center",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute Meeting Room Sub1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute FlexHR Sub",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Visitor Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Transport Sub": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Training Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute FlexHR Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Ticketing Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Wellness Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "VerifyTempToken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "VerifyTempToken",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Employee": {
+      "main": [
+        [
+          {
+            "node": "Merge Auth + Employee",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Auth + Employee": {
+      "main": [
+        [
+          {
+            "node": "Is Direct Action?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "request_center": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Meeting Room Sub": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Meeting Room Sub1": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond Action Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "3c76f9c0-5368-4a63-9771-b3233f1b0893",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"
+  },
+  "id": "4g325CD7kQ8r049v",
+  "tags": []
+}

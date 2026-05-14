@@ -12,7 +12,7 @@ import {
 import './StaffClaim.css';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 // ─── n8n API helper (matches EVisitor.js pattern) ──────────────────────────────
@@ -324,9 +324,9 @@ const StaffClaim = ({ userInfo }) => {
       const n = normalizeStatus(getStatus(c));
       const matchTab =
         activeListTab === 'Approved' ? n === 'approved' :
-        activeListTab === 'Rejected' ? n === 'rejected' :
-        activeListTab === 'Pending'  ? (n === 'pending' || n === 'draft') :
-        true;
+          activeListTab === 'Rejected' ? n === 'rejected' :
+            activeListTab === 'Pending' ? (n === 'pending' || n === 'draft') :
+              true;
 
       const idStr = String(c.claim_id ?? c.id ?? '').toLowerCase();
       const typeStr = String(c.claim_type ?? c.type ?? '').toLowerCase();
@@ -691,9 +691,9 @@ const StaffClaim = ({ userInfo }) => {
                   {tab}
                   <span className="sc-tab-count">
                     {tab === 'All' ? stats.total :
-                     tab === 'Pending' ? stats.pending :
-                     tab === 'Approved' ? stats.approved :
-                     stats.rejected}
+                      tab === 'Pending' ? stats.pending :
+                        tab === 'Approved' ? stats.approved :
+                          stats.rejected}
                   </span>
                 </button>
               ))}
@@ -741,8 +741,8 @@ const StaffClaim = ({ userInfo }) => {
                             <div className="sc-claim-title">Claim #{id}</div>
                             <span className={`sc-status-badge ${sc}`}>
                               {sc === 'approved' ? <CheckCircle size={10} /> :
-                               sc === 'rejected' ? <XCircle size={10} /> :
-                               <Clock size={10} />}
+                                sc === 'rejected' ? <XCircle size={10} /> :
+                                  <Clock size={10} />}
                               {statusLabel(getStatus(item))}
                             </span>
                           </div>
@@ -969,7 +969,7 @@ const StaffClaim = ({ userInfo }) => {
               </>
             )}
 
-             {(formData.claim_type === 'Meal' || formData.claim_type === 'Entertainment') && (
+            {(formData.claim_type === 'Meal' || formData.claim_type === 'Entertainment') && (
               <>
                 <p className="sc-form-section-label">Meal / Entertainment Details</p>
                 <div className="sc-form-card">
@@ -1051,8 +1051,8 @@ const StaffClaim = ({ userInfo }) => {
                 </div>
                 <span className={`sc-status-badge ${sc} sc-status-badge-lg`}>
                   {sc === 'approved' ? <CheckCircle size={11} /> :
-                   sc === 'rejected' ? <XCircle size={11} /> :
-                   <Clock size={11} />}
+                    sc === 'rejected' ? <XCircle size={11} /> :
+                      <Clock size={11} />}
                   {statusLabel(getStatus(t))}
                 </span>
               </div>

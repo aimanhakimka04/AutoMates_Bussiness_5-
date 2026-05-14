@@ -1,0 +1,1536 @@
+{
+  "name": "C5-FlexHR-Sub",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\nreturn [{\n  json: {\n    action,\n    user_email:    clean(input.user_email)    || clean(plan.user_email),\n    user_name:     clean(input.user_name)     || clean(plan.user_name),\n    leave_type:    data.leave_type    || '',\n    start_date:    data.start_date    || '',\n    end_date:      data.end_date      || '',\n    total_days:    data.total_days    || 0,\n    reason:        data.reason        || '',\n    leave_id:      data.leave_id      || null,\n    attendance_id: data.attendance_id || null,\n    hours:         data.hours         || 0,\n    work_date:     data.work_date     || '',\n    employee_id:   input.employee_id  || null,\n    // Auth fields\n    email:         clean(data.email)        || clean(input.user_email),\n    password:      clean(data.password)     || '',\n    role:          clean(data.role)         || 'staff',\n    is_active:     data.is_active !== undefined ? data.is_active : true,\n    target_email:  clean(data.target_email) || '',\n    new_email:     clean(data.new_email)    || '',\n    name:          clean(data.name)         || clean(data.user_name) || '',\n  }\n}];"
+      },
+      "id": "5cc53372-ac91-426f-a015-0915e535384b",
+      "name": "Parse Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "punch_in",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "punch_in"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "punch_out",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "punch_out"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_attendance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_attendance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "apply_leave",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "apply_leave"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "cancel_leave",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cancel_leave"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_leaves",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_leaves"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "check_leave_balance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "leave_balance"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "apply_overtime",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "apply_overtime"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "sync_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "sync_user"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "login_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "login_user"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_users",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_users"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "create_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "create_user"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "update_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "update_user"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "delete_user",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "delete_user"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Unknown"
+        }
+      },
+      "id": "816f088e-ad60-4a48-8d5a-45b4b4f8b731",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1376,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $json }}",
+        "options": {}
+      },
+      "id": "fd602fe5-fabf-4e59-8fa3-a582c123f1d8",
+      "name": "Prep Punch In",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1648,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}'",
+        "options": {}
+      },
+      "id": "1a8a8374-0462-45ed-a79e-b93d0e1ae892",
+      "name": "Find Employee (Punch In)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        736
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO employee_attendance (employee_id, clock_in_time, clock_in_ip) VALUES ('{{ $json.employee_id }}', NOW(), 'app') RETURNING attendance_id, clock_in_time",
+        "options": {}
+      },
+      "id": "9782ab53-bf37-41a9-8963-9e37509e18a8",
+      "name": "Insert Punch In",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2128,
+        736
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch In failed \u2014 no record returned', data: null } }];\nreturn [{ json: { success: true, message: 'Punched In successfully', data: row } }];"
+      },
+      "id": "b87baf62-d64a-4d68-b46a-67892c627826",
+      "name": "Format Punch In",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE employee_attendance SET clock_out_time = NOW(), clock_out_ip = 'app' WHERE attendance_id = '{{ $json.attendance_id }}' AND clock_out_time IS NULL RETURNING attendance_id, clock_in_time, clock_out_time",
+        "options": {}
+      },
+      "id": "fa380914-f614-46a1-b217-db65d614c7d8",
+      "name": "Update Punch Out",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        896
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch Out failed \u2014 record not found or already clocked out', data: null } }];\nreturn [{ json: { success: true, message: 'Punched Out successfully', data: row } }];"
+      },
+      "id": "5af27659-2f72-4767-a9fa-949127478eab",
+      "name": "Format Punch Out",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    ea.attendance_id, \n    ea.clock_in_time, \n    ea.clock_in_latitude, \n    ea.clock_in_longitude, \n    ea.clock_out_time, \n    ea.clock_out_latitude, \n    ea.clock_out_longitude \nFROM employee_attendance ea\nJOIN employees e ON e.employee_id = ea.employee_id\nWHERE e.email = '{{ $json.user_email }}'\nORDER BY ea.clock_in_time DESC \nLIMIT 20",
+        "options": {}
+      },
+      "id": "435c3a73-f1ee-45f9-bc1c-8da0a3c51bb6",
+      "name": "Query Attendance",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        1056
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.attendance_id);\nreturn [{ json: { success: true, data: rows } }];"
+      },
+      "id": "97b58fb6-f2d6-4269-8515-41cfac52079b",
+      "name": "Format List Attendance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    lt.leave_type_id, \n    sc.status_id \nFROM employees e\nCROSS JOIN leave_types lt\nCROSS JOIN status_codes sc\nWHERE e.employee_id = '{{ $json.employee_id }}'\nAND UPPER(lt.leave_type_name) ILIKE '%' || UPPER('{{ $json.leave_type }}') || '%'\nAND sc.status_code = 'PENDING'\nLIMIT 1;",
+        "options": {}
+      },
+      "id": "8694a8d6-0cec-42f9-95a7-a1ded0f986f2",
+      "name": "Get Employee + LeaveType IDs",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        1216
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_type_id) {\n  const lt = $('Parse Input').first()?.json?.leave_type || 'unknown';\n  return [{ json: { success: false, message: `Leave type not found: ${lt}`, data: null } }];\n}\nconst p = $('Parse Input').first().json;\nreturn [{ json: { employee_id: row.employee_id, leave_type_id: row.leave_type_id, status_id: row.status_id, start_date: p.start_date, end_date: p.end_date, total_days: p.total_days, reason: p.reason } }];"
+      },
+      "id": "56bd40c7-ad06-4ab8-997f-77360e2e5349",
+      "name": "Guard Apply Leave",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO employee_leaves (employee_id, leave_type_id, start_date, end_date, total_days, reason, status_id, applied_at) VALUES ('{{ $('Execute Workflow Trigger').item.json.employee_id || $('Execute Workflow Trigger').item.json.final_plan.employee_id}}', '{{ $json.leave_type_id }}', '{{ $json.start_date }}'::date, '{{ $json.end_date }}'::date, {{ $json.total_days }}, '{{ $json.reason }}', 1, NOW()) RETURNING leave_id, start_date, end_date, total_days",
+        "options": {}
+      },
+      "id": "d1beb90b-1a11-4e5e-b2dd-b7b1662df51f",
+      "name": "Insert Leave",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2400,
+        1232
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_id) return [{ json: { success: false, message: 'Leave insert returned no record', data: null } }];\nreturn [{ json: { success: true, message: `Leave application submitted (ID: ${row.leave_id})`, data: row } }];"
+      },
+      "id": "3ba63e42-2220-4c13-9c1c-c43f2a7bcaac",
+      "name": "Format Apply Leave",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE employee_leaves el SET status_id = sc.status_id FROM status_codes sc, employees e WHERE sc.status_code = 'CANCELLED' AND e.email = '{{ $json.user_email }}' AND el.employee_id = e.employee_id AND el.leave_id = {{ $json.leave_id }} RETURNING el.leave_id",
+        "options": {}
+      },
+      "id": "f8620159-af71-478f-bb81-9db1f2a58902",
+      "name": "Cancel Leave DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        1584
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_id) return [{ json: { success: false, message: 'Cancel failed \u2014 record not found or already processed', data: null } }];\nreturn [{ json: { success: true, message: 'Leave application cancelled', data: row } }];"
+      },
+      "id": "57b67c18-c132-4859-8322-44cdd8e65a77",
+      "name": "Format Cancel Leave",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1584
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT el.leave_id, lt.leave_type_name, el.start_date, el.end_date, el.total_days, el.reason, el.applied_at, sc.status_code, sc.status_description FROM employee_leaves el JOIN employees e ON e.employee_id = el.employee_id JOIN leave_types lt ON lt.leave_type_id = el.leave_type_id JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '{{ $json.user_email }}' ORDER BY el.applied_at DESC LIMIT 50",
+        "options": {}
+      },
+      "id": "49eac747-782f-4e34-bbb8-4345b7f943a9",
+      "name": "Query Leaves",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        1744
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_id);\nreturn [{ json: { success: true, data: rows } }];"
+      },
+      "id": "a0c002ae-f409-482d-878c-493172f85638",
+      "name": "Format List Leaves",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1744
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT lt.leave_type_name, COALESCE(SUM(el.total_days) FILTER (WHERE sc.status_code = 'APPROVED'), 0) AS used, CASE lt.leave_type_name WHEN 'Annual Leave' THEN 14 WHEN 'Sick Leave' THEN 14 WHEN 'Emergency Leave' THEN 3 WHEN 'Personal Leave' THEN 2 WHEN 'Maternity Leave' THEN 60 WHEN 'Paternity Leave' THEN 3 ELSE 0 END AS entitled FROM employees e CROSS JOIN leave_types lt LEFT JOIN employee_leaves el ON el.employee_id = e.employee_id AND el.leave_type_id = lt.leave_type_id AND el.start_date >= DATE_TRUNC('year', NOW()) LEFT JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '={{ $json.user_email }}' GROUP BY lt.leave_type_name",
+        "options": {}
+      },
+      "id": "5a42d2dc-5cc9-430b-8232-171e26edb996",
+      "name": "Query Balance",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        1904
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_type_name);\nconst bal = {};\nrows.forEach(r => { if (r.leave_type_name) bal[r.leave_type_name] = Math.max(0, Number(r.entitled) - Number(r.used)); });\nreturn [{ json: { success: true, data: bal } }];"
+      },
+      "id": "ad883228-039b-4ad3-a131-5934dccbe872",
+      "name": "Format Leave Balance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        1904
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.employee_id, sc.status_id FROM employees e CROSS JOIN status_codes sc WHERE e.email = '{{ $json.user_email }}' AND sc.status_code = 'PENDING' LIMIT 1",
+        "options": {}
+      },
+      "id": "9f27866d-a29e-44ed-a163-b8197e7afd86",
+      "name": "Find Employee (OT)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        2064
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.employee_id) {\n  const em = $('Parse Input').first()?.json?.user_email || 'unknown';\n  return [{ json: { success: false, message: `Employee not found for email: ${em}`, data: null } }];\n}\nconst p = $('Parse Input').first().json;\nreturn [{ json: { employee_id: row.employee_id, status_id: row.status_id, work_date: p.work_date, hours: p.hours, reason: p.reason } }];"
+      },
+      "id": "1ff67ff3-43da-4630-ad60-1b6fd89bd45d",
+      "name": "Guard OT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        2064
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO employee_overtime (employee_id, work_date, hours, reason, status_id, applied_at) VALUES ('{{ $json.employee_id }}', '{{ $json.work_date }}'::date, {{ $json.hours }}, '{{ $json.reason }}', '{{ $json.status_id }}', NOW()) RETURNING overtime_id, work_date, hours",
+        "options": {}
+      },
+      "id": "36fa9c3e-513a-4271-a34a-d0efcd75b428",
+      "name": "Insert Overtime",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2368,
+        2064
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.overtime_id) return [{ json: { success: false, message: 'Overtime insert returned no record', data: null } }];\nreturn [{ json: { success: true, message: `OT request submitted (ID: ${row.overtime_id}) \u2014 ${row.work_date} ${row.hours}h`, data: row } }];"
+      },
+      "id": "c986a769-ced3-41a1-9c95-ce061b665108",
+      "name": "Format Overtime",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        2064
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const a = $('Parse Input').first()?.json?.action || 'unknown';\nreturn [{ json: { success: false, message: `Unknown FlexHR action: ${a}`, data: null } }];"
+      },
+      "id": "c7ffceba-d56d-4877-90a4-f6c407a0b62c",
+      "name": "Unknown Action",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        2224
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO employees (employee_name, email, employee_type) VALUES ('{{ $json.user_name }}', '{{ $json.user_email }}', 'staff') ON CONFLICT (email) DO UPDATE SET employee_name = CASE WHEN EXCLUDED.employee_name != '' AND EXCLUDED.employee_name IS NOT NULL THEN EXCLUDED.employee_name ELSE employees.employee_name END RETURNING employee_id, employee_name, email, employee_role AS role",
+        "options": {}
+      },
+      "id": "896f1dd9-7b4f-42a1-8229-fb704cc3daa9",
+      "name": "Upsert User (sync)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        2384
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nreturn [{ json: { success: true, message: `User synced (employee_id: ${row.employee_id || 'unknown'})`, data: row } }];"
+      },
+      "id": "57475069-2f19-48c2-bd0c-deef042c526a",
+      "name": "Format Sync User",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        2384
+      ]
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "final_plan",
+              "type": "object"
+            },
+            {
+              "name": "sub_target"
+            },
+            {
+              "name": "user_email"
+            },
+            {
+              "name": "user_name"
+            },
+            {
+              "name": "session_id"
+            },
+            {
+              "name": "request_text"
+            },
+            {
+              "name": "info"
+            },
+            {
+              "name": "employee_id"
+            }
+          ]
+        }
+      },
+      "id": "c59642e1-e171-4ca5-ae68-0b2d21c2462e",
+      "name": "Execute Workflow Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        848,
+        1200
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{ $json }}",
+        "options": {
+          "dotNotation": false
+        }
+      },
+      "id": "35e122d2-3ec0-4c66-b2b9-7897af0c41e0",
+      "name": "Respond1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3440,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.employee_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active FROM public.employees e WHERE e.email = '{{ $json.email }}' AND e.password_hash IS NOT NULL AND e.password_hash = crypt('{{ $json.password }}', e.password_hash) AND COALESCE(e.is_active, TRUE) = TRUE LIMIT 1",
+        "options": {}
+      },
+      "id": "auth-login-query-001",
+      "name": "Query Login",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        2544
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json;\nif (!row?.email) return [{ json: { success: false, message: 'Invalid email or password.' } }];\nreturn [{ json: { success: true, user: { user_id: row.employee_id, email: row.email, name: row.name || row.email, role: row.role || 'staff', employee_id: row.employee_id } } }];"
+      },
+      "id": "auth-login-format-001",
+      "name": "Format Login",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        2544
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.employee_id AS user_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employee_type FROM public.employees e ORDER BY e.employee_id ASC",
+        "options": {}
+      },
+      "id": "auth-list-users-query-001",
+      "name": "Query List Users",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        2704
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && (r.email || r.user_id));\nreturn [{ json: { success: true, data: rows } }];"
+      },
+      "id": "auth-list-users-format-001",
+      "name": "Format List Users",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        2704
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.employees (employee_name, email, employee_type, employee_role, password_hash, is_active) VALUES ('{{ $json.name }}', '{{ $json.email }}', '{{ $json.role }}', '{{ $json.role }}', crypt('{{ $json.password }}', gen_salt('bf')), TRUE) ON CONFLICT (email) DO NOTHING RETURNING employee_id AS user_id, email, employee_role AS role",
+        "options": {}
+      },
+      "id": "auth-create-user-query-001",
+      "name": "Insert New User",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        2864
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.user_id && !row?.employee_id) return [{ json: { success: false, message: 'Email already exists or insert failed.' } }];\nreturn [{ json: { success: true, message: `User created: ${row.email}`, user: row } }];"
+      },
+      "id": "auth-create-user-format-001",
+      "name": "Format Create User",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        2864
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE public.employees SET email = '{{ $json.new_email || $json.target_email }}', employee_name = '{{ $json.name }}', employee_role = '{{ $json.role }}', is_active = {{ $json.is_active }}, password_hash = CASE WHEN '{{ $json.password }}' != '' AND '{{ $json.password }}' != 'undefined' THEN crypt('{{ $json.password }}', gen_salt('bf')) ELSE password_hash END WHERE email = '{{ $json.target_email }}' RETURNING employee_id AS user_id, email, employee_role AS role, is_active",
+        "options": {}
+      },
+      "id": "auth-update-user-query-001",
+      "name": "Update User",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1888,
+        3024
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.user_id && !row?.employee_id) return [{ json: { success: false, message: 'User not found or update failed.' } }];\nreturn [{ json: { success: true, message: `User updated: ${row.email}`, user: row } }];"
+      },
+      "id": "auth-update-user-format-001",
+      "name": "Format Update User",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2128,
+        3024
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM public.employees WHERE email = '{{ $json.target_email }}' AND email != 'aimanhakimka@gmail.com' RETURNING employee_id, email, employee_name AS name"
+      },
+      "id": "del-user-pg-001",
+      "name": "Delete User",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2400,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.employee_id && !row?.email) return [{ json: { success: false, message: 'User not found or protected account.' } }];\nreturn [{ json: { success: true, message: `Account deleted: ${row.email}`, data: row } }];"
+      },
+      "id": "fmt-del-user-001",
+      "name": "Format Delete User",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        480
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Prep Punch In",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Punch Out",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Employee + LeaveType IDs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cancel Leave DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Leaves",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Balance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Find Employee (OT)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Upsert User (sync)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Login",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query List Users",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert New User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unknown Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Punch In": {
+      "main": [
+        [
+          {
+            "node": "Find Employee (Punch In)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Employee (Punch In)": {
+      "main": [
+        [
+          {
+            "node": "Insert Punch In",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Punch In": {
+      "main": [
+        [
+          {
+            "node": "Format Punch In",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Punch In": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Punch Out": {
+      "main": [
+        [
+          {
+            "node": "Format Punch Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Punch Out": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Attendance": {
+      "main": [
+        [
+          {
+            "node": "Format List Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List Attendance": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Employee + LeaveType IDs": {
+      "main": [
+        [
+          {
+            "node": "Guard Apply Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Apply Leave": {
+      "main": [
+        [
+          {
+            "node": "Insert Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Leave": {
+      "main": [
+        [
+          {
+            "node": "Format Apply Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Apply Leave": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Leave DB": {
+      "main": [
+        [
+          {
+            "node": "Format Cancel Leave",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Cancel Leave": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Leaves": {
+      "main": [
+        [
+          {
+            "node": "Format List Leaves",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List Leaves": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Balance": {
+      "main": [
+        [
+          {
+            "node": "Format Leave Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Leave Balance": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Employee (OT)": {
+      "main": [
+        [
+          {
+            "node": "Guard OT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard OT": {
+      "main": [
+        [
+          {
+            "node": "Insert Overtime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Overtime": {
+      "main": [
+        [
+          {
+            "node": "Format Overtime",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Overtime": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unknown Action": {
+      "main": [
+        []
+      ]
+    },
+    "Upsert User (sync)": {
+      "main": [
+        [
+          {
+            "node": "Format Sync User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Sync User": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow Trigger": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Login": {
+      "main": [
+        [
+          {
+            "node": "Format Login",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Login": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query List Users": {
+      "main": [
+        [
+          {
+            "node": "Format List Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format List Users": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert New User": {
+      "main": [
+        [
+          {
+            "node": "Format Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Create User": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User": {
+      "main": [
+        [
+          {
+            "node": "Format Update User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Update User": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete User": {
+      "main": [
+        [
+          {
+            "node": "Format Delete User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Delete User": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "75305127-a686-4870-9372-668a4bea6aa5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"
+  },
+  "id": "PoK1FacYlLjfXcQx",
+  "tags": []
+}

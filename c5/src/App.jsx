@@ -57,6 +57,7 @@ const SplashScreen = () => (
 // ══════════════════════════════════════════════════════════════════
 const SESSION_KEY = 'flexhr_user_session';
 
+// session shape: { name, email, role, savedAt }
 const saveSession = (info) => {
   try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...info, savedAt: Date.now() })); } catch { }
 };
@@ -76,11 +77,14 @@ const loadSession = () => {
 };
 
 const clearSession = () => {
-  try { localStorage.removeItem(SESSION_KEY); } catch { }
+  try {
+    localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('userRole');
+  } catch { }
 };
 
 // ── Sync user to DB via n8n (called once after login) ─────────────
-const N8N_WEBHOOK = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
+const N8N_WEBHOOK = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 
 const syncUserToDB = async (info, token) => {
   if (!info?.email) return;
@@ -112,12 +116,59 @@ const syncUserToDB = async (info, token) => {
 // ══════════════════════════════════════════════════════════════════
 //  1. LOGIN
 // ══════════════════════════════════════════════════════════════════
-// Hardcoded demo credentials — replace with real API call as needed
-const DEMO_USERS = [
-  { email: 'admin@chinhin.com', password: 'Admin@123', name: 'Alan Tan Wai Loon' },
-  { email: 'hr@chinhin.com', password: 'HR@2026', name: 'Nurul Ain Binti Ahmad' },
-  { email: 'staff@chinhin.com', password: 'Staff@2026', name: 'Jason Khoo Weng Fatt' },
+
+// Dev-mode fallback — used when the n8n login endpoint is unavailable.
+// role values: 'admin' | 'hr' | 'staff'
+const DEMO_USERS_FALLBACK = [
+  { email: 'aimanhakimka@gmail.com', password: 'aiman123',   name: 'Aiman Hakim',          role: 'admin' },
+  { email: 'admin@chinhin.com',      password: 'Admin@123',  name: 'Alan Tan Wai Loon',    role: 'admin' },
+  { email: 'hr@chinhin.com',         password: 'HR@2026',    name: 'Nurul Ain Binti Ahmad', role: 'hr'    },
+  { email: 'staff@chinhin.com',      password: 'Staff@2026', name: 'Jason Khoo Weng Fatt', role: 'staff' },
 ];
+
+/**
+ * Authenticate against the database via the n8n webhook.
+ * n8n should run:
+ *   SELECT u.user_id, u.email, u.role, e.employee_name AS name
+ *   FROM public.users u
+ *   LEFT JOIN public.employees e ON e.email = u.email
+ *   WHERE u.email = $email
+ *     AND u.password_hash = crypt($password, u.password_hash)
+ *     AND u.is_active = TRUE
+ * and return { success: true, user: { email, name, role } }
+ */
+async function loginViaDB(email, password) {
+  const res = await fetch(N8N_WEBHOOK, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      input_type: 'direct_action',
+      edited_plan: {
+        action: 'login_user',
+        sub_target: 'auth',
+        email: email.trim().toLowerCase(),
+        password,
+      },
+    }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.json();
+  console.log('[loginViaDB] raw n8n response:', JSON.stringify(raw));
+
+  // n8n can wrap the result in various shapes — unwrap gracefully
+  // Shape 1: { success, user }          ← ideal
+  // Shape 2: { output: { success, user } }
+  // Shape 3: [{ success, user }]         ← array
+  // Shape 4: { data: { success, user } }
+  const unwrap = (r) => {
+    if (!r) return r;
+    if (Array.isArray(r)) return unwrap(r[0]);
+    if (r.output)  return unwrap(r.output);
+    if (r.data && r.data.success !== undefined) return unwrap(r.data);
+    return r;
+  };
+  return unwrap(raw);
+}
 
 const Login = ({ setAuth, setUserInfo }) => {
   const [email, setEmail] = useState('');
@@ -133,24 +184,43 @@ const Login = ({ setAuth, setUserInfo }) => {
     if (!email.trim() || !password) { setError('Please enter your email and password.'); return; }
     setLoading(true);
 
-    // Simulate network delay for UX polish
-    await new Promise(r => setTimeout(r, 900));
+    let info = null;
 
-    const match = DEMO_USERS.find(
-      u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
-    );
-
-    if (match) {
-      const info = { name: match.name, email: match.email };
-      const fakeToken = btoa(JSON.stringify(info) + ':' + Date.now());
-      localStorage.setItem('authToken', fakeToken);
-      saveSession(info);
-      syncUserToDB(info, fakeToken);
-      setUserInfo(info);
-      setAuth(true);
-    } else {
-      setError('Invalid email or password. Please try again.');
+    try {
+      // ── Try real DB login via n8n ──────────────────────────────
+      const result = await loginViaDB(email, password);
+      if (result?.success && result?.user) {
+        const u = result.user;
+        info = { name: u.name || u.email, email: u.email, role: u.role || 'staff' };
+      } else {
+        // n8n returned but credentials were wrong
+        setError('Invalid email or password. Please try again.');
+        setLoading(false);
+        return;
+      }
+    } catch {
+      // ── Fallback: dev-mode hardcoded credentials ───────────────
+      console.warn('[Login] n8n unavailable — using dev fallback');
+      const match = DEMO_USERS_FALLBACK.find(
+        u => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
+      );
+      if (match) {
+        info = { name: match.name, email: match.email, role: match.role };
+      } else {
+        setError('Invalid email or password. Please try again.');
+        setLoading(false);
+        return;
+      }
     }
+
+    // ── Persist session & token ──────────────────────────────────
+    const fakeToken = btoa(JSON.stringify(info) + ':' + Date.now());
+    localStorage.setItem('authToken', fakeToken);
+    localStorage.setItem('userRole', info.role);   // quick-access role key
+    saveSession(info);
+    syncUserToDB(info, fakeToken);
+    setUserInfo(info);
+    setAuth(true);
     setLoading(false);
   };
 
@@ -819,6 +889,9 @@ const InfoPage = () => {
 // ══════════════════════════════════════════════════════════════════
 const ProfilePage = ({ setAuth, userInfo }) => {
   const navigate = useNavigate();
+  const role = userInfo?.role || 'staff';
+  const roleLabel = { admin: '🛡 Admin', hr: '👔 HR Manager', staff: '👤 Staff' }[role] || role;
+  const roleBadgeColor = { admin: '#6c47d9', hr: '#1890ff', staff: '#10b981' }[role] || '#aaa';
 
   const handleLogout = () => {
     clearSession();
@@ -832,7 +905,12 @@ const ProfilePage = ({ setAuth, userInfo }) => {
       <div className="profile-section">
         <div className="profile-avatar-box"><UserCircle size={80} color="#2b1d62" /></div>
         <h3>{userInfo?.name || 'ALAN TAN WAI LOON'}</h3>
-        <p>{userInfo?.email || 'Software Engineer | CH-9920'}</p>
+        <p>{userInfo?.email || 'user@chinhin.com'}</p>
+        <span style={{
+          display: 'inline-block', marginTop: 8, padding: '4px 14px',
+          borderRadius: 20, background: roleBadgeColor, color: '#fff',
+          fontSize: 12, fontWeight: 700, letterSpacing: 0.5,
+        }}>{roleLabel}</span>
       </div>
       <div className="profile-menu">
         <div className="p-menu-item" onClick={() => alert('Check your email for reset code!')}><Lock size={18} /> <span>Reset Password</span></div>

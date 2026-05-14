@@ -11,7 +11,7 @@ import {
 import './Wellness.css';
 
 // ─── n8n CONFIG ──────────────────────────────────────────────────────────────
-const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
 async function callN8N(action, payload = {}) {
@@ -38,9 +38,9 @@ const ToastContainer = ({ toasts, onDismiss }) => (
     {toasts.map(t => (
       <div key={t.id} className={`wl-toast wl-toast-${t.type}`}>
         {t.type === 'success' && <CheckCircle2 size={18} />}
-        {t.type === 'error'   && <XCircle      size={18} />}
-        {t.type === 'info'    && <Info         size={18} />}
-        {t.type === 'loading' && <Loader2      size={18} className="wl-spin" />}
+        {t.type === 'error' && <XCircle size={18} />}
+        {t.type === 'info' && <Info size={18} />}
+        {t.type === 'loading' && <Loader2 size={18} className="wl-spin" />}
         <span>{t.message}</span>
         <button className="wl-toast-close" onClick={() => onDismiss(t.id)}><X size={14} /></button>
       </div>
@@ -79,8 +79,8 @@ const CapacityBar = ({ booked, max }) => {
 const StatusBadge = ({ status }) => {
   const map = {
     Confirmed: { bg: '#e8f9ee', color: '#27ae60', icon: <BadgeCheck size={11} /> },
-    Cancelled:  { bg: '#fdecea', color: '#e74c3c', icon: <XCircle    size={11} /> },
-    Pending:    { bg: '#fff8e1', color: '#f39c12', icon: <Clock       size={11} /> },
+    Cancelled: { bg: '#fdecea', color: '#e74c3c', icon: <XCircle size={11} /> },
+    Pending: { bg: '#fff8e1', color: '#f39c12', icon: <Clock size={11} /> },
   };
   const s = map[status] || map.Pending;
   return (
@@ -94,18 +94,18 @@ const StatusBadge = ({ status }) => {
 const Wellness = ({ userInfo }) => {
   const navigate = useNavigate();
   const employeeEmail = userInfo?.email || '';
-  const employeeName  = userInfo?.name  || '';
+  const employeeName = userInfo?.name || '';
 
   // ── Views & selection state ──────────────────────────────────────────────
-  const [view, setView]                               = useState('menu');
-  const [selectedTrainer, setSelectedTrainer]         = useState(null);
-  const [selectedPackage, setSelectedPackage]         = useState(null);
-  const [selectedBooking, setSelectedBooking]         = useState(null);
-  const [selectedTcmAppointment, setSelectedTcmAppointment]   = useState(null);
+  const [view, setView] = useState('menu');
+  const [selectedTrainer, setSelectedTrainer] = useState(null);
+  const [selectedPackage, setSelectedPackage] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
+  const [selectedTcmAppointment, setSelectedTcmAppointment] = useState(null);
   const [selectedPhysioAppointment, setSelectedPhysioAppointment] = useState(null);
-  const [showConfirm, setShowConfirm]                 = useState(false);
-  const [nursingModal, setNursingModal]               = useState(null);
-  const [pendingClass, setPendingClass]               = useState(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [nursingModal, setNursingModal] = useState(null);
+  const [pendingClass, setPendingClass] = useState(null);
 
   // ── Toast system ─────────────────────────────────────────────────────────
   const [toasts, setToasts] = useState([]);
@@ -118,7 +118,7 @@ const Wellness = ({ userInfo }) => {
     return id;
   }, []);
   const dismissToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
-  const updateToast  = (id, message, type) =>
+  const updateToast = (id, message, type) =>
     setToasts(prev => prev.map(t => t.id === id ? { ...t, message, type } : t));
 
   // ── Profile form ─────────────────────────────────────────────────────────
@@ -148,50 +148,56 @@ const Wellness = ({ userInfo }) => {
 
   // ── Data state (DB-aware schema) ─────────────────────────────────────────
   const [classes, setClasses] = useState([
-    { id: 'C1', class_id: 1, name: 'Zumba | Group Training',   trainer: 'Reiko Chye',  weekday: 'Friday',   time: '18:00 - 20:00', date: '13 Feb 2026', location: 'Fitness Studio, Level 19', max_capacity: 12, registered_count: 4, spots: '4/12 spots', is_active: true },
-    { id: 'C2', class_id: 2, name: 'Yoga | Morning Flow',      trainer: 'Derek Koay',  weekday: 'Sunday',   time: '08:30 - 10:00', date: '15 Feb 2026', location: 'Idea Lab 2',               max_capacity: 10, registered_count: 2, spots: '2/10 spots', is_active: true },
-    { id: 'C3', class_id: 3, name: 'HIIT Blast',               trainer: 'Edward Chuah',weekday: 'Wednesday',time: '07:00 - 08:00', date: '18 Feb 2026', location: 'Fitness Studio, Level 19', max_capacity: 15, registered_count: 12, spots: '12/15 spots', is_active: true },
+    { id: 'C1', class_id: 1, name: 'Zumba | Group Training', trainer: 'Reiko Chye', weekday: 'Friday', time: '18:00 - 20:00', date: '13 Feb 2026', location: 'Fitness Studio, Level 19', max_capacity: 12, registered_count: 4, spots: '4/12 spots', is_active: true },
+    { id: 'C2', class_id: 2, name: 'Yoga | Morning Flow', trainer: 'Derek Koay', weekday: 'Sunday', time: '08:30 - 10:00', date: '15 Feb 2026', location: 'Idea Lab 2', max_capacity: 10, registered_count: 2, spots: '2/10 spots', is_active: true },
+    { id: 'C3', class_id: 3, name: 'HIIT Blast', trainer: 'Edward Chuah', weekday: 'Wednesday', time: '07:00 - 08:00', date: '18 Feb 2026', location: 'Fitness Studio, Level 19', max_capacity: 15, registered_count: 12, spots: '12/15 spots', is_active: true },
   ]);
   const [trainers, setTrainers] = useState([
-    { trainer_id: 1, name: 'Reiko Chye',   bio: 'Certified fat-loss and cardio specialist with 3 years experience.',  specs: ['Fat Loss', 'Cardio Training'], is_active: true },
+    { trainer_id: 1, name: 'Reiko Chye', bio: 'Certified fat-loss and cardio specialist with 3 years experience.', specs: ['Fat Loss', 'Cardio Training'], is_active: true },
     { trainer_id: 2, name: 'Edward Chuah', bio: 'Former competitive bodybuilder with 15 years of coaching experience.', specs: ['Strength Training', 'Bodybuilding'], is_active: true },
-    { trainer_id: 3, name: 'Derek Koay',   bio: 'Certified yoga practitioner focused on flexibility and mindfulness.',  specs: ['Yoga', 'Flexibility'], is_active: true },
+    { trainer_id: 3, name: 'Derek Koay', bio: 'Certified yoga practitioner focused on flexibility and mindfulness.', specs: ['Yoga', 'Flexibility'], is_active: true },
   ]);
   const [memberships, setMemberships] = useState([
-    { id: 1, name: 'Standard Training Package',        detail: 'Includes 12 personal training sessions', validity: '60 day(s)', fee: 'RM 0',
+    {
+      id: 1, name: 'Standard Training Package', detail: 'Includes 12 personal training sessions', validity: '60 day(s)', fee: 'RM 0',
       desc: 'For short-term results or getting back into training.',
       coachPricing: [
-        { level: 'FORM Coach (Level 1)',   total: 'RM2256', rate: 'RM188/session' },
-        { level: 'LEAD Coach (Level 2)',   total: 'RM2640', rate: 'RM220/session' },
+        { level: 'FORM Coach (Level 1)', total: 'RM2256', rate: 'RM188/session' },
+        { level: 'LEAD Coach (Level 2)', total: 'RM2640', rate: 'RM220/session' },
         { level: 'MENTOR Coach (Level 3)', total: 'RM3120', rate: 'RM260/session' },
-      ]},
-    { id: 2, name: 'Advanced Training Package',        detail: 'Includes 24 personal training sessions', validity: '90 day(s)', fee: 'RM 0',
+      ]
+    },
+    {
+      id: 2, name: 'Advanced Training Package', detail: 'Includes 24 personal training sessions', validity: '90 day(s)', fee: 'RM 0',
       desc: 'Medium-term training for sustainable results and deeper lifestyle integration.',
       coachPricing: [
-        { level: 'FORM Coach (Level 1)',   total: 'RM4512', rate: 'RM188/session' },
-        { level: 'LEAD Coach (Level 2)',   total: 'RM5280', rate: 'RM220/session' },
+        { level: 'FORM Coach (Level 1)', total: 'RM4512', rate: 'RM188/session' },
+        { level: 'LEAD Coach (Level 2)', total: 'RM5280', rate: 'RM220/session' },
         { level: 'MENTOR Coach (Level 3)', total: 'RM6240', rate: 'RM260/session' },
-      ]},
-    { id: 3, name: 'Extreme Training Package (FORM90)', detail: 'Includes 36 personal training sessions', validity: '120 day(s)', fee: 'RM 0',
+      ]
+    },
+    {
+      id: 3, name: 'Extreme Training Package (FORM90)', detail: 'Includes 36 personal training sessions', validity: '120 day(s)', fee: 'RM 0',
       desc: 'Long-term transformation for complete lifestyle overhaul.',
       coachPricing: [
-        { level: 'FORM Coach (Level 1)',   total: 'RM6768', rate: 'RM188/session' },
-        { level: 'LEAD Coach (Level 2)',   total: 'RM7920', rate: 'RM220/session' },
+        { level: 'FORM Coach (Level 1)', total: 'RM6768', rate: 'RM188/session' },
+        { level: 'LEAD Coach (Level 2)', total: 'RM7920', rate: 'RM220/session' },
         { level: 'MENTOR Coach (Level 3)', total: 'RM9360', rate: 'RM260/session' },
-      ]},
+      ]
+    },
   ]);
   const [tcmAppointments, setTcmAppointments] = useState([
     { id: 'T1', title: 'Acupuncture Session', provider: 'Wellness TCM', date: '22 Feb 2026', time: '14:00 - 15:00', location: 'TCM Room, Level 19', status: 'Confirmed' },
   ]);
   const [tcmPackages, setTcmPackages] = useState([
-    { id: 101, name: 'Basic Acupuncture Set',   detail: '5 Sessions + Consultation', fee: 'RM 450', desc: 'Balancing energy flow and relieving chronic pain.' },
-    { id: 102, name: 'Premium Tui Na Therapy',  detail: '10 Sessions (60 mins each)', fee: 'RM 880', desc: 'Deep tissue Chinese massage for circulation and recovery.' },
+    { id: 101, name: 'Basic Acupuncture Set', detail: '5 Sessions + Consultation', fee: 'RM 450', desc: 'Balancing energy flow and relieving chronic pain.' },
+    { id: 102, name: 'Premium Tui Na Therapy', detail: '10 Sessions (60 mins each)', fee: 'RM 880', desc: 'Deep tissue Chinese massage for circulation and recovery.' },
   ]);
   const [physioAppointments, setPhysioAppointments] = useState([
     { id: 'P1', title: 'Sports Massage', provider: 'Wellness Physio', date: '23 Feb 2026', time: '09:00 - 10:00', location: 'Physio Room, Level 19', status: 'Confirmed' },
   ]);
   const [physioPackages, setPhysioPackages] = useState([
-    { id: 201, name: 'Recovery Package',       detail: '5 Sessions (60 mins each)', fee: 'RM 600',  desc: 'Post-workout recovery and muscle relaxation.' },
+    { id: 201, name: 'Recovery Package', detail: '5 Sessions (60 mins each)', fee: 'RM 600', desc: 'Post-workout recovery and muscle relaxation.' },
     { id: 202, name: 'Rehabilitation Program', detail: '10 Sessions with assessment', fee: 'RM 1200', desc: 'Personalized rehab plan for injury recovery and prevention.' },
   ]);
   const [myBookings, setMyBookings] = useState([
@@ -199,8 +205,8 @@ const Wellness = ({ userInfo }) => {
   ]);
 
   // ── Async loading ─────────────────────────────────────────────────────────
-  const [loading, setLoading]     = useState(false);
-  const [apiError, setApiError]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchWellnessData = useCallback(async () => {
@@ -226,13 +232,13 @@ const Wellness = ({ userInfo }) => {
 
       console.log('[Wellness] resolved root:', JSON.stringify(root, null, 2));
 
-      if (Array.isArray(root.classes))     setClasses(root.classes);
-      if (Array.isArray(root.trainers))    setTrainers(root.trainers);
+      if (Array.isArray(root.classes)) setClasses(root.classes);
+      if (Array.isArray(root.trainers)) setTrainers(root.trainers);
       if (Array.isArray(root.my_bookings)) setMyBookings(root.my_bookings);
       if (Array.isArray(root.memberships)) setMemberships(root.memberships);
-      if (Array.isArray(root.tcm_packages))        setTcmPackages(root.tcm_packages);
-      if (Array.isArray(root.physio_packages))     setPhysioPackages(root.physio_packages);
-      if (Array.isArray(root.tcm_appointments))    setTcmAppointments(root.tcm_appointments);
+      if (Array.isArray(root.tcm_packages)) setTcmPackages(root.tcm_packages);
+      if (Array.isArray(root.physio_packages)) setPhysioPackages(root.physio_packages);
+      if (Array.isArray(root.tcm_appointments)) setTcmAppointments(root.tcm_appointments);
       if (Array.isArray(root.physio_appointments)) setPhysioAppointments(root.physio_appointments);
 
       if (!root.classes && !root.trainers) {
@@ -250,30 +256,30 @@ const Wellness = ({ userInfo }) => {
 
   // ── Navigation helpers ────────────────────────────────────────────────────
   const tcmViewMap = {
-    'About TCM':             'tcm-about',
-    'Purchase TCM Session':  'tcm-purchase',
+    'About TCM': 'tcm-about',
+    'Purchase TCM Session': 'tcm-purchase',
     'Schedule My Appointment': 'tcm-schedule',
-    'View My Appointment':   'tcm-view',
+    'View My Appointment': 'tcm-view',
   };
   const physioViewMap = {
-    'About Physiotherapy':     'physio-about',
+    'About Physiotherapy': 'physio-about',
     'Purchase Physio Session': 'physio-purchase',
     'Schedule My Appointment': 'physio-schedule',
-    'View My Appointment':     'physio-view',
+    'View My Appointment': 'physio-view',
   };
 
   const handleBack = () => {
     if (view === 'menu') navigate('/');
     else if (view === 'tcm-appointment-detail') setView('tcm-view');
     else if (view === 'physio-appointment-detail') setView('physio-view');
-    else if (view.startsWith('tcm-'))   setView('tcm');
+    else if (view.startsWith('tcm-')) setView('tcm');
     else if (view.startsWith('physio-')) setView('physio');
-    else if (view === 'trainer-profile')   setView('trainers');
-    else if (view === 'wellness-profile')  setView('membership-detail');
+    else if (view === 'trainer-profile') setView('trainers');
+    else if (view === 'wellness-profile') setView('membership-detail');
     else if (view === 'membership-detail') {
-      if (selectedPackage?.coachPricing)      setView('membership-list');
-      else if (selectedPackage?.id >= 200)    setView('physio-purchase');
-      else                                    setView('tcm-purchase');
+      if (selectedPackage?.coachPricing) setView('membership-list');
+      else if (selectedPackage?.id >= 200) setView('physio-purchase');
+      else setView('tcm-purchase');
     }
     else if (view === 'booking-detail') setView('my-bookings');
     else if (['timetable', 'trainers', 'membership-list', 'my-bookings'].includes(view)) setView('fitness');
@@ -510,10 +516,10 @@ const Wellness = ({ userInfo }) => {
             </div>
             <div className="wellness-card-grid">
               {[
-                { icon: <Dumbbell size={28}/>,    label: 'Fitness Studio',  view: 'fitness', color: '#e8f4ff', accent: '#2b6cb0' },
-                { icon: <Stethoscope size={28}/>, label: 'Physiotherapy',   view: 'physio',  color: '#f0fff4', accent: '#276749' },
-                { icon: <User2 size={28}/>,       label: 'Nursing Room',    view: 'nursing', color: '#fff5f7', accent: '#97266d' },
-                { icon: <BookOpen size={28}/>,    label: 'TCM',             view: 'tcm',     color: '#fffaf0', accent: '#7b341e' },
+                { icon: <Dumbbell size={28} />, label: 'Fitness Studio', view: 'fitness', color: '#e8f4ff', accent: '#2b6cb0' },
+                { icon: <Stethoscope size={28} />, label: 'Physiotherapy', view: 'physio', color: '#f0fff4', accent: '#276749' },
+                { icon: <User2 size={28} />, label: 'Nursing Room', view: 'nursing', color: '#fff5f7', accent: '#97266d' },
+                { icon: <BookOpen size={28} />, label: 'TCM', view: 'tcm', color: '#fffaf0', accent: '#7b341e' },
               ].map(item => (
                 <div key={item.view} className="wellness-card" style={{ '--card-bg': item.color, '--card-accent': item.accent }} onClick={() => setView(item.view)}>
                   <div className="wl-card-icon-ring" style={{ background: item.color }}>
@@ -533,7 +539,7 @@ const Wellness = ({ userInfo }) => {
           <div className="fitness-view">
             <div className="fitness-banner">
               <div className="banner-left-text">
-                <div className="wl-banner-badge"><TrendingUp size={12}/> Free Trial Available</div>
+                <div className="wl-banner-badge"><TrendingUp size={12} /> Free Trial Available</div>
                 <h2>Start Your Free Trial Today</h2>
                 <p>Kickstart your fitness journey with a complimentary trial session!</p>
                 <button className="free-trial-btn" onClick={() => showToast('Free trial request sent! We will contact you soon.', 'success')}>
@@ -546,10 +552,10 @@ const Wellness = ({ userInfo }) => {
             </div>
             <div className="list-menu">
               {[
-                { icon: <Calendar size={20}/>,  title: 'Timetable Class',         sub: 'Book group fitness sessions',    view: 'timetable',       badge: `${classes.length}` },
-                { icon: <UserCheck size={20}/>, title: 'Personal Trainer Profile', sub: 'Discover detailed profiles',     view: 'trainers',        badge: `${trainers.length}` },
-                { icon: <Dumbbell size={20}/>,  title: 'Buy Membership',           sub: 'Your fitness partner starts here', view: 'membership-list', badge: '' },
-                { icon: <CalendarDays size={20}/>, title: 'My Bookings',           sub: 'Manage your bookings',           view: 'my-bookings',     badge: myBookings.length > 0 ? `${myBookings.length}` : '' },
+                { icon: <Calendar size={20} />, title: 'Timetable Class', sub: 'Book group fitness sessions', view: 'timetable', badge: `${classes.length}` },
+                { icon: <UserCheck size={20} />, title: 'Personal Trainer Profile', sub: 'Discover detailed profiles', view: 'trainers', badge: `${trainers.length}` },
+                { icon: <Dumbbell size={20} />, title: 'Buy Membership', sub: 'Your fitness partner starts here', view: 'membership-list', badge: '' },
+                { icon: <CalendarDays size={20} />, title: 'My Bookings', sub: 'Manage your bookings', view: 'my-bookings', badge: myBookings.length > 0 ? `${myBookings.length}` : '' },
               ].map(item => (
                 <div key={item.view} className="list-item" onClick={() => setView(item.view)}>
                   <div className="item-content">
@@ -581,7 +587,7 @@ const Wellness = ({ userInfo }) => {
                   <span className="wl-section-count">{classes.length} Available</span>
                 </div>
                 {loading ? (
-                  <div className="class-list">{[1,2,3].map(i => <SkeletonCard key={i} lines={2} />)}</div>
+                  <div className="class-list">{[1, 2, 3].map(i => <SkeletonCard key={i} lines={2} />)}</div>
                 ) : (
                   <div className="class-list">
                     {classes.filter(c => c.is_active !== false).map(c => {
@@ -615,7 +621,7 @@ const Wellness = ({ userInfo }) => {
               <div className="timetable-section">
                 <h3 className="section-title">Book Your Personal Trainer</h3>
                 {loading ? (
-                  <div className="trainer-list-mini">{[1,2,3].map(i => <SkeletonCard key={i} lines={1} />)}</div>
+                  <div className="trainer-list-mini">{[1, 2, 3].map(i => <SkeletonCard key={i} lines={1} />)}</div>
                 ) : (
                   <div className="trainer-list-mini">
                     {trainers.map((t, i) => (
@@ -647,7 +653,7 @@ const Wellness = ({ userInfo }) => {
         {view === 'trainers' && (
           <div className="trainers-view">
             <h3 className="section-title" style={{ paddingTop: 16 }}>Our Trainers</h3>
-            {loading ? [1,2,3].map(i => <SkeletonCard key={i} lines={2} />) : trainers.map((t, i) => (
+            {loading ? [1, 2, 3].map(i => <SkeletonCard key={i} lines={2} />) : trainers.map((t, i) => (
               <div key={t.trainer_id || i} className="trainer-card wl-trainer-card-fancy" onClick={() => { setSelectedTrainer(t); setView('trainer-profile'); }}>
                 <div className="wl-trainer-avatar-lg">{t.name.charAt(0)}</div>
                 <div className="wl-trainer-card-body">
@@ -792,7 +798,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Gender</label>
                     <div className="toggle-btns">
-                      {['Male','Female','Other'].map(g => (
+                      {['Male', 'Female', 'Other'].map(g => (
                         <button key={g} className={`toggle-btns button ${profileData.gender === g ? 'active' : ''}`} onClick={() => handleInputChange('gender', g)}>{g}</button>
                       ))}
                     </div>
@@ -812,7 +818,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Primary Goal</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {['Weight Loss','Muscle Building','Improve Endurance','Flexibility & Mobility','Overall Fitness','Stress Management'].map(g => (
+                      {['Weight Loss', 'Muscle Building', 'Improve Endurance', 'Flexibility & Mobility', 'Overall Fitness', 'Stress Management'].map(g => (
                         <button key={g} className={`pill-btn ${profileData.primaryGoal === g ? 'active' : ''}`} style={{ textAlign: 'left', paddingLeft: 16, background: profileData.primaryGoal === g ? '#e3f2fd' : 'white', color: profileData.primaryGoal === g ? '#2b1d62' : '#555', border: profileData.primaryGoal === g ? '1.5px solid #2b1d62' : '1px solid #eee' }} onClick={() => handleInputChange('primaryGoal', g)}>{g}</button>
                       ))}
                     </div>
@@ -820,7 +826,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Training Interests (select all that apply)</label>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                      {['HIIT','Yoga','Pilates','Strength Training','Cardio','Swimming','Cycling','Boxing','Dance','Stretching'].map(i => (
+                      {['HIIT', 'Yoga', 'Pilates', 'Strength Training', 'Cardio', 'Swimming', 'Cycling', 'Boxing', 'Dance', 'Stretching'].map(i => (
                         <button key={i} onClick={() => toggleMultiSelect('trainingInterests', i)} style={{ padding: '6px 14px', borderRadius: 16, fontSize: 13, cursor: 'pointer', background: profileData.trainingInterests.includes(i) ? '#2b1d62' : 'white', color: profileData.trainingInterests.includes(i) ? 'white' : '#555', border: '1px solid #ddd' }}>{i}</button>
                       ))}
                     </div>
@@ -840,7 +846,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Current Activity Level</label>
                     <div className="toggle-btns">
-                      {['Sedentary','Light','Moderate','Very Active'].map(l => (
+                      {['Sedentary', 'Light', 'Moderate', 'Very Active'].map(l => (
                         <button key={l} className={`toggle-btns button ${profileData.activityLevel === l ? 'active' : ''}`} onClick={() => handleInputChange('activityLevel', l)}>{l}</button>
                       ))}
                     </div>
@@ -848,7 +854,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Training Days per Week</label>
                     <div className="toggle-btns">
-                      {['1–2','3–4','5–6','Daily'].map(d => (
+                      {['1–2', '3–4', '5–6', 'Daily'].map(d => (
                         <button key={d} className={`toggle-btns button ${profileData.trainingDays === d ? 'active' : ''}`} onClick={() => handleInputChange('trainingDays', d)}>{d}</button>
                       ))}
                     </div>
@@ -856,7 +862,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Currently on a diet?</label>
                     <div className="toggle-btns">
-                      {['Yes','No'].map(v => (
+                      {['Yes', 'No'].map(v => (
                         <button key={v} className={`toggle-btns button ${profileData.onDiet === v ? 'active' : ''}`} onClick={() => handleInputChange('onDiet', v)}>{v}</button>
                       ))}
                     </div>
@@ -876,7 +882,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Preferred Mode</label>
                     <div className="toggle-btns">
-                      {['Solo','Group','Both'].map(m => (
+                      {['Solo', 'Group', 'Both'].map(m => (
                         <button key={m} className={`toggle-btns button ${profileData.preferredMode === m ? 'active' : ''}`} onClick={() => handleInputChange('preferredMode', m)}>{m}</button>
                       ))}
                     </div>
@@ -884,7 +890,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Preferred Training Time</label>
                     <div className="toggle-btns">
-                      {['Morning','Afternoon','Evening'].map(t => (
+                      {['Morning', 'Afternoon', 'Evening'].map(t => (
                         <button key={t} className={`toggle-btns button ${profileData.preferredTime === t ? 'active' : ''}`} onClick={() => handleInputChange('preferredTime', t)}>{t}</button>
                       ))}
                     </div>
@@ -892,7 +898,7 @@ const Wellness = ({ userInfo }) => {
                   <div className="f-group">
                     <label>Worked with a trainer before?</label>
                     <div className="toggle-btns">
-                      {['Yes','No'].map(v => (
+                      {['Yes', 'No'].map(v => (
                         <button key={v} className={`toggle-btns button ${profileData.workedWithTrainer === v ? 'active' : ''}`} onClick={() => handleInputChange('workedWithTrainer', v)}>{v}</button>
                       ))}
                     </div>
@@ -965,8 +971,8 @@ const Wellness = ({ userInfo }) => {
             </div>
             <div className="list-menu">
               {Object.entries(tcmViewMap).map(([label, viewName]) => {
-                const icons = { 'About TCM': <FilePenLine size={22}/>, 'Purchase TCM Session': <Monitor size={22}/>, 'Schedule My Appointment': <CalendarCheck size={22}/>, 'View My Appointment': <CalendarDays size={22}/> };
-                const subs  = { 'About TCM': 'Overview and How it Works', 'Purchase TCM Session': 'Unlock treatment plans', 'Schedule My Appointment': 'Manage your sessions', 'View My Appointment': 'Manage your bookings' };
+                const icons = { 'About TCM': <FilePenLine size={22} />, 'Purchase TCM Session': <Monitor size={22} />, 'Schedule My Appointment': <CalendarCheck size={22} />, 'View My Appointment': <CalendarDays size={22} /> };
+                const subs = { 'About TCM': 'Overview and How it Works', 'Purchase TCM Session': 'Unlock treatment plans', 'Schedule My Appointment': 'Manage your sessions', 'View My Appointment': 'Manage your bookings' };
                 return (
                   <div key={label} className="list-item" onClick={() => setView(viewName)}>
                     <div className="item-content"><div className="wl-list-icon" style={{ color: '#7b341e' }}>{icons[label]}</div><div><h4>{label}</h4><p>{subs[label]}</p></div></div>
@@ -1032,8 +1038,8 @@ const Wellness = ({ userInfo }) => {
               <div className="class-list">
                 {[
                   { title: 'Pulse Diagnosis & Consultation', date: 'Tomorrow', time: '10:00 - 10:30', location: 'TCM Room, Level 19' },
-                  { title: 'Acupuncture Therapy',            date: 'Tomorrow', time: '11:00 - 11:45', location: 'TCM Room, Level 19' },
-                  { title: 'Tui Na Massage',                 date: 'This Week', time: '14:00 - 15:00', location: 'TCM Room, Level 19' },
+                  { title: 'Acupuncture Therapy', date: 'Tomorrow', time: '11:00 - 11:45', location: 'TCM Room, Level 19' },
+                  { title: 'Tui Na Massage', date: 'This Week', time: '14:00 - 15:00', location: 'TCM Room, Level 19' },
                 ].map((slot, i) => (
                   <div key={i} className="class-card-item">
                     <div className="class-info-left">
@@ -1098,8 +1104,8 @@ const Wellness = ({ userInfo }) => {
               <div className="detail-meta-list">
                 {[
                   { icon: <Calendar size={18} />, label: 'Date', value: selectedTcmAppointment.date },
-                  { icon: <Clock size={18} />,    label: 'Time', value: selectedTcmAppointment.time },
-                  { icon: <MapPin size={18} />,   label: 'Location', value: selectedTcmAppointment.location },
+                  { icon: <Clock size={18} />, label: 'Time', value: selectedTcmAppointment.time },
+                  { icon: <MapPin size={18} />, label: 'Location', value: selectedTcmAppointment.location },
                 ].map(m => (
                   <div key={m.label} className="meta-item-row">
                     <span style={{ color: '#7b341e' }}>{m.icon}</span>
@@ -1129,8 +1135,8 @@ const Wellness = ({ userInfo }) => {
             </div>
             <div className="list-menu">
               {Object.entries(physioViewMap).map(([label, viewName]) => {
-                const icons = { 'About Physiotherapy': <FilePenLine size={22}/>, 'Purchase Physio Session': <Monitor size={22}/>, 'Schedule My Appointment': <CalendarCheck size={22}/>, 'View My Appointment': <CalendarDays size={22}/> };
-                const subs  = { 'About Physiotherapy': 'Overview and How it Works', 'Purchase Physio Session': 'Unlock treatment plans', 'Schedule My Appointment': 'Manage your sessions', 'View My Appointment': 'Manage your bookings' };
+                const icons = { 'About Physiotherapy': <FilePenLine size={22} />, 'Purchase Physio Session': <Monitor size={22} />, 'Schedule My Appointment': <CalendarCheck size={22} />, 'View My Appointment': <CalendarDays size={22} /> };
+                const subs = { 'About Physiotherapy': 'Overview and How it Works', 'Purchase Physio Session': 'Unlock treatment plans', 'Schedule My Appointment': 'Manage your sessions', 'View My Appointment': 'Manage your bookings' };
                 return (
                   <div key={label} className="list-item" onClick={() => setView(viewName)}>
                     <div className="item-content"><div className="wl-list-icon" style={{ color: '#276749' }}>{icons[label]}</div><div><h4>{label}</h4><p>{subs[label]}</p></div></div>
@@ -1195,9 +1201,9 @@ const Wellness = ({ userInfo }) => {
               <h3 className="section-title">Select Available Slot</h3>
               <div className="class-list">
                 {[
-                  { title: 'Sports Massage',          date: 'Tomorrow', time: '09:00 - 10:00', location: 'Physio Room, Level 19' },
-                  { title: 'Spinal Assessment',        date: 'Tomorrow', time: '11:00 - 11:30', location: 'Physio Room, Level 19' },
-                  { title: 'Rehabilitation Session',   date: 'This Week', time: '14:00 - 15:00', location: 'Physio Room, Level 19' },
+                  { title: 'Sports Massage', date: 'Tomorrow', time: '09:00 - 10:00', location: 'Physio Room, Level 19' },
+                  { title: 'Spinal Assessment', date: 'Tomorrow', time: '11:00 - 11:30', location: 'Physio Room, Level 19' },
+                  { title: 'Rehabilitation Session', date: 'This Week', time: '14:00 - 15:00', location: 'Physio Room, Level 19' },
                 ].map((slot, i) => (
                   <div key={i} className="class-card-item">
                     <div className="class-info-left">
@@ -1262,8 +1268,8 @@ const Wellness = ({ userInfo }) => {
               <div className="detail-meta-list">
                 {[
                   { icon: <Calendar size={18} />, label: 'Date', value: selectedPhysioAppointment.date },
-                  { icon: <Clock size={18} />,    label: 'Time', value: selectedPhysioAppointment.time },
-                  { icon: <MapPin size={18} />,   label: 'Location', value: selectedPhysioAppointment.location },
+                  { icon: <Clock size={18} />, label: 'Time', value: selectedPhysioAppointment.time },
+                  { icon: <MapPin size={18} />, label: 'Location', value: selectedPhysioAppointment.location },
                 ].map(m => (
                   <div key={m.label} className="meta-item-row">
                     <span style={{ color: '#276749' }}>{m.icon}</span>
@@ -1288,7 +1294,7 @@ const Wellness = ({ userInfo }) => {
         {view === 'my-bookings' && (
           <div className="bookings-view">
             <h3 className="section-title" style={{ paddingTop: 16 }}>My Bookings</h3>
-            {loading ? [1,2].map(i => <SkeletonCard key={i} lines={3} />) : myBookings.length === 0 ? (
+            {loading ? [1, 2].map(i => <SkeletonCard key={i} lines={3} />) : myBookings.length === 0 ? (
               <div className="wl-empty-state">
                 <Calendar size={40} color="#ddd" />
                 <p>No bookings yet.</p>
@@ -1331,11 +1337,11 @@ const Wellness = ({ userInfo }) => {
               <p className="detail-provider">Organized by {selectedBooking.provider}</p>
               <div className="detail-meta-list">
                 {[
-                  { icon: <Calendar size={18} />,    label: 'Date',         value: selectedBooking.date },
-                  { icon: <Clock size={18} />,        label: 'Time',         value: selectedBooking.time },
-                  { icon: <MapPin size={18} />,       label: 'Location',     value: selectedBooking.location },
-                  { icon: <Users size={18} />,        label: 'Availability', value: selectedBooking.spots },
-                  { icon: <UserCircle size={18} />,   label: 'Trainer',      value: selectedBooking.trainer || 'TBA' },
+                  { icon: <Calendar size={18} />, label: 'Date', value: selectedBooking.date },
+                  { icon: <Clock size={18} />, label: 'Time', value: selectedBooking.time },
+                  { icon: <MapPin size={18} />, label: 'Location', value: selectedBooking.location },
+                  { icon: <Users size={18} />, label: 'Availability', value: selectedBooking.spots },
+                  { icon: <UserCircle size={18} />, label: 'Trainer', value: selectedBooking.trainer || 'TBA' },
                 ].map(m => m.value && (
                   <div key={m.label} className="meta-item-row">
                     <span style={{ color: '#2b1d62' }}>{m.icon}</span>
@@ -1408,13 +1414,13 @@ const Wellness = ({ userInfo }) => {
             <div className="n-modal-body">
               {nursingModal === 'support' ? (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {['Private cubicles with comfortable seating.','Electrical outlets for breast pumps.','Sink and sanitization area.','Refrigeration for temporary breast milk storage.'].map((item, i) => (
+                  {['Private cubicles with comfortable seating.', 'Electrical outlets for breast pumps.', 'Sink and sanitization area.', 'Refrigeration for temporary breast milk storage.'].map((item, i) => (
                     <li key={i} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f5', fontSize: 14, color: '#444' }}>• {item}</li>
                   ))}
                 </ul>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                  {['Keep the area clean after use.','No food or drinks allowed inside the room.','Maximum usage time: 30 minutes per session.','Ensure the door is locked when occupied.'].map((item, i) => (
+                  {['Keep the area clean after use.', 'No food or drinks allowed inside the room.', 'Maximum usage time: 30 minutes per session.', 'Ensure the door is locked when occupied.'].map((item, i) => (
                     <li key={i} style={{ padding: '10px 0', borderBottom: '1px solid #f5f5f5', fontSize: 14, color: '#444' }}>• {item}</li>
                   ))}
                 </ul>

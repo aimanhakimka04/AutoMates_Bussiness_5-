@@ -12,7 +12,7 @@ import './Ticketing.css';
 
 // ─── CONFIG ────────────────────────────────────────────────────────────────────
 // Replace with your actual n8n webhook URL
-const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook-test/employee-assistant';
+const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || ''; // Assume token is stored in localStorage after MSAL login
 
 // ─── n8n API helper ─────────────────────────────────────────────────────────────

@@ -4,7 +4,8 @@ import {
   ChevronLeft, X, MapPin, LogIn, LogOut, Calendar,
   Clock, ChevronRight, CheckCircle, XCircle, Info,
   FileText, Umbrella, ClipboardList, TrendingUp,
-  Loader2, RefreshCw, AlertCircle, Send, Ban, ChevronDown, User
+  Loader2, RefreshCw, AlertCircle, Send, Ban, ChevronDown, User,
+  Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2
 } from 'lucide-react';
 import './FlexHR.css';
 
@@ -77,7 +78,25 @@ const Empty = ({ icon, title, sub }) => (
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ─── HR User Management API calls ────────────────────────────────────────────
+async function callN8NAuth(action, payload = {}) {
+  const body = {
+    input_type: 'direct_action',
+    edited_plan: { action, sub_target: 'auth', ...payload },
+  };
+  const res = await fetch(N8N_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${AUTH_TOKEN()}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`n8n error: ${res.status}`);
+  return res.json();
+}
+
+const ROLES = ['staff', 'hr', 'admin', 'Software Engineer', 'Designer', 'Intern','Mechanic','Driver'];
+
 const FlexHR = ({ userInfo }) => {
+  const isHR = userInfo?.role === 'hr' || userInfo?.role === 'admin';
   const navigate = useNavigate();
   const userName = userInfo?.name || 'EMPLOYEE';
   const userEmail = userInfo?.email || '';
@@ -239,6 +258,98 @@ const FlexHR = ({ userInfo }) => {
     finally { setOtLoad(false); }
   };
 
+  // ── User Management (HR only) ─────────────────────────────────────────────
+  const [umUsers, setUmUsers] = useState([]);
+  const [umLoad, setUmLoad] = useState(false);
+  const [umErr, setUmErr] = useState('');
+  const [umOK, setUmOK] = useState('');
+  const [umSubView, setUmSubView] = useState('list'); // 'list' | 'register' | 'edit'
+  const [umEditTarget, setUmEditTarget] = useState(null); // user being edited
+  const [deleteId, setDeleteId] = useState(null); // email being deleted
+
+  const initRegForm = { name: '', email: '', password: '', role: 'staff' };
+  const [regForm, setRegForm] = useState(initRegForm);
+  const [regLoad, setRegLoad] = useState(false);
+  const [regErr, setRegErr] = useState('');
+
+  const initEditForm = { email: '', name: '', password: '', role: 'staff', is_active: true };
+  const [editForm, setEditForm] = useState(initEditForm);
+  const [editLoad, setEditLoad] = useState(false);
+  const [editErr, setEditErr] = useState('');
+
+  const fetchUsers = useCallback(async () => {
+    setUmLoad(true); setUmErr('');
+    try {
+      const r = await callN8NAuth('list_users');
+      const d = r?.data ?? r?.users ?? r?.result?.data ?? [];
+      setUmUsers(Array.isArray(d) ? d : []);
+    } catch { setUmErr('Could not load users. Check n8n connection.'); }
+    finally { setUmLoad(false); }
+  }, []);
+
+  const submitRegister = async () => {
+    if (!regForm.name.trim() || !regForm.email.trim() || !regForm.password) {
+      setRegErr('Please fill in all fields.'); return;
+    }
+    setRegLoad(true); setRegErr(''); setUmOK('');
+    try {
+      const r = await callN8NAuth('create_user', {
+        name: regForm.name.trim(),
+        email: regForm.email.trim().toLowerCase(),
+        password: regForm.password,
+        role: regForm.role,
+      });
+      if (r?.success === false) throw new Error(r?.message || 'Registration failed');
+      setUmOK(`User "${regForm.email}" created successfully!`);
+      setRegForm(initRegForm);
+      setUmSubView('list');
+      fetchUsers();
+      setTimeout(() => setUmOK(''), 4000);
+    } catch (e) { setRegErr(e.message || 'Registration failed.'); }
+    finally { setRegLoad(false); }
+  };
+
+  const openEdit = (u) => {
+    setUmEditTarget(u);
+    setEditForm({ email: u.email, name: u.name || '', password: '', role: u.role || 'staff', is_active: u.is_active !== false });
+    setEditErr('');
+    setUmSubView('edit');
+  };
+
+  const deleteUser = async (u) => {
+    if (!window.confirm(`Delete account "${u.name || u.email}"? This cannot be undone.`)) return;
+    setDeleteId(u.email);
+    try {
+      const r = await callN8NAuth('delete_user', { target_email: u.email });
+      if (r?.success === false) throw new Error(r?.message || 'Delete failed');
+      setUmOK(`Account "${u.name || u.email}" deleted.`);
+      fetchUsers();
+      setTimeout(() => setUmOK(''), 4000);
+    } catch (e) { setUmErr(e.message || 'Delete failed.'); }
+    finally { setDeleteId(null); }
+  };
+
+  const submitEdit = async () => {
+    setEditLoad(true); setEditErr(''); setUmOK('');
+    try {
+      const payload = {
+        target_email: umEditTarget.email,
+        new_email: editForm.email.trim().toLowerCase(),
+        name: editForm.name.trim(),
+        role: editForm.role,
+        is_active: editForm.is_active,
+      };
+      if (editForm.password) payload.password = editForm.password;
+      const r = await callN8NAuth('update_user', payload);
+      if (r?.success === false) throw new Error(r?.message || 'Update failed');
+      setUmOK(`User "${editForm.email}" updated!`);
+      setUmSubView('list');
+      fetchUsers();
+      setTimeout(() => setUmOK(''), 4000);
+    } catch (e) { setEditErr(e.message || 'Update failed.'); }
+    finally { setEditLoad(false); }
+  };
+
   // ── Calendar ──────────────────────────────────────────────────────────────
   const [calOpen, setCalOpen] = useState(false);
   const [calField, setCalField] = useState('from');
@@ -287,11 +398,12 @@ const FlexHR = ({ userInfo }) => {
     if (view === 'attendance') fetchAtt();
     if (view === 'applyLeave') fetchBal();
     if (view === 'applications') fetchApps();
+    if (view === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
   }, [view]); // eslint-disable-line
 
   const pendingCount = apps.filter(a => (a.status_code || a.status || '').toLowerCase() === 'pending').length;
   const filteredApps = apps.filter(a => appsTab === 'All' || (a.status_code || a.status || '').toLowerCase() === appsTab.toLowerCase());
-  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications' };
+  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications', userAdmin: 'User Management' };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -338,6 +450,17 @@ const FlexHR = ({ userInfo }) => {
                 {pendingCount > 0 && <span className="task-badge">{pendingCount}</span>}
               </div>
             </div>
+            {/* HR-only User Management card */}
+            {isHR && (
+              <div className="card-grid" style={{ marginTop: 0 }}>
+                <div className="action-card" onClick={() => goTo('userAdmin')}
+                  style={{ background: 'linear-gradient(135deg,#1a0f3c,#2b1d62)', border: '2px solid #6c47d9' }}>
+                  <div className="card-icon-wrap" style={{ background: 'rgba(108,71,217,0.22)' }}><Shield size={26} color="#a78bfa" /></div>
+                  <span className="card-text" style={{ color: '#e9d5ff' }}>User Management</span>
+                </div>
+                <div style={{ flex: 1 }} />
+              </div>
+            )}
           </div>
         )}
 
@@ -577,6 +700,76 @@ const FlexHR = ({ userInfo }) => {
             }
           </div>
         )}
+
+        {/* \u2500\u2500 USER MANAGEMENT (HR only) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+        {view === 'userAdmin' && isHR && (
+          <div className="review-module">
+          {umOK && (<div className="success-banner" style={{ marginBottom: 12 }}><CheckCircle size={16} /><span>{umOK}</span></div>)}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+            <button className={`app-tab ${umSubView === 'list' ? 'active' : ''}`} onClick={() => setUmSubView('list')} style={{ flex: 1 }}>All Users</button>
+            <button className={`app-tab ${umSubView === 'register' ? 'active' : ''}`} onClick={() => { setRegForm(initRegForm); setRegErr(''); setUmSubView('register'); }} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'center' }}><UserPlus size={14} /> Register</button>
+          </div>
+          {umSubView === 'list' && (<>
+            <div className="list-header-row"><h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#333' }}>System Users</h4><button onClick={fetchUsers} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', padding: 4 }}><RefreshCw size={15} /></button></div>
+            {umErr && <ErrBanner msg={umErr} onRetry={fetchUsers} />}
+            {umLoad ? <Spinner /> : umUsers.filter(u => u.email && u.email !== 'undefined').length === 0
+              ? <Empty icon={<User size={26} color="#2b1d62" />} title="No users found" sub="Register the first user above" />
+              : umUsers.filter(u => u.email && u.email !== 'undefined').map((u, i) => {
+                  const rc = { admin: '#6c47d9', hr: '#1890ff', staff: '#10b981' }[u.role] || '#9ca3af';
+                  return (
+                    <div key={u.user_id || i} className="review-card" style={{ overflow: 'hidden' }}>
+                      <div className="review-card-body" style={{ cursor: 'pointer' }} onClick={() => openEdit(u)}>
+                        <div className="task-icon-box" style={{ background: rc + '18' }}><User size={19} color={rc} /></div>
+                        <div className="task-details">
+                          <div className="task-top">
+                            <span className="task-type-tag" style={{ background: rc + '18', color: rc }}>{u.role || 'staff'}</span>
+                            <span className="task-date" style={{ color: u.is_active !== false ? '#16a34a' : '#dc2626' }}>{u.is_active !== false ? 'Active' : 'Inactive'}</span>
+                          </div>
+                          <span className="task-title-text">{u.name || u.email}</span>
+                          <span style={{ fontSize: 11, color: '#aaa' }}>{u.email}</span>
+                        </div>
+                        <Edit3 size={15} color="#ccc" style={{ marginRight: 6 }} />
+                      </div>
+                      <div style={{ borderTop: '1px solid #f0f0f4', padding: '5px 12px', display: 'flex', justifyContent: 'flex-end' }}>
+                        <button onClick={e => { e.stopPropagation(); deleteUser(u); }} disabled={deleteId === u.email}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, padding: '2px 8px', borderRadius: 6, opacity: deleteId === u.email ? 0.5 : 1 }}>
+                          {deleteId === u.email ? <Loader2 size={12} style={{ animation: 'fhr-spin 1s linear infinite' }} /> : <Trash2 size={12} />}
+                          Delete Account
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+            }
+          </>)}
+          {umSubView === 'register' && (<div className="leave-form-card">
+            <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><UserPlus size={16} color="#2b1d62" /> Register New User</div>
+            {regErr && <ErrBanner msg={regErr} />}
+            <div className="input-group"><label>Full Name *</label><input className="form-select" placeholder="e.g. Ahmad Bin Ali" value={regForm.name} onChange={e => setRegForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="input-group"><label>Email *</label><input className="form-select" type="email" placeholder="user@chinhin.com" value={regForm.email} onChange={e => setRegForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <div className="input-group"><label>Password *</label><input className="form-select" type="password" placeholder="Min 6 characters" value={regForm.password} onChange={e => setRegForm(f => ({ ...f, password: e.target.value }))} /></div>
+            <div className="input-group"><label>Role *</label><div className="select-wrap"><select className="form-select" value={regForm.role} onChange={e => setRegForm(f => ({ ...f, role: e.target.value }))}>{ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}</select><ChevronDown size={15} className="select-arrow" /></div></div>
+            <button className={`submit-btn ${(!regForm.name || !regForm.email || !regForm.password || regLoad) ? 'disabled' : ''}`} onClick={submitRegister} disabled={regLoad}>{regLoad ? <><Loader2 size={15} style={{ animation: 'fhr-spin 1s linear infinite', marginRight: 7 }} />Creating\u2026</> : <><UserPlus size={15} style={{ marginRight: 7 }} />Create Account</>}</button>
+          </div>)}
+          {umSubView === 'edit' && umEditTarget && (<div className="leave-form-card">
+            <div className="form-section-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Edit3 size={16} color="#2b1d62" /> Edit User</div>
+            {editErr && <ErrBanner msg={editErr} />}
+            <div className="input-group"><label>Full Name</label><input className="form-select" placeholder="Full name" value={editForm.name} onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="input-group"><label>Email</label><input className="form-select" type="email" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} /></div>
+            <div className="input-group"><label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={13} /> New Password <span style={{ fontSize: 10, color: '#aaa', fontWeight: 400 }}>(blank = keep current)</span></label><input className="form-select" type="password" placeholder="Leave blank to keep unchanged" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} /></div>
+            <div className="input-group"><label>Role</label><div className="select-wrap"><select className="form-select" value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>{ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}</select><ChevronDown size={15} className="select-arrow" /></div></div>
+            <div className="input-group"><label>Account Status</label><button onClick={() => setEditForm(f => ({ ...f, is_active: !f.is_active }))} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', fontSize: 14, color: editForm.is_active ? '#16a34a' : '#dc2626' }}>{editForm.is_active ? <><ToggleRight size={24} color="#16a34a" /> Active</> : <><ToggleLeft size={24} color="#dc2626" /> Inactive</>}</button></div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <button className="submit-btn" style={{ flex: 1, background: '#fef2f2', color: '#dc2626', boxShadow: 'none' }}
+                onClick={() => deleteUser(umEditTarget)} disabled={deleteId === umEditTarget?.email}>
+                {deleteId === umEditTarget?.email ? <Loader2 size={14} style={{ animation: 'fhr-spin 1s linear infinite' }} /> : <Trash2 size={14} style={{ marginRight: 4 }} />}Delete
+              </button>
+              <button className="submit-btn" style={{ flex: 1, background: '#f4f1fb', color: '#2b1d62', boxShadow: 'none' }} onClick={() => setUmSubView('list')}>Cancel</button>
+              <button className={`submit-btn ${editLoad ? 'disabled' : ''}`} style={{ flex: 2 }} onClick={submitEdit} disabled={editLoad}>{editLoad ? <><Loader2 size={15} style={{ animation: 'fhr-spin 1s linear infinite', marginRight: 7 }} />Saving\u2026</> : <><CheckCircle size={15} style={{ marginRight: 7 }} />Save Changes</>}</button>
+            </div>
+          </div>)}
+        </div>
+      )}
       </div>
 
       {/* ── DETAIL MODAL ──────────────────────────────────────────────────── */}
