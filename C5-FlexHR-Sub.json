@@ -1111,7 +1111,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.employee_id && !row?.email) return [{ json: { success: false, message: 'User not found or protected account.' } }];\nreturn [{ json: { success: true, message: `Account deleted: ${row.email}`, data: row } }];"
+        "jsCode": "const row=($input.all()||[])[0]?.json||{};\nif(!row?.employee_id&&!row?.email)return[{json:{success:false,message:'User not found or protected account.'}}];\nreturn[{json:{success:true,message:`Account deleted: ${row.email}`,data:row}}];"
       },
       "id": "fmt-del-user-001",
       "name": "Format Delete User",
@@ -1244,7 +1244,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = $input.all().map(i=>i.json).filter(r=>r&&r.shift_id);\nreturn [{json:{success:true,data:rows}}];"
+        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.shift_id);\nreturn [{json:{success:true,data:rows}}];"
       },
       "id": "tt-cd-Format List Shifts",
       "name": "Format List Shifts",
@@ -1257,7 +1257,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row=$input.first()?.json||{};\nif(!row?.shift_id)return[{json:{success:false,message:'Create shift failed'}}];\nreturn[{json:{success:true,message:`Shift created: ${row.shift_name}`,data:row}}];"
+        "jsCode": "const row=($input.all()||[])[0]?.json||{};\nif(!row?.shift_id)return[{json:{success:false,message:'Create shift failed'}}];\nreturn[{json:{success:true,message:`Shift created: ${row.shift_name}`,data:row}}];"
       },
       "id": "tt-cd-Format Create Shift",
       "name": "Format Create Shift",
@@ -1270,7 +1270,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
+        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
       },
       "id": "tt-cd-Format My Timetable",
       "name": "Format My Timetable",
@@ -1283,7 +1283,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
+        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
       },
       "id": "tt-cd-Format All Timetable",
       "name": "Format All Timetable",
@@ -1296,7 +1296,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows=$input.all().map(i=>i.json).filter(r=>r&&r.timetable_id);\nif(!rows.length)return[{json:{success:false,message:'Assignment failed \u2014 check date range or employee ID'}}];\nreturn[{json:{success:true,message:`Assigned ${rows.length} day(s)`,data:rows}}];"
+        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.timetable_id);\nif(!rows.length)return[{json:{success:false,message:'Assignment failed \u2014 check date range or employee ID'}}];\nreturn[{json:{success:true,message:`Assigned ${rows.length} day(s)`,data:rows}}];"
       },
       "id": "tt-cd-Format Assign Timetable",
       "name": "Format Assign Timetable",
@@ -1309,7 +1309,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row=$input.first()?.json||{};\nreturn[{json:{success:true,ot_detected:!!row?.overtime_id,ot_hours:row?.hours||0}}];"
+        "jsCode": "const row=($input.all()||[])[0]?.json||{};\nreturn[{json:{success:true,ot_detected:!!row?.overtime_id,ot_hours:row?.hours||0}}];"
       },
       "id": "tt-cd-Format Auto OT",
       "name": "Format Auto OT",

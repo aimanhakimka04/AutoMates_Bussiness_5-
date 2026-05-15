@@ -221,9 +221,13 @@ const FlexHR = ({ userInfo }) => {
     setAppsLoad(true); setAppsErr('');
     try {
       const r = await callN8N('list_leaves', { user_email: userEmail, user_name: userName });
+      console.log('[fetchApps] raw:', r);
       const d = r?.data ?? r?.result?.data ?? [];
       setApps(Array.isArray(d) ? d : []);
-    } catch { setAppsErr('Could not load applications.'); }
+    } catch (e) {
+      console.warn('[fetchApps] error:', e?.message || e);
+      setApps([]); // show empty list instead of blocking
+    }
     finally { setAppsLoad(false); }
   }, [userEmail, userName]);
 
@@ -284,6 +288,7 @@ const FlexHR = ({ userInfo }) => {
   const [mttOK, setMttOK] = useState('');
   const [mttSubView, setMttSubView] = useState('calendar'); // 'calendar' | 'assign' | 'createShift'
   const [mttSelEmp, setMttSelEmp] = useState('');
+  const [mttDetail, setMttDetail] = useState(null); // { dateStr, entries }
   const initAssignForm = { startDate: '', endDate: '', shiftId: '', targetEmpId: '', isOff: false, weekdaysOnly: true };
   const [mttAssign, setMttAssign] = useState(initAssignForm);
   const [mttAssignLoad, setMttAssignLoad] = useState(false);
@@ -301,9 +306,13 @@ const FlexHR = ({ userInfo }) => {
     const { start, end } = getMonthRange(ttMonth.year, ttMonth.month);
     try {
       const r = await callN8N('get_my_timetable', { user_email: userEmail, month_start: start, month_end: end });
+      console.log('[fetchMyTT] raw:', r);
       const d = r?.data || (Array.isArray(r) ? r : []);
       setTtData(Array.isArray(d) ? d : []);
-    } catch { setTtErr('Failed to load timetable'); }
+    } catch (e) {
+      console.warn('[fetchMyTT] error:', e?.message || e);
+      setTtData([]); // show empty calendar instead of blocking
+    }
     setTtLoad(false);
   }, [ttMonth, userEmail]);
 
@@ -319,9 +328,13 @@ const FlexHR = ({ userInfo }) => {
     const { start, end } = getMonthRange(mttMonth.year, mttMonth.month);
     try {
       const r = await callN8N('get_all_timetable', { user_email: userEmail, month_start: start, month_end: end });
+      console.log('[fetchAllTT] raw:', r);
       const d = r?.data || (Array.isArray(r) ? r : []);
       setMttAllData(Array.isArray(d) ? d : []);
-    } catch { setMttErr('Failed to load timetable'); }
+    } catch (e) {
+      console.warn('[fetchAllTT] error:', e?.message || e);
+      setMttAllData([]); // still show calendar
+    }
     setMttLoad(false);
   }, [mttMonth, userEmail]);
 
@@ -1018,8 +1031,11 @@ const FlexHR = ({ userInfo }) => {
                       const dateStr = `${mttMonth.year}-${p(mttMonth.month + 1)}-${p(day)}`;
                       const entries = dayMap[dateStr] || [];
                       const dots = [...new Set(entries.map(e => e.punch_status))].slice(0, 3);
+                      const hasData = entries.length > 0;
                       return (
-                        <div key={dateStr} style={{ border: '1px solid #e5e7eb', borderRadius: 8, minHeight: 44, padding: '4px 2px', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                        <div key={dateStr}
+                          onClick={() => hasData && setMttDetail({ dateStr, entries })}
+                          style={{ border: `1px solid ${hasData ? '#a78bfa' : '#e5e7eb'}`, borderRadius: 8, minHeight: 44, padding: '4px 2px', background: hasData ? '#faf5ff' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, cursor: hasData ? 'pointer' : 'default' }}>
                           <span style={{ fontSize: 11, fontWeight: 600, color: '#333' }}>{day}</span>
                           <div style={{ display: 'flex', gap: 2 }}>
                             {dots.map((s, i) => <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_DOT[s] || '#ccc' }} />)}
@@ -1033,6 +1049,31 @@ const FlexHR = ({ userInfo }) => {
                 <div style={{ marginTop: 12, textAlign: 'center' }}>
                   <button onClick={fetchAllTT} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2b1d62', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13 }}><RefreshCw size={13} /> Refresh</button>
                 </div>
+                {/* Day detail popup */}
+                {mttDetail && (
+                  <div className="cal-overlay" onClick={() => setMttDetail(null)}>
+                    <div className="cal-modal" onClick={e => e.stopPropagation()}>
+                      <div className="cal-header">
+                        <span className="cal-title">{mttDetail.dateStr}</span>
+                        <button onClick={() => setMttDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }}><X size={18} /></button>
+                      </div>
+                      <div style={{ padding: '14px 16px', maxHeight: '60vh', overflowY: 'auto' }}>
+                        {mttDetail.entries.map((en, i) => {
+                          const statusColor = { on_time: '#16a34a', late: '#dc2626', absent: '#3b82f6', scheduled: '#7c3aed', rest_day: '#9ca3af' }[en.punch_status] || '#333';
+                          const statusLabel = { on_time: '✅ On Time', late: '🔴 Late', absent: '🔵 Absent', scheduled: '📅 Scheduled', rest_day: '⚪ Rest Day' }[en.punch_status] || '--';
+                          return (
+                            <div key={i} style={{ borderBottom: i < mttDetail.entries.length - 1 ? '1px solid #f0f0f4' : 'none', paddingBottom: 10, marginBottom: 10 }}>
+                              <div style={{ fontWeight: 700, fontSize: 13, color: '#2b1d62', marginBottom: 4 }}>{en.employee_name || en.email}</div>
+                              <div className="detail-row"><label>Shift</label><span>{en.shift_name || '--'}</span></div>
+                              <div className="detail-row"><label>Work Hours</label><span>{en.start_time?.slice(0,5)} – {en.end_time?.slice(0,5)}</span></div>
+                              <div className="detail-row"><label>Status</label><span style={{ fontWeight: 700, color: statusColor }}>{statusLabel}</span></div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>)}
 
               {mttSubView === 'assign' && (
