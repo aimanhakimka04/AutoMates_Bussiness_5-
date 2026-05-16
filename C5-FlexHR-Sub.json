@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\n// Core fields\nconst user_email   = clean(input.user_email)    || clean(plan.user_email);\nconst user_name    = clean(input.user_name)     || clean(plan.user_name);\nconst leave_type   = data.leave_type    || '';\nconst start_date   = data.start_date    || '';\nconst end_date     = data.end_date      || '';\nconst total_days   = data.total_days    || 0;\nconst reason       = data.reason        || '';\nconst leave_id     = data.leave_id      || null;\nconst attendance_id = data.attendance_id || null;\nconst hours        = data.hours         || 0;\nconst work_date    = data.work_date     || '';\nconst employee_id  = input.employee_id  || null;\n\n// Auth fields\nconst email        = clean(data.email)        || clean(input.user_email);\nconst password     = clean(data.password)     || '';\nconst role         = clean(data.role)         || 'staff';\nconst is_active    = data.is_active !== undefined ? data.is_active : true;\nconst target_email = clean(data.target_email) || '';\nconst new_email    = clean(data.new_email)    || '';\nconst name         = clean(data.name)         || clean(data.user_name) || '';\n\n// Timetable fields\nconst month_start        = clean(data.month_start)  || clean(input.month_start) || '';\nconst month_end          = clean(data.month_end)    || clean(input.month_end)   || '';\nconst shift_id           = data.shift_id            || input.shift_id           || null;\nconst shift_name         = clean(data.shift_name)   || '';\nconst start_time         = clean(data.start_time)   || '';\nconst end_time           = clean(data.end_time)     || '';\nconst target_employee_id = data.target_employee_id  || input.target_employee_id || null;\nconst weekdays_only      = data.weekdays_only        || false;\nconst is_off             = data.is_off               || false;\n\nreturn [{\n  json: {\n    action,\n    user_email, user_name,\n    leave_type, start_date, end_date, total_days, reason,\n    leave_id, attendance_id, hours, work_date, employee_id,\n    email, password, role, is_active, target_email, new_email, name,\n    month_start, month_end, shift_id, shift_name, start_time, end_time,\n    target_employee_id, weekdays_only, is_off,\n  }\n}];\n"
+        "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\n// Core fields\nconst user_email   = clean(input.user_email)    || clean(plan.user_email);\nconst user_name    = clean(input.user_name)     || clean(plan.user_name);\nconst leave_type   = data.leave_type    || '';\nconst start_date   = data.start_date    || '';\nconst end_date     = data.end_date      || '';\nconst total_days   = data.total_days    || 0;\nconst reason       = data.reason        || '';\nconst leave_id     = data.leave_id      || null;\nconst attendance_id = data.attendance_id || null;\nconst hours        = data.hours         || 0;\nconst work_date    = data.work_date     || '';\nconst employee_id  = input.employee_id  || null;\n\n// Auth fields\nconst email        = clean(data.email)        || clean(input.user_email);\nconst password     = clean(data.password)     || '';\nconst role         = clean(data.role)         || 'staff';\nconst is_active    = data.is_active !== undefined ? data.is_active : true;\nconst target_email = clean(data.target_email) || '';\nconst new_email    = clean(data.new_email)    || '';\nconst name         = clean(data.name)         || clean(data.user_name) || '';\nconst employment_start_date = clean(data.employment_start_date) || '';\n\n// Timetable fields\nconst month_start        = clean(data.month_start)  || clean(input.month_start) || '';\nconst month_end          = clean(data.month_end)    || clean(input.month_end)   || '';\nconst shift_id           = data.shift_id            || input.shift_id           || null;\nconst shift_name         = clean(data.shift_name)   || '';\nconst start_time         = clean(data.start_time)   || '';\nconst end_time           = clean(data.end_time)     || '';\nconst target_employee_id = data.target_employee_id  || input.target_employee_id || null;\nconst weekdays_only      = data.weekdays_only        || false;\nconst is_off             = data.is_off               || false;\n\nreturn [{\n  json: {\n    action,\n    user_email, user_name,\n    leave_type, start_date, end_date, total_days, reason,\n    leave_id, attendance_id, hours, work_date, employee_id,\n    email, password, role, is_active, target_email, new_email, name, employment_start_date,\n    month_start, month_end, shift_id, shift_name, start_time, end_time,\n    target_employee_id, weekdays_only, is_off,\n  }\n}];\n"
       },
       "id": "5cc53372-ac91-426f-a015-0915e535384b",
       "name": "Parse Input",
@@ -748,7 +748,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT lt.leave_type_name, COALESCE(SUM(el.total_days) FILTER (WHERE sc.status_code = 'APPROVED'), 0) AS used, CASE lt.leave_type_name WHEN 'Annual Leave' THEN 14 WHEN 'Sick Leave' THEN 14 WHEN 'Emergency Leave' THEN 3 WHEN 'Personal Leave' THEN 2 WHEN 'Maternity Leave' THEN 60 WHEN 'Paternity Leave' THEN 3 ELSE 0 END AS entitled FROM employees e CROSS JOIN leave_types lt LEFT JOIN employee_leaves el ON el.employee_id = e.employee_id AND el.leave_type_id = lt.leave_type_id AND el.start_date >= DATE_TRUNC('year', NOW()) LEFT JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '={{ $json.user_email }}' GROUP BY lt.leave_type_name",
+        "query": "SELECT lt.leave_type_name, COALESCE(SUM(el.total_days) FILTER (WHERE sc.status_code = 'APPROVED'), 0) AS used, CASE lt.leave_type_name WHEN 'Annual Leave' THEN 14 WHEN 'Sick Leave' THEN 14 WHEN 'Emergency Leave' THEN 3 WHEN 'Personal Leave' THEN 2 WHEN 'Maternity Leave' THEN 60 WHEN 'Paternity Leave' THEN 3 ELSE 0 END AS entitled, e.employment_start_date FROM employees e CROSS JOIN leave_types lt LEFT JOIN employee_leaves el ON el.employee_id = e.employee_id AND el.leave_type_id = lt.leave_type_id AND el.start_date >= DATE_TRUNC('year', NOW()) LEFT JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '={{ $json.user_email }}' GROUP BY lt.leave_type_name, e.employment_start_date",
         "options": {}
       },
       "id": "5a42d2dc-5cc9-430b-8232-171e26edb996",
@@ -768,7 +768,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_type_name);\nconst bal = {};\nrows.forEach(r => { if (r.leave_type_name) bal[r.leave_type_name] = Math.max(0, Number(r.entitled) - Number(r.used)); });\nreturn [{ json: { success: true, data: bal } }];"
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_type_name);\nconst empDate = rows[0]?.employment_start_date || null;\nconst bal = { annual_leave_used: 0, sick_leave_used: 0, employment_start_date: empDate };\nrows.forEach(r => {\n  if (r.leave_type_name === 'Annual Leave') bal.annual_leave_used = Number(r.used) || 0;\n  if (r.leave_type_name === 'Sick Leave')   bal.sick_leave_used   = Number(r.used) || 0;\n});\nreturn [{ json: { success: true, data: bal } }];"
       },
       "id": "ad883228-039b-4ad3-a131-5934dccbe872",
       "name": "Format Leave Balance",
@@ -956,7 +956,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT e.employee_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active FROM public.employees e WHERE e.email = '{{ $json.email }}' AND e.password_hash IS NOT NULL AND e.password_hash = crypt('{{ $json.password }}', e.password_hash) AND COALESCE(e.is_active, TRUE) = TRUE LIMIT 1",
+        "query": "SELECT e.employee_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employment_start_date FROM public.employees e WHERE e.email = '{{ $json.email }}' AND e.password_hash IS NOT NULL AND e.password_hash = crypt('{{ $json.password }}', e.password_hash) AND COALESCE(e.is_active, TRUE) = TRUE LIMIT 1",
         "options": {}
       },
       "id": "auth-login-query-001",
@@ -976,7 +976,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first().json;\nif (!row?.email) return [{ json: { success: false, message: 'Invalid email or password.' } }];\nreturn [{ json: { success: true, user: { user_id: row.employee_id, email: row.email, name: row.name || row.email, role: row.role || 'staff', employee_id: row.employee_id } } }];"
+        "jsCode": "const row = $input.first().json;\nif (!row?.email) return [{ json: { success: false, message: 'Invalid email or password.' } }];\nreturn [{ json: { success: true, user: { user_id: row.employee_id, email: row.email, name: row.name || row.email, role: row.role || 'staff', employee_id: row.employee_id, employment_start_date: row.employment_start_date || null } } }];"
       },
       "id": "auth-login-format-001",
       "name": "Format Login",
@@ -990,7 +990,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT e.employee_id AS user_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employee_type FROM public.employees e ORDER BY e.employee_id ASC",
+        "query": "SELECT e.employee_id AS user_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employee_type, e.employment_start_date FROM public.employees e ORDER BY e.employee_id ASC",
         "options": {}
       },
       "id": "auth-list-users-query-001",
@@ -1024,7 +1024,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO public.employees (employee_name, email, employee_type, employee_role, password_hash, is_active) VALUES ('{{ $json.name }}', '{{ $json.email }}', '{{ $json.role }}', '{{ $json.role }}', crypt('{{ $json.password }}', gen_salt('bf')), TRUE) ON CONFLICT (email) DO NOTHING RETURNING employee_id AS user_id, email, employee_role AS role",
+        "query": "INSERT INTO public.employees (employee_name, email, employee_type, employee_role, password_hash, is_active, employment_start_date) VALUES ('{{ $json.name }}', '{{ $json.email }}', '{{ $json.role }}', '{{ $json.role }}', crypt('{{ $json.password }}', gen_salt('bf')), TRUE, NULLIF('{{ $json.employment_start_date }}', '')::date) ON CONFLICT (email) DO NOTHING RETURNING employee_id AS user_id, email, employee_role AS role, employment_start_date",
         "options": {}
       },
       "id": "auth-create-user-query-001",
@@ -1058,7 +1058,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE public.employees SET email = '{{ $json.new_email || $json.target_email }}', employee_name = '{{ $json.name }}', employee_role = '{{ $json.role }}', is_active = {{ $json.is_active }}, password_hash = CASE WHEN '{{ $json.password }}' != '' AND '{{ $json.password }}' != 'undefined' THEN crypt('{{ $json.password }}', gen_salt('bf')) ELSE password_hash END WHERE email = '{{ $json.target_email }}' RETURNING employee_id AS user_id, email, employee_role AS role, is_active",
+        "query": "UPDATE public.employees SET email = '{{ $json.new_email || $json.target_email }}', employee_name = '{{ $json.name }}', employee_role = '{{ $json.role }}', is_active = {{ $json.is_active }}, employment_start_date = NULLIF('{{ $json.employment_start_date }}', '')::date, password_hash = CASE WHEN '{{ $json.password }}' != '' AND '{{ $json.password }}' != 'undefined' THEN crypt('{{ $json.password }}', gen_salt('bf')) ELSE password_hash END WHERE email = '{{ $json.target_email }}' RETURNING employee_id AS user_id, email, employee_role AS role, is_active, employment_start_date",
         "options": {}
       },
       "id": "auth-update-user-query-001",

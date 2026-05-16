@@ -161,7 +161,9 @@
 }
 .new-punch-btn.in-state  { background: linear-gradient(135deg, #2b1d62, #4a379d); }
 .new-punch-btn.out-state { background: linear-gradient(135deg, #f39c12, #d35400); }
-.new-punch-btn:active    { transform: scale(0.92); }
+.new-punch-btn.locked-state { background: linear-gradient(135deg, #9ca3af, #6b7280); cursor: not-allowed; box-shadow: none; }
+.new-punch-btn:active:not(:disabled) { transform: scale(0.92); }
+.punch-outer-ring.locked { border-color: #d1d5db; border-style: dashed; animation: none; }
 
 .btn-content { display: flex; flex-direction: column; align-items: center; }
 .main-text   { font-size: 20px; font-weight: 800; letter-spacing: 1px; }

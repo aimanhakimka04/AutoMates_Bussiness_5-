@@ -50,6 +50,15 @@ const getStatusInfo = (status) => {
 };
 const LEAVE_TYPES = ['Annual Leave', 'Sick Leave', 'Emergency Leave', 'Personal Leave', 'Maternity Leave', 'Paternity Leave'];
 
+// Employment Act 1955 (Malaysia) – leave entitlement by years of service
+const getLeaveEntitlement = (employmentStartDate) => {
+  if (!employmentStartDate) return { annual: 8, sick: 14, years: 0 };
+  const years = (Date.now() - new Date(employmentStartDate)) / (365.25 * 24 * 60 * 60 * 1000);
+  if (years >= 5) return { annual: 16, sick: 22, years: Math.floor(years) };
+  if (years >= 2) return { annual: 12, sick: 18, years: Math.floor(years) };
+  return { annual: 8, sick: 14, years: Math.floor(years) };
+};
+
 // ─── UI Atoms ─────────────────────────────────────────────────────────────────
 const Spinner = () => (
   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px 0', gap: 12 }}>
@@ -114,6 +123,8 @@ const FlexHR = ({ userInfo }) => {
   const [punchErr, setPunchErr] = useState('');
   const [punchOK, setPunchOK] = useState('');   // success message
   const [attHistory, setAttHistory] = useState([]);
+  const [todayShift, setTodayShift] = useState(null);
+  const [todayShiftLoaded, setTodayShiftLoaded] = useState(false);
 
   const fetchAtt = useCallback(async () => {
     setAttLoading(true); setAttErr('');
@@ -125,9 +136,52 @@ const FlexHR = ({ userInfo }) => {
     finally { setAttLoading(false); }
   }, [userEmail, userName]);
 
+  const fetchTodayShift = useCallback(async () => {
+    setTodayShiftLoaded(false);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    try {
+      const r = await callN8N('get_my_timetable', { user_email: userEmail, month_start: todayStr, month_end: todayStr });
+      const d = r?.data || (Array.isArray(r) ? r : []);
+      const arr = Array.isArray(d) ? d : [];
+      const entry = arr.find(e => e.work_date?.slice(0, 10) === todayStr) || null;
+      setTodayShift(entry);
+    } catch { setTodayShift(null); }
+    setTodayShiftLoaded(true);
+  }, [userEmail]);
+
   const lastEnt = attHistory[0];
   const isOnDuty = !!(lastEnt?.clock_in_time && !lastEnt?.clock_out_time);
   const nextPunchAct = isOnDuty ? 'punch_out' : 'punch_in';
+
+  const isPunchInAllowed = useMemo(() => {
+    if (isOnDuty) return true; // punch-out always allowed
+    if (!todayShiftLoaded) return false;
+    if (!todayShift) return false; // no shift → locked
+    const now = new Date();
+    const [h, m] = (todayShift.start_time || '08:00').split(':').map(Number);
+    const shiftStart = new Date(); shiftStart.setHours(h, m, 0, 0);
+    const windowStart = new Date(shiftStart.getTime() - 30 * 60 * 1000);  // 30 min before
+    const windowEnd   = new Date(shiftStart.getTime() + 3 * 60 * 60 * 1000); // 3 hrs after
+    return now >= windowStart && now <= windowEnd;
+  }, [isOnDuty, todayShift, todayShiftLoaded]);
+
+  const punchWindowMsg = useMemo(() => {
+    if (isOnDuty) return '';
+    if (!todayShiftLoaded) return 'Loading your schedule…';
+    if (!todayShift) return 'No shift scheduled for today. Punch In is unavailable.';
+    const [h, m] = (todayShift.start_time || '08:00').split(':').map(Number);
+    const shiftStart = new Date(); shiftStart.setHours(h, m, 0, 0);
+    const windowStart = new Date(shiftStart.getTime() - 30 * 60 * 1000);
+    const windowEnd   = new Date(shiftStart.getTime() + 3 * 60 * 60 * 1000);
+    const now = new Date();
+    if (now < windowStart) {
+      return `Punch In opens at ${windowStart.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+    }
+    if (now > windowEnd) {
+      return `Punch In window closed at ${windowEnd.toLocaleTimeString('en-MY', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+    }
+    return '';
+  }, [isOnDuty, todayShift, todayShiftLoaded, isPunchInAllowed]); // eslint-disable-line
 
   const handlePunch = async () => {
     setIsPunching(true); setPunchErr(''); setPunchOK('');
@@ -175,6 +229,7 @@ const FlexHR = ({ userInfo }) => {
   const [lvErr, setLvErr] = useState('');
   const [lvOK, setLvOK] = useState(false);
   const [balance, setBalance] = useState(null);
+  const [employmentStartDate, setEmploymentStartDate] = useState(userInfo?.employment_start_date || null);
   const [balLoad, setBalLoad] = useState(false);
 
   const duration = useMemo(() => {
@@ -186,10 +241,13 @@ const FlexHR = ({ userInfo }) => {
     setBalLoad(true);
     try {
       const r = await callN8N('check_leave_balance', { user_email: userEmail, user_name: userName });
-      setBalance(r?.data ?? r?.result?.data ?? null);
+      const data = r?.data ?? r?.result?.data ?? null;
+      setBalance(data);
+      const empDate = data?.employment_start_date || r?.employment_start_date || userInfo?.employment_start_date || null;
+      if (empDate) setEmploymentStartDate(empDate);
     } catch { }
     finally { setBalLoad(false); }
-  }, [userEmail, userName]);
+  }, [userEmail, userName, userInfo]);
 
   const submitLeave = async () => {
     if (!lvForm.fromDate || !lvForm.toDate || !lvForm.reason.trim()) { setLvErr('Please fill all required fields.'); return; }
@@ -368,12 +426,12 @@ const FlexHR = ({ userInfo }) => {
     setNewShiftLoad(false);
   };
 
-  const initRegForm = { name: '', email: '', password: '', role: 'staff' };
+  const initRegForm = { name: '', email: '', password: '', role: 'staff', employment_start_date: '' };
   const [regForm, setRegForm] = useState(initRegForm);
   const [regLoad, setRegLoad] = useState(false);
   const [regErr, setRegErr] = useState('');
 
-  const initEditForm = { email: '', name: '', password: '', role: 'staff', is_active: true };
+  const initEditForm = { email: '', name: '', password: '', role: 'staff', is_active: true, employment_start_date: '' };
   const [editForm, setEditForm] = useState(initEditForm);
   const [editLoad, setEditLoad] = useState(false);
   const [editErr, setEditErr] = useState('');
@@ -399,6 +457,7 @@ const FlexHR = ({ userInfo }) => {
         email: regForm.email.trim().toLowerCase(),
         password: regForm.password,
         role: regForm.role,
+        employment_start_date: regForm.employment_start_date || null,
       });
       if (r?.success === false) throw new Error(r?.message || 'Registration failed');
       setUmOK(`User "${regForm.email}" created successfully!`);
@@ -412,7 +471,11 @@ const FlexHR = ({ userInfo }) => {
 
   const openEdit = (u) => {
     setUmEditTarget(u);
-    setEditForm({ email: u.email, name: u.name || '', password: '', role: u.role || 'staff', is_active: u.is_active !== false });
+    setEditForm({
+      email: u.email, name: u.name || '', password: '', role: u.role || 'staff',
+      is_active: u.is_active !== false,
+      employment_start_date: u.employment_start_date ? u.employment_start_date.slice(0, 10) : '',
+    });
     setEditErr('');
     setUmSubView('edit');
   };
@@ -439,6 +502,7 @@ const FlexHR = ({ userInfo }) => {
         name: editForm.name.trim(),
         role: editForm.role,
         is_active: editForm.is_active,
+        employment_start_date: editForm.employment_start_date || null,
       };
       if (editForm.password) payload.password = editForm.password;
       const r = await callN8NAuth('update_user', payload);
@@ -496,7 +560,7 @@ const FlexHR = ({ userInfo }) => {
 
   // ── side effects ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (view === 'attendance') fetchAtt();
+    if (view === 'attendance') { fetchAtt(); fetchTodayShift(); }
     if (view === 'applyLeave') fetchBal();
     if (view === 'applications') fetchApps();
     if (view === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
@@ -531,6 +595,38 @@ const FlexHR = ({ userInfo }) => {
                 <div className="greeting-sub">What would you like to do?</div>
               </div>
             </div>
+            <h3 className="section-label">My Leave Entitlement</h3>
+            {(() => {
+              const empDate = userInfo?.employment_start_date;
+              const ent = getLeaveEntitlement(empDate);
+              return (
+                <div style={{ background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', borderRadius: 14, padding: '12px 16px', marginBottom: 16, border: '1px solid #ddd6fe' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#6c47d9', letterSpacing: 0.5 }}>EA 1955</span>
+                    <span style={{ fontSize: 11, background: '#ede9fe', color: '#6c47d9', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{ent.years}yr{ent.years !== 1 ? 's' : ''} service</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div style={{ background: '#fff', borderRadius: 10, padding: '8px 12px', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Umbrella size={18} color="#6c47d9" />
+                      <div>
+                        <div style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>ANNUAL</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#2b1d62', lineHeight: 1 }}>{ent.annual}<span style={{ fontSize: 11, fontWeight: 400, color: '#aaa' }}> days</span></div>
+                      </div>
+                    </div>
+                    <div style={{ background: '#fff', borderRadius: 10, padding: '8px 12px', border: '1px solid #e9d5ff', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <FileText size={18} color="#0ea5e9" />
+                      <div>
+                        <div style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>SICK</div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#0ea5e9', lineHeight: 1 }}>{ent.sick}<span style={{ fontSize: 11, fontWeight: 400, color: '#aaa' }}> days</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#888', marginTop: 6, textAlign: 'center' }}>
+                    {empDate ? `${ent.years} year${ent.years !== 1 ? 's' : ''} of service · Tap Apply Leave for details` : '⚠ Set employment date in HR → accurate entitlement'}
+                  </div>
+                </div>
+              );
+            })()}
             <h3 className="section-label">Quick Actions</h3>
             <div className="card-grid">
               <div className="action-card" onClick={() => goTo('attendance')}>
@@ -577,6 +673,7 @@ const FlexHR = ({ userInfo }) => {
                 <div style={{ flex: 1 }} />
               </div>
             )}
+
           </div>
         )}
 
@@ -593,18 +690,41 @@ const FlexHR = ({ userInfo }) => {
               </div>
             )}
             <div className="punch-zone">
-              <div className={`punch-outer-ring ${isPunching ? 'spinning' : ''}`}>
-                <button className={`new-punch-btn ${isOnDuty ? 'out-state' : 'in-state'}`} onClick={handlePunch} disabled={isPunching}>
+              <div className={`punch-outer-ring ${isPunching ? 'spinning' : ''} ${(!isPunchInAllowed && !isOnDuty) ? 'locked' : ''}`}>
+                <button
+                  className={`new-punch-btn ${isOnDuty ? 'out-state' : 'in-state'} ${(!isPunchInAllowed && !isOnDuty) ? 'locked-state' : ''}`}
+                  onClick={handlePunch}
+                  disabled={isPunching || (!isPunchInAllowed && !isOnDuty)}
+                >
                   <div className="btn-content">
                     {isPunching
                       ? <Loader2 size={32} style={{ animation: 'fhr-spin 1s linear infinite' }} />
-                      : <><span className="main-text">{isOnDuty ? 'PUNCH OUT' : 'PUNCH IN'}</span>
-                        <span className="sub-text">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></>
+                      : (!isPunchInAllowed && !isOnDuty)
+                        ? <><span className="main-text" style={{ fontSize: 15 }}>LOCKED</span><span className="sub-text"><Clock size={11} style={{ marginRight: 3 }} />Outside Work Hours</span></>
+                        : <><span className="main-text">{isOnDuty ? 'PUNCH OUT' : 'PUNCH IN'}</span>
+                          <span className="sub-text">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></>
                     }
                   </div>
                 </button>
               </div>
               <div className="location-pill"><MapPin size={13} /><span>GPS Location</span></div>
+              {punchWindowMsg && !isOnDuty && (
+                <div style={{
+                  background: isPunchInAllowed ? '#f0fdf4' : '#fffbeb',
+                  border: `1px solid ${isPunchInAllowed ? '#bbf7d0' : '#fde68a'}`,
+                  borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', gap: 8, alignItems: 'center', margin: '10px 0'
+                }}>
+                  <Clock size={14} color={isPunchInAllowed ? '#16a34a' : '#d97706'} style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: isPunchInAllowed ? '#15803d' : '#92400e', fontWeight: 500 }}>{punchWindowMsg}</span>
+                </div>
+              )}
+              {todayShift && (
+                <div style={{ fontSize: 12, color: '#888', textAlign: 'center', marginTop: 4 }}>
+                  Today's Shift: <strong style={{ color: '#2b1d62' }}>{todayShift.shift_name || 'Scheduled'}</strong>
+                  {' '}{(todayShift.start_time || '').slice(0,5)} – {(todayShift.end_time || '').slice(0,5)}
+                </div>
+              )}
               {punchErr && <ErrBanner msg={punchErr} />}
               {punchOK && (
                 <div style={{
@@ -654,16 +774,44 @@ const FlexHR = ({ userInfo }) => {
         {view === 'applyLeave' && (
           <div className="leave-module">
             {lvOK && <div className="success-banner"><CheckCircle size={17} /><span>Leave submitted successfully!</span></div>}
-            {balance && !balLoad && (
-              <div className="balance-row">
-                {Object.entries(balance).map(([k, v]) => (
-                  <div key={k} className="balance-pill">
-                    <span className="bal-num">{v}</span>
-                    <span className="bal-label">{k}</span>
+            {/* ── Leave Entitlement Banner (EA 1955) ── */}
+            {(() => {
+              const empDate = employmentStartDate || userInfo?.employment_start_date;
+              const ent = getLeaveEntitlement(empDate);
+              const annualUsed  = typeof balance?.annual_leave_used  === 'number' ? balance.annual_leave_used  : (typeof balance?.['Annual Leave'] === 'number' && balance['Annual Leave'] <= ent.annual ? ent.annual - balance['Annual Leave'] : 0);
+              const sickUsed    = typeof balance?.sick_leave_used    === 'number' ? balance.sick_leave_used    : (typeof balance?.['Sick Leave']   === 'number' && balance['Sick Leave']   <= ent.sick   ? ent.sick   - balance['Sick Leave']   : 0);
+              const annualLeft  = ent.annual - annualUsed;
+              const sickLeft    = ent.sick   - sickUsed;
+              return (
+                <div style={{ background: 'linear-gradient(135deg,#f5f3ff,#ede9fe)', borderRadius: 14, padding: '14px 16px', marginBottom: 14, border: '1px solid #ddd6fe' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#6c47d9', letterSpacing: 0.5 }}>LEAVE ENTITLEMENT (EA 1955)</span>
+                    <span style={{ fontSize: 11, background: '#ede9fe', color: '#6c47d9', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>
+                      {ent.years}yr{ent.years !== 1 ? 's' : ''} service
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #e9d5ff' }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 4, fontWeight: 600 }}>ANNUAL LEAVE</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                        <span style={{ fontSize: 24, fontWeight: 800, color: annualLeft > 0 ? '#16a34a' : '#dc2626' }}>{Math.max(0, annualLeft)}</span>
+                        <span style={{ fontSize: 11, color: '#aaa' }}>/ {ent.annual} days left</span>
+                      </div>
+                      {annualUsed > 0 && <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>{annualUsed} days used</div>}
+                    </div>
+                    <div style={{ background: '#fff', borderRadius: 10, padding: '10px 12px', border: '1px solid #e9d5ff' }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 4, fontWeight: 600 }}>SICK LEAVE</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                        <span style={{ fontSize: 24, fontWeight: 800, color: sickLeft > 0 ? '#0ea5e9' : '#dc2626' }}>{Math.max(0, sickLeft)}</span>
+                        <span style={{ fontSize: 11, color: '#aaa' }}>/ {ent.sick} days left</span>
+                      </div>
+                      {sickUsed > 0 && <div style={{ fontSize: 11, color: '#d97706', marginTop: 2 }}>{sickUsed} days used</div>}
+                    </div>
+                  </div>
+                  {!empDate && <div style={{ fontSize: 11, color: '#f59e0b', marginTop: 8 }}>⚠ Employment start date not set. Showing minimum entitlement.</div>}
+                </div>
+              );
+            })()}
             <div className="leave-form-card">
               <div className="form-section-title">Leave Details</div>
               <div className="input-group">
@@ -875,6 +1023,14 @@ const FlexHR = ({ userInfo }) => {
             <div className="input-group"><label style={{ display: 'flex', alignItems: 'center', gap: 6 }}><KeyRound size={13} /> New Password <span style={{ fontSize: 10, color: '#aaa', fontWeight: 400 }}>(blank = keep current)</span></label><input className="form-select" type="password" placeholder="Leave blank to keep unchanged" value={editForm.password} onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))} /></div>
             <div className="input-group"><label>Role</label><div className="select-wrap"><select className="form-select" value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>{ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}</select><ChevronDown size={15} className="select-arrow" /></div></div>
             <div className="input-group"><label>Account Status</label><button onClick={() => setEditForm(f => ({ ...f, is_active: !f.is_active }))} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0', fontSize: 14, color: editForm.is_active ? '#16a34a' : '#dc2626' }}>{editForm.is_active ? <><ToggleRight size={24} color="#16a34a" /> Active</> : <><ToggleLeft size={24} color="#dc2626" /> Inactive</>}</button></div>
+            <div className="input-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Calendar size={13} color="#2b1d62" /> Employment Start Date</label>
+              <input className="form-select" type="date" value={editForm.employment_start_date} onChange={e => setEditForm(f => ({ ...f, employment_start_date: e.target.value }))} />
+              {editForm.employment_start_date && (() => {
+                const ent = getLeaveEntitlement(editForm.employment_start_date);
+                return <span style={{ fontSize: 11, color: '#6c47d9', marginTop: 3, fontWeight: 600 }}>→ {ent.years}yr service: Annual {ent.annual}d · Sick {ent.sick}d</span>;
+              })()}
+            </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
               <button className="submit-btn" style={{ flex: 1, background: '#fef2f2', color: '#dc2626', boxShadow: 'none' }}
                 onClick={() => deleteUser(umEditTarget)} disabled={deleteId === umEditTarget?.email}>

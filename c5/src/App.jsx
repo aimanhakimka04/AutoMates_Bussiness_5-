@@ -191,7 +191,7 @@ const Login = ({ setAuth, setUserInfo }) => {
       const result = await loginViaDB(email, password);
       if (result?.success && result?.user) {
         const u = result.user;
-        info = { name: u.name || u.email, email: u.email, role: u.role || 'staff' };
+        info = { name: u.name || u.email, email: u.email, role: u.role || 'staff', employment_start_date: u.employment_start_date || null };
       } else {
         // n8n returned but credentials were wrong
         setError('Invalid email or password. Please try again.');
@@ -508,6 +508,15 @@ const NotificationPanel = ({ onClose, userInfo }) => {
 const DASH_N8N = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const dashAuthToken = () => localStorage.getItem('authToken') || '';
 
+// EA 1955 entitlement helper
+const getDashLeaveEntitlement = (employmentStartDate) => {
+  if (!employmentStartDate) return { annual: 8, sick: 14, years: 0 };
+  const years = (Date.now() - new Date(employmentStartDate)) / (365.25 * 24 * 60 * 60 * 1000);
+  if (years >= 5) return { annual: 16, sick: 22, years: Math.floor(years) };
+  if (years >= 2) return { annual: 12, sick: 18, years: Math.floor(years) };
+  return { annual: 8, sick: 14, years: Math.floor(years) };
+};
+
 async function callDashN8N(action, subTarget, payload = {}) {
   const res = await fetch(DASH_N8N, {
     method: 'POST',
@@ -564,7 +573,8 @@ const DashboardPage = ({ userInfo }) => {
       // 0 – Leave balance
       if (results[0].status === 'fulfilled') {
         const r = results[0].value;
-        setLeaveBalance(r?.data ?? r?.result?.data ?? null);
+        const d = r?.data ?? r?.result?.data ?? null;
+        setLeaveBalance(d);
       }
 
       // 1 – Tickets
@@ -679,7 +689,6 @@ const DashboardPage = ({ userInfo }) => {
 
   // Build stats array with live data
   const stats = [
-    { label: 'Leave Balance', value: leaveStr, sub: leaveSub, color: '#6c47d9', gradient: 'linear-gradient(135deg,#6c47d9,#a855f7)', icon: <Calendar size={20} color="#fff" /> },
     { label: 'My Training', value: String(trainingCount), sub: 'Upcoming in CHART', color: '#1890ff', gradient: 'linear-gradient(135deg,#1890ff,#38bdf8)', icon: <TrendingUp size={20} color="#fff" /> },
     { label: 'Open Tickets', value: String(openTickets), sub: 'Tickets Pending', color: '#f39c12', gradient: 'linear-gradient(135deg,#f39c12,#fbbf24)', icon: <Ticket size={20} color="#fff" /> },
     { label: 'Upcoming Ride', value: String(upcomingRides), sub: rideSub, color: '#10b981', gradient: 'linear-gradient(135deg,#10b981,#34d399)', icon: <Briefcase size={20} color="#fff" /> },
@@ -734,7 +743,44 @@ const DashboardPage = ({ userInfo }) => {
         <div className="dash-date">{dateStr}</div>
       </div>
 
-      {/* ── 2. Quick Stats (LIVE) ── */}
+      {/* ── 2. Leave Entitlement Banner (EA 1955) ── */}
+      {(() => {
+        const empDate = userInfo?.employment_start_date || leaveBalance?.employment_start_date;
+        const ent = getDashLeaveEntitlement(empDate);
+        const annualUsed = leaveBalance?.annual_leave_used ?? 0;
+        const sickUsed   = leaveBalance?.sick_leave_used   ?? 0;
+        const annualLeft = Math.max(0, ent.annual - annualUsed);
+        const sickLeft   = Math.max(0, ent.sick   - sickUsed);
+        return (
+          <div style={{ background: 'linear-gradient(135deg,#1a0f3c,#2b1d62)', borderRadius: 16, padding: '14px 16px', marginBottom: 16, border: '1px solid #6c47d9' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#a78bfa', letterSpacing: 0.5 }}>LEAVE ENTITLEMENT (EA 1955)</span>
+              <span style={{ fontSize: 11, background: 'rgba(108,71,217,0.4)', color: '#c4b5fd', padding: '2px 8px', borderRadius: 20, fontWeight: 600 }}>{ent.years}yr{ent.years !== 1 ? 's' : ''} service</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#a78bfa', marginBottom: 4, fontWeight: 700 }}>ANNUAL LEAVE</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: annualLeft > 0 ? '#4ade80' : '#f87171' }}>{annualLeft}</span>
+                  <span style={{ fontSize: 11, color: '#888' }}>/ {ent.annual} days left</span>
+                </div>
+                {annualUsed > 0 && <div style={{ fontSize: 11, color: '#fbbf24', marginTop: 2 }}>{annualUsed} days used</div>}
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: '#38bdf8', marginBottom: 4, fontWeight: 700 }}>SICK LEAVE</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: sickLeft > 0 ? '#38bdf8' : '#f87171' }}>{sickLeft}</span>
+                  <span style={{ fontSize: 11, color: '#888' }}>/ {ent.sick} days left</span>
+                </div>
+                {sickUsed > 0 && <div style={{ fontSize: 11, color: '#fbbf24', marginTop: 2 }}>{sickUsed} days used</div>}
+              </div>
+            </div>
+            {!empDate && <div style={{ fontSize: 11, color: '#fbbf24', marginTop: 8 }}>⚠ Set employment start date in HR to see accurate entitlement.</div>}
+          </div>
+        );
+      })()}
+
+      {/* ── 3. Quick Stats ── */}
       <div className="dash-section-title">Overview</div>
       <div className="dash-stats-grid">
         {stats.map((s, i) => (

@@ -79,3 +79,10 @@ LEFT JOIN public.employee_attendance ea
 SELECT 'work_shifts'::text AS table_name, COUNT(*) FROM public.work_shifts
 UNION ALL
 SELECT 'employee_timetable', COUNT(*) FROM public.employee_timetable;
+-- Add employment_start_date column to employees table (EA 1955 leave entitlement)
+-- Run this once on your PostgreSQL database:
+ALTER TABLE public.employees
+  ADD COLUMN IF NOT EXISTS employment_start_date DATE;
+
+-- Verify:
+-- SELECT email, employment_start_date FROM public.employees LIMIT 5;
