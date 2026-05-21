@@ -13,6 +13,34 @@ import './FlexHR.css';
 const N8N_WEBHOOK_URL = 'https://n8n.aimanhakimka.site/webhook/employee-assistant';
 const AUTH_TOKEN = () => localStorage.getItem('authToken') || '';
 
+// ─── Geofence Zones ──────────────────────────────────────────────────────────
+const GEOFENCE_ZONES = [
+  { id: 'mmu_melaka',    label: 'MMU Melaka',    lat: 2.2489,   lng: 102.2769,  radius: 300 }, 
+  { id: 'mmu_cyberjaya', label: 'MMU Cyberjaya', lat: 2.927962, lng: 101.642178, radius: 300 },
+];
+
+// Haversine formula — returns distance in metres between two lat/lng points
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth radius in metres
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Returns { zone, distance } for the nearest zone, or null if no fix
+function checkGeofence(lat, lng) {
+  let nearest = null;
+  let minDist = Infinity;
+  for (const zone of GEOFENCE_ZONES) {
+    const dist = Math.round(haversineDistance(lat, lng, zone.lat, zone.lng));
+    if (dist < minDist) { minDist = dist; nearest = { zone, distance: dist }; }
+  }
+  if (!nearest) return null;
+  return { ...nearest, inside: nearest.distance <= nearest.zone.radius };
+}
+
 // ─── n8n API Helper ───────────────────────────────────────────────────────────
 async function callN8N(action, payload = {}) {
   const body = {
@@ -125,6 +153,23 @@ const FlexHR = ({ userInfo }) => {
   const [attHistory, setAttHistory] = useState([]);
   const [todayShift, setTodayShift] = useState(null);
   const [todayShiftLoaded, setTodayShiftLoaded] = useState(false);
+  // GPS state: null = not fetched, 'acquiring' = in progress, {lat,lng} = ready, 'error' = denied/failed
+  const [gpsStatus, setGpsStatus] = useState(null);
+  const [gpsCoords, setGpsCoords] = useState(null); // { lat, lng, accuracy }
+
+  const fetchGPS = useCallback(() => {
+    if (!navigator.geolocation) { setGpsStatus('error'); return; }
+    setGpsStatus('acquiring');
+    setGpsCoords(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+        setGpsStatus('ready');
+      },
+      () => { setGpsStatus('error'); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, []);
 
   const fetchAtt = useCallback(async () => {
     setAttLoading(true); setAttErr('');
@@ -186,7 +231,37 @@ const FlexHR = ({ userInfo }) => {
   const handlePunch = async () => {
     setIsPunching(true); setPunchErr(''); setPunchOK('');
     try {
-      const p = { user_email: userEmail, user_name: userName };
+      // ── Resolve GPS before punching ─────────────────────────────────────
+      let coords = gpsCoords;
+      if (!coords) {
+        coords = await new Promise((resolve) => {
+          if (!navigator.geolocation) { resolve(null); return; }
+          setGpsStatus('acquiring');
+          navigator.geolocation.getCurrentPosition(
+            (pos) => { const c = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }; setGpsCoords(c); setGpsStatus('ready'); resolve(c); },
+            () => { setGpsStatus('error'); resolve(null); },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        });
+      }
+
+      // ── Geofence check ───────────────────────────────────────────────────
+      if (!coords) throw new Error('Could not get your GPS location. Please enable location access and try again.');
+      const geo = checkGeofence(coords.lat, coords.lng);
+      if (!geo?.inside) {
+        const nearestName = geo?.zone?.label || 'any company campus';
+        const dist = geo?.distance ? ` (${geo.distance}m away)` : '';
+        throw new Error(`You are outside the allowed zone. Nearest campus: ${nearestName}${dist}. Attendance can only be recorded on campus.`);
+      }
+
+      const p = {
+        user_email: userEmail,
+        user_name: userName,
+        latitude: coords.lat,
+        longitude: coords.lng,
+        gps_accuracy: coords.accuracy,
+        location_name: geo.zone.label,
+      };
       if (nextPunchAct === 'punch_out' && lastEnt?.attendance_id) p.attendance_id = lastEnt.attendance_id;
       const r = await callN8N(nextPunchAct, p);
       if (r?.success === false) throw new Error(r?.message || 'Punch failed');
@@ -560,7 +635,7 @@ const FlexHR = ({ userInfo }) => {
 
   // ── side effects ──────────────────────────────────────────────────────────
   useEffect(() => {
-    if (view === 'attendance') { fetchAtt(); fetchTodayShift(); }
+    if (view === 'attendance') { fetchAtt(); fetchTodayShift(); fetchGPS(); }
     if (view === 'applyLeave') fetchBal();
     if (view === 'applications') fetchApps();
     if (view === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
@@ -707,7 +782,62 @@ const FlexHR = ({ userInfo }) => {
                   </div>
                 </button>
               </div>
-              <div className="location-pill"><MapPin size={13} /><span>GPS Location</span></div>
+
+              {/* ── GPS Status Pill ── */}
+              {gpsStatus === 'acquiring' && (
+                <div className="location-pill gps-acquiring">
+                  <Loader2 size={13} style={{ animation: 'fhr-spin 1s linear infinite' }} />
+                  <span>Getting GPS location…</span>
+                </div>
+              )}
+              {gpsStatus === 'ready' && gpsCoords && (() => {
+                const geo = checkGeofence(gpsCoords.lat, gpsCoords.lng);
+                return (
+                  <>
+                    <div
+                      className={`location-pill ${geo?.inside ? 'gps-ready' : 'gps-outside'}`}
+                      onClick={fetchGPS}
+                      title="Tap to refresh"
+                    >
+                      <MapPin size={13} />
+                      <span>
+                        {geo?.inside
+                          ? `✓ ${geo.zone.label}`
+                          : `Outside campus · ${geo?.zone?.label} ${geo?.distance}m`}
+                      </span>
+                      <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 2 }}>±{Math.round(gpsCoords.accuracy)}m</span>
+                      <RefreshCw size={11} style={{ marginLeft: 4, opacity: 0.6 }} />
+                    </div>
+                    {!geo?.inside && (
+                      <div style={{
+                        background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+                        padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'flex-start', margin: '8px 0'
+                      }}>
+                        <AlertCircle size={15} color="#dc2626" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#dc2626' }}>Outside Allowed Zone</div>
+                          <div style={{ fontSize: 12, color: '#991b1b', marginTop: 2 }}>
+                            You must be on campus to record attendance.<br />
+                            Nearest: <strong>{geo?.zone?.label}</strong> ({geo?.distance}m away)
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+              {gpsStatus === 'error' && (
+                <div className="location-pill gps-error" onClick={fetchGPS} title="Tap to retry">
+                  <AlertCircle size={13} />
+                  <span>Location unavailable · Tap to retry</span>
+                </div>
+              )}
+              {(!gpsStatus) && (
+                <div className="location-pill" onClick={fetchGPS} style={{ cursor: 'pointer' }}>
+                  <MapPin size={13} />
+                  <span>Tap to get GPS location</span>
+                </div>
+              )}
               {punchWindowMsg && !isOnDuty && (
                 <div style={{
                   background: isPunchInAllowed ? '#f0fdf4' : '#fffbeb',
