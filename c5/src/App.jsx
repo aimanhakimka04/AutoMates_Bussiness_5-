@@ -1009,8 +1009,6 @@ const Home = () => {
         { label: 'flexHR', icon: 'flexhrlogo.png', path: '/flexhr', accent: '#d35400' },
         { label: 'Staff Claim', icon: 'claim.png', path: '/staff-claim', accent: '#e11d48' },
         { label: 'EPP', icon: 'epp.png', path: '/epp', accent: '#e74c3c' },
-        // HR Request Center is mainly for HR; it will be shown when backend adds employee_role to userInfo.
-        { label: 'Requests', icon: 'ticketing.png', path: '/requests', accent: '#111827' },
       ]
     }
   ];

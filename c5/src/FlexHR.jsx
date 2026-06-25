@@ -5,7 +5,8 @@ import {
   Clock, ChevronRight, CheckCircle, XCircle, Info,
   FileText, Umbrella, ClipboardList, TrendingUp,
   Loader2, RefreshCw, AlertCircle, Send, Ban, ChevronDown, User,
-  Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2, CalendarDays
+  Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2, CalendarDays,
+  Inbox, Check, Hash, CreditCard, Ticket, Users, AlertTriangle, Download, BarChart2
 } from 'lucide-react';
 import './FlexHR.css';
 
@@ -41,7 +42,7 @@ function checkGeofence(lat, lng) {
   return { ...nearest, inside: nearest.distance <= nearest.zone.radius };
 }
 
-// ─── n8n API Helper ───────────────────────────────────────────────────────────
+// ─── n8n API Helper ─────────────────────────────────────────────────────────
 async function callN8N(action, payload = {}) {
   const body = {
     input_type: 'direct_action',
@@ -56,7 +57,12 @@ async function callN8N(action, payload = {}) {
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`n8n error: ${res.status}`);
-  return res.json();
+  // n8n sometimes returns an empty body when there is no data (e.g. no timetable
+  // entries for a given month). Guard against JSON.parse('') crashing.
+  const text = await res.text();
+  if (!text || !text.trim()) return { data: [] };
+  try { return JSON.parse(text); }
+  catch { return { data: [] }; }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -141,7 +147,26 @@ const FlexHR = ({ userInfo }) => {
 
   // ── routing ───────────────────────────────────────────────────────────────
   const [view, setView] = useState('home');
-  const goTo = (v) => setView(v);
+
+  // goTo triggers data fetches directly on click — runs exactly once, unlike
+  // useEffect which React Strict Mode invokes twice in development causing
+  // a double n8n request that wipes the first result via the catch block.
+  const goTo = (v) => {
+    setView(v);
+    if (!userEmail) return;
+    if (v === 'attendance') { fetchAtt(); fetchTodayShift(); fetchGPS(); }
+    if (v === 'applyLeave') { fetchBal(); fetchApps(); }
+    if (v === 'applications') fetchApps();
+    if (v === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
+    if (v === 'timetable') fetchMyTT();
+    if (v === 'manageTT') { setMttLoad(true); fetchAllTT(); }
+    if (v === 'requestCenter') rcLoadData();
+    if (v === 'attendanceReport') {
+      setArData([]); setArErr(''); setArFetched(false);
+      fetchAttReport();
+    }
+  };
+
   const back = () => { if (view === 'home') navigate('/'); else goTo('home'); };
 
   // ── Attendance ────────────────────────────────────────────────────────────
@@ -324,8 +349,14 @@ const FlexHR = ({ userInfo }) => {
     finally { setBalLoad(false); }
   }, [userEmail, userName, userInfo]);
 
+
   const submitLeave = async () => {
     if (!lvForm.fromDate || !lvForm.toDate || !lvForm.reason.trim()) { setLvErr('Please fill all required fields.'); return; }
+    // ── One-pending-leave rule ────────────────────────────────────────────
+    if (hasPendingLeave) {
+      setLvErr('You already have a pending leave request. Please wait for it to be reviewed before submitting a new one.');
+      return;
+    }
     setLvLoad(true); setLvErr('');
     try {
       const r = await callN8N('apply_leave', {
@@ -364,11 +395,24 @@ const FlexHR = ({ userInfo }) => {
     finally { setAppsLoad(false); }
   }, [userEmail, userName]);
 
+  const hasPendingLeave = !appsLoad && apps.some(a => {
+    const s = (a.status_code || a.status || '').toLowerCase();
+    return s === 'pending';
+  });
+
   const cancelApp = async (app) => {
     setCancelId(app.leave_id);
     try {
       await callN8N('cancel_leave', { user_email: userEmail, user_name: userName, leave_id: app.leave_id });
-      await fetchApps(); setSelApp(null);
+      // Optimistically mark as CANCELLED immediately so hasPendingLeave updates right away
+      setApps(prev => prev.map(a =>
+        a.leave_id === app.leave_id
+          ? { ...a, status: 'CANCELLED', status_code: 'CANCELLED' }
+          : a
+      ));
+      setSelApp(null);
+      // Then sync with backend in background
+      fetchApps();
     } catch { setAppsErr('Cancel failed. Please try again.'); }
     finally { setCancelId(null); }
   };
@@ -393,6 +437,67 @@ const FlexHR = ({ userInfo }) => {
       setTimeout(() => { setOtOK(false); goTo('home'); }, 2000);
     } catch (e) { setOtErr(e.message || 'Submission failed.'); }
     finally { setOtLoad(false); }
+  };
+
+  // ── Attendance Report (HR only) ──────────────────────────────────────────
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const firstOfMonth = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`;
+  const [arFrom, setArFrom] = useState(firstOfMonth);
+  const [arTo, setArTo] = useState(todayISO);
+  const [arEmp, setArEmp] = useState('');        // '' = all employees
+  const [arData, setArData] = useState([]);
+  const [arLoad, setArLoad] = useState(false);
+  const [arErr, setArErr] = useState('');
+  const [arFetched, setArFetched] = useState(false);
+
+  const fetchAttReport = useCallback(async () => {
+    if (!arFrom || !arTo) { setArErr('Please select a date range.'); return; }
+    setArLoad(true); setArErr(''); setArFetched(false);
+    try {
+      const payload = { user_email: userEmail, user_name: userName, start_date: arFrom, end_date: arTo };
+      if (arEmp) payload.target_email = arEmp;
+      const r = await callN8N('list_all_attendance', payload);
+      console.log('[fetchAttReport] raw:', r);
+      const d = r?.data ?? r?.result?.data ?? r?.records ?? (Array.isArray(r) ? r : []);
+      console.log('[fetchAttReport] parsed rows:', Array.isArray(d) ? d.length : d);
+      setArData(Array.isArray(d) ? d : []);
+      setArFetched(true);
+    } catch (e) { setArErr(e?.message || 'Could not load attendance report.'); }
+    finally { setArLoad(false); }
+  }, [arFrom, arTo, arEmp, userEmail, userName]);
+
+
+  const exportAttCSV = () => {
+    if (!arData.length) return;
+    const headers = ['Employee', 'Email', 'Date', 'Clock In', 'Clock Out', 'Location', 'Duration (hrs)', 'Status'];
+    const rows = arData.map(r => {
+      const clockIn  = r.clock_in_time  ? new Date(r.clock_in_time)  : null;
+      const clockOut = r.clock_out_time ? new Date(r.clock_out_time) : null;
+      const durationHrs = (clockIn && clockOut)
+        ? ((clockOut - clockIn) / 3600000).toFixed(2)
+        : '';
+      const dateStr = clockIn ? clockIn.toLocaleDateString('en-GB') : (r.work_date ? r.work_date.slice(0,10) : '--');
+      const inStr   = clockIn  ? clockIn.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--';
+      const outStr  = clockOut ? clockOut.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--';
+      return [
+        `"${r.employee_name || r.user_name || '--'}"`,
+        `"${r.employee_email || r.user_email || '--'}"`,
+        dateStr,
+        inStr,
+        outStr,
+        `"${r.location_name || r.clock_in_location || '--'}"`,
+        durationHrs,
+        `"${r.punch_status || r.status || '--'}"`,
+      ];
+    });
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `attendance_report_${arFrom}_to_${arTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   // ── User Management (HR only) ─────────────────────────────────────────────
@@ -457,16 +562,19 @@ const FlexHR = ({ userInfo }) => {
   }, [userEmail]);
 
   const fetchAllTT = useCallback(async () => {
+    console.log('[fetchAllTT] START mttMonth:', mttMonth, 'email:', userEmail);
     setMttLoad(true); setMttErr('');
     const { start, end } = getMonthRange(mttMonth.year, mttMonth.month);
     try {
       const r = await callN8N('get_all_timetable', { user_email: userEmail, month_start: start, month_end: end });
       console.log('[fetchAllTT] raw:', r);
       const d = r?.data || (Array.isArray(r) ? r : []);
-      setMttAllData(Array.isArray(d) ? d : []);
+      const arr = Array.isArray(d) ? d : [];
+      console.log('[fetchAllTT] parsed rows:', arr.length);
+      setMttAllData(arr);
     } catch (e) {
       console.warn('[fetchAllTT] error:', e?.message || e);
-      setMttAllData([]); // still show calendar
+      setMttAllData([]);
     }
     setMttLoad(false);
   }, [mttMonth, userEmail]);
@@ -633,19 +741,130 @@ const FlexHR = ({ userInfo }) => {
     return cells;
   };
 
+  // ── Request Center (HR) state — declared FIRST so useEffects below can reference rcTab ──
+  const [rcTab, setRcTab] = useState('claims');
+  const [rcLoading, setRcLoading] = useState(false);
+  const [rcErr, setRcErr] = useState('');
+  const [rcClaims, setRcClaims] = useState([]);
+  const [rcTickets, setRcTickets] = useState([]);
+  const [rcVisitors, setRcVisitors] = useState([]);
+  const [rcLeaves, setRcLeaves] = useState([]);
+  const [rcActionId, setRcActionId] = useState(null);
+  const [rcDetail, setRcDetail] = useState(null);
+  const [rcRejectModal, setRcRejectModal] = useState(null);
+
+  const rcStatusClass = (s) => {
+    const l = String(s || '').toLowerCase();
+    if (l.includes('approve')) return 'approved';
+    if (l.includes('reject')) return 'rejected';
+    if (l.includes('cancel')) return 'cancelled';
+    return 'pending';
+  };
+
+  const rcLoadData = useCallback(async () => {
+    setRcLoading(true); setRcErr('');
+    try {
+      if (rcTab === 'claims') {
+        const res = await callN8N('list_claims', { sub_target: 'request_center', employee_email: userEmail, employee_name: userName });
+        const arr = res?.data ?? res?.result?.data ?? [];
+        setRcClaims(Array.isArray(arr) ? arr : []);
+      } else if (rcTab === 'tickets') {
+        const res = await callN8N('get_tickets', { sub_target: 'request_center', employee_email: userEmail });
+        let raw = res?.data?.tickets ?? res?.tickets ?? res?.data ?? res?.result?.data ?? null;
+        if (raw == null && res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+          const d = res.data; raw = [...(d.open || []), ...(d.approved || []), ...(d.rejected || [])];
+        }
+        const list = Array.isArray(raw) ? raw : [];
+        setRcTickets(list.filter(t => t && (t.id != null || t.ticket_id != null) && (t.issueCategory != null || t.issueDescription != null || t.level != null)));
+      } else if (rcTab === 'visitors') {
+        const res = await callN8N('list_visitors', { sub_target: 'request_center', user_email: userEmail, user_name: userName });
+        let raw = null;
+        if (res?.data && Array.isArray(res.data)) raw = res.data;
+        else if (res?.result?.data && Array.isArray(res.result.data)) raw = res.result.data;
+        else if (res?.data && typeof res.data === 'object' && !Array.isArray(res.data)) {
+          const d = res.data; raw = [...(d.open || []), ...(d.approved || []), ...(d.rejected || []), ...(d.cancelled || [])];
+        }
+        if (!raw) raw = [];
+        setRcVisitors(raw.filter(v => v && v.appointment_id != null && (v.visitor_name != null || v.official_email != null)));
+      } else {
+        // leaves — fetch ALL employees' leaves for HR review
+        const res = await callN8N('list_all_leaves', { user_email: userEmail, user_name: userName });
+        const arr = res?.data ?? res?.result?.data ?? [];
+        setRcLeaves(Array.isArray(arr) ? arr : []);
+      }
+    } catch { setRcErr('Unable to load requests. Please try again.'); }
+    finally { setRcLoading(false); }
+  }, [rcTab, userEmail, userName]);
+
+  const rcDecide = async (kind, item, decision, reason = '') => {
+    const id = kind === 'claims' ? (item.claim_id ?? item.id)
+      : kind === 'tickets' ? (item.id ?? item.ticket_id)
+      : kind === 'leaves' ? item.leave_id
+      : item.appointment_id;
+    if (!id) return;
+    const key = `${kind}-${id}-${decision}`;
+    setRcActionId(key);
+    try {
+      if (kind === 'claims') {
+        await callN8N(decision === 'approve' ? 'approve_claim' : 'reject_claim', { sub_target: 'request_center', employee_email: userEmail, employee_name: userName, claim_id: id, decision, reason });
+        setRcClaims(p => p.filter(c => (c.claim_id ?? c.id) !== id));
+      } else if (kind === 'tickets') {
+        await callN8N(decision === 'approve' ? 'approve_ticket' : 'reject_ticket', { sub_target: 'request_center', employee_email: userEmail, employee_name: userName, ticket_id: id, decision, reason });
+        setRcTickets(p => p.filter(t => (t.id ?? t.ticket_id) !== id));
+      } else if (kind === 'leaves') {
+        await callN8N(decision === 'approve' ? 'approve_leave' : 'reject_leave', {
+          user_email: userEmail, user_name: userName,
+          leave_id: id, decision, admin_note: reason,
+        });
+        // Optimistically update status in list
+        setRcLeaves(p => p.map(l => l.leave_id === id
+          ? { ...l, status: decision === 'approve' ? 'APPROVED' : 'REJECTED', status_code: decision === 'approve' ? 'APPROVED' : 'REJECTED' }
+          : l
+        ));
+      } else {
+        await callN8N(decision === 'approve' ? 'approve_appointment' : 'reject_appointment', { sub_target: 'request_center', appointment_id: id, decision, reason, user_email: userEmail, user_name: userName });
+        setRcVisitors(p => p.filter(v => v.appointment_id !== id));
+      }
+      setRcDetail(null); setRcRejectModal(null);
+      rcLoadData();
+    } catch (e) { setRcErr(e?.message || 'Action failed.'); }
+    finally { setRcActionId(null); }
+  };
+
+  const rcPendingClaims = rcClaims.filter(c => rcStatusClass(c.status ?? c.status_code) === 'pending').length;
+  const rcPendingTickets = rcTickets.filter(t => rcStatusClass(t.status) === 'pending').length;
+  const rcPendingVisitors = rcVisitors.filter(v => rcStatusClass(v.status) === 'pending').length;
+  const rcPendingLeaves = rcLeaves.filter(l => rcStatusClass(l.status_code || l.status) === 'pending').length;
+
   // ── side effects ──────────────────────────────────────────────────────────
+  // Safety net for deep-link / page-refresh: fire only ONE critical request
+  // so n8n is not throttled by concurrent calls.
   useEffect(() => {
-    if (view === 'attendance') { fetchAtt(); fetchTodayShift(); fetchGPS(); }
-    if (view === 'applyLeave') fetchBal();
-    if (view === 'applications') fetchApps();
-    if (view === 'userAdmin') { setUmSubView('list'); fetchUsers(); }
-    if (view === 'timetable') { fetchMyTT(); }
-    if (view === 'manageTT') { fetchShifts(); fetchAllTT(); fetchUsers(); }
-  }, [view]); // eslint-disable-line
+    if (!userEmail) return;
+    if (view === 'manageTT') { setMttLoad(true); fetchAllTT(); }
+    if (view === 'attendanceReport') { setArData([]); setArErr(''); setArFetched(false); fetchAttReport(); }
+  }, [userEmail]); // eslint-disable-line
+
+  // Auto-fetch when the HR navigates to a different month in manageTT
+  useEffect(() => {
+    if (view === 'manageTT' && userEmail) fetchAllTT();
+  }, [mttMonth]); // eslint-disable-line
+
+  // Lazily load shifts + users only when the relevant sub-tab is opened
+  useEffect(() => {
+    if (view !== 'manageTT' || !userEmail) return;
+    if (mttSubView === 'assign' || mttSubView === 'createShift') { fetchShifts(); fetchUsers(); }
+    if (mttSubView === 'calendar') fetchUsers();
+  }, [mttSubView]); // eslint-disable-line
+
+  // Reload RC data when tab changes
+  useEffect(() => {
+    if (view === 'requestCenter') rcLoadData();
+  }, [rcTab]); // eslint-disable-line
 
   const pendingCount = apps.filter(a => (a.status_code || a.status || '').toLowerCase() === 'pending').length;
   const filteredApps = apps.filter(a => appsTab === 'All' || (a.status_code || a.status || '').toLowerCase() === appsTab.toLowerCase());
-  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications', userAdmin: 'User Management', timetable: 'My Timetable', manageTT: 'Manage Timetable' };
+  const viewTitles = { attendance: 'Attendance', applyLeave: 'Apply Leave', applyOT: 'Overtime', applications: 'My Applications', userAdmin: 'User Management', timetable: 'My Timetable', manageTT: 'Manage Timetable', requestCenter: 'Request Center', attendanceReport: 'Attendance Report' };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -737,16 +956,33 @@ const FlexHR = ({ userInfo }) => {
                 </div>
               ) : <div style={{ flex: 1 }} />}
             </div>
-            {/* HR-only User Management card */}
+            {/* HR-only cards: User Management + Request Center */}
             {isHR && (
-              <div className="card-grid" style={{ marginTop: 0 }}>
-                <div className="action-card" onClick={() => goTo('userAdmin')}
-                  style={{ background: 'linear-gradient(135deg,#1a0f3c,#2b1d62)', border: '2px solid #6c47d9' }}>
-                  <div className="card-icon-wrap" style={{ background: 'rgba(108,71,217,0.22)' }}><Shield size={26} color="#a78bfa" /></div>
-                  <span className="card-text" style={{ color: '#e9d5ff' }}>User Management</span>
+              <>
+                <div className="card-grid" style={{ marginTop: 0 }}>
+                  <div className="action-card" onClick={() => goTo('userAdmin')}
+                    style={{ background: 'linear-gradient(135deg,#1a0f3c,#2b1d62)', border: '2px solid #6c47d9' }}>
+                    <div className="card-icon-wrap" style={{ background: 'rgba(108,71,217,0.22)' }}><Shield size={26} color="#a78bfa" /></div>
+                    <span className="card-text" style={{ color: '#e9d5ff' }}>User Management</span>
+                  </div>
+                  <div className="action-card" onClick={() => goTo('requestCenter')}
+                    style={{ background: 'linear-gradient(135deg,#0f2027,#1c3b2a)', border: '2px solid #10b981' }}>
+                    <div className="card-icon-wrap" style={{ background: 'rgba(16,185,129,0.18)' }}><Inbox size={26} color="#34d399" /></div>
+                    <span className="card-text" style={{ color: '#a7f3d0' }}>Request Center</span>
+                    {(rcPendingClaims + rcPendingTickets + rcPendingVisitors) > 0 && (
+                      <span className="task-badge">{rcPendingClaims + rcPendingTickets + rcPendingVisitors}</span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ flex: 1 }} />
-              </div>
+                <div className="card-grid" style={{ marginTop: 0 }}>
+                  <div className="action-card" onClick={() => goTo('attendanceReport')}
+                    style={{ background: 'linear-gradient(135deg,#0a1628,#1e3a5f)', border: '2px solid #3b82f6' }}>
+                    <div className="card-icon-wrap" style={{ background: 'rgba(59,130,246,0.2)' }}><BarChart2 size={26} color="#60a5fa" /></div>
+                    <span className="card-text" style={{ color: '#bfdbfe' }}>Attendance Report</span>
+                  </div>
+                  <div style={{ flex: 1 }} />
+                </div>
+              </>
             )}
 
           </div>
@@ -904,6 +1140,30 @@ const FlexHR = ({ userInfo }) => {
         {view === 'applyLeave' && (
           <div className="leave-module">
             {lvOK && <div className="success-banner"><CheckCircle size={17} /><span>Leave submitted successfully!</span></div>}
+            {/* ── Pending leave blocker banner ── */}
+            {!appsLoad && hasPendingLeave && (
+              <div style={{
+                background: '#fffbeb', border: '1.5px solid #fbbf24', borderRadius: 12,
+                padding: '13px 16px', marginBottom: 14, display: 'flex', gap: 10, alignItems: 'flex-start'
+              }}>
+                <Clock size={18} color="#d97706" style={{ flexShrink: 0, marginTop: 1 }} />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>Pending Request Active</div>
+                  <div style={{ fontSize: 12, color: '#b45309', lineHeight: 1.5 }}>
+                    You already have a pending leave request awaiting approval. You can submit a new request only after your current one has been reviewed.
+                  </div>
+                  <button
+                    onClick={() => goTo('applications')}
+                    style={{
+                      marginTop: 8, background: '#d97706', color: '#fff', border: 'none',
+                      borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer'
+                    }}
+                  >
+                    View My Applications
+                  </button>
+                </div>
+              </div>
+            )}
             {/* ── Leave Entitlement Banner (EA 1955) ── */}
             {(() => {
               const empDate = employmentStartDate || userInfo?.employment_start_date;
@@ -977,10 +1237,15 @@ const FlexHR = ({ userInfo }) => {
               </div>
               <div className="applied-on-badge"><Clock size={11} /><span>Applied on: {fmt(new Date())}</span></div>
               {lvErr && <ErrBanner msg={lvErr} />}
-              <button className={`submit-btn ${(!lvForm.fromDate || !lvForm.toDate || !lvForm.reason.trim() || lvLoad) ? 'disabled' : ''}`}
-                onClick={submitLeave} disabled={lvLoad}>
+              <button
+                className={`submit-btn ${(!lvForm.fromDate || !lvForm.toDate || !lvForm.reason.trim() || lvLoad || (!appsLoad && hasPendingLeave)) ? 'disabled' : ''}`}
+                onClick={submitLeave}
+                disabled={lvLoad || (!appsLoad && hasPendingLeave)}
+              >
                 {lvLoad ? <><Loader2 size={15} style={{ animation: 'fhr-spin 1s linear infinite', marginRight: 7 }} />Submitting…</>
-                  : <><Send size={15} style={{ marginRight: 7 }} />Submit Application</>}
+                  : (!appsLoad && hasPendingLeave)
+                    ? <><Clock size={15} style={{ marginRight: 7 }} />Pending Request Exists</>
+                    : <><Send size={15} style={{ marginRight: 7 }} />Submit Application</>}
               </button>
             </div>
           </div>
@@ -1433,6 +1698,321 @@ const FlexHR = ({ userInfo }) => {
             </div>
           );
         })()}
+
+        {/* ── ATTENDANCE REPORT (HR only) ───────────────────────────────────── */}
+        {view === 'attendanceReport' && isHR && (() => {
+          // Summary stats computed from fetched data
+          const totalSessions  = arData.length;
+          const onTimeCnt = arData.filter(r => (r.punch_status||'').toLowerCase() === 'on_time').length;
+          const lateCnt   = arData.filter(r => (r.punch_status||'').toLowerCase() === 'late').length;
+          const absentCnt = arData.filter(r => (r.punch_status||'').toLowerCase() === 'absent').length;
+          const STATUS_COLOR = { on_time:'#16a34a', late:'#dc2626', absent:'#3b82f6', scheduled:'#7c3aed', rest_day:'#9ca3af' };
+          const STATUS_BG    = { on_time:'#f0fdf4', late:'#fef2f2', absent:'#eff6ff', scheduled:'#faf5ff', rest_day:'#f9fafb' };
+          const STATUS_LABEL = { on_time:'On Time', late:'Late', absent:'Absent', scheduled:'Scheduled', rest_day:'Rest Day' };
+          return (
+            <div className="review-module">
+              {/* ── Filters ── */}
+              <div className="leave-form-card" style={{ marginBottom: 14 }}>
+                <div className="form-section-title" style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <BarChart2 size={16} color="#2b1d62" /> Attendance Log Export
+                </div>
+                <div style={{ display:'flex', gap:10, marginBottom:10 }}>
+                  <div className="input-group" style={{ flex:1, marginBottom:0 }}>
+                    <label>From *</label>
+                    <input className="form-select" type="date" value={arFrom}
+                      onChange={e => setArFrom(e.target.value)} />
+                  </div>
+                  <div className="input-group" style={{ flex:1, marginBottom:0 }}>
+                    <label>To *</label>
+                    <input className="form-select" type="date" value={arTo}
+                      onChange={e => setArTo(e.target.value)} />
+                  </div>
+                </div>
+                <div className="input-group" style={{ marginBottom:12 }}>
+                  <label>Employee (leave blank for all)</label>
+                  <div className="select-wrap">
+                    <select className="form-select" value={arEmp} onChange={e => setArEmp(e.target.value)}>
+                      <option value="">All Employees</option>
+                      {umUsers.filter(u => u.email && u.email !== 'undefined').map(u => (
+                        <option key={u.user_id || u.email} value={u.email}>
+                          {u.name || u.email}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={15} className="select-arrow" />
+                  </div>
+                </div>
+                {arErr && <ErrBanner msg={arErr} />}
+                <div style={{ display:'flex', gap:10 }}>
+                  <button
+                    className={`submit-btn ${arLoad ? 'disabled' : ''}`}
+                    onClick={fetchAttReport}
+                    disabled={arLoad}
+                    style={{ flex:2 }}
+                  >
+                    {arLoad
+                      ? <><Loader2 size={15} style={{ animation:'fhr-spin 1s linear infinite', marginRight:7 }} />Loading…</>
+                      : <><RefreshCw size={15} style={{ marginRight:7 }} />Generate Report</>}
+                  </button>
+                  {arFetched && arData.length > 0 && (
+                    <button
+                      className="submit-btn"
+                      onClick={exportAttCSV}
+                      style={{ flex:1, background:'linear-gradient(135deg,#10b981,#059669)', boxShadow:'0 4px 14px rgba(16,185,129,0.35)' }}
+                    >
+                      <Download size={15} style={{ marginRight:7 }} />CSV
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* ── Summary Cards ── */}
+              {arFetched && (
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:10, marginBottom:14 }}>
+                  {[
+                    { label:'Total Sessions', value:totalSessions, color:'#2b1d62', bg:'#f5f3ff' },
+                    { label:'On Time',         value:onTimeCnt,    color:'#16a34a', bg:'#f0fdf4' },
+                    { label:'Late',            value:lateCnt,      color:'#dc2626', bg:'#fef2f2' },
+                    { label:'Absent',          value:absentCnt,    color:'#3b82f6', bg:'#eff6ff' },
+                  ].map(({ label, value, color, bg }) => (
+                    <div key={label} style={{ background:bg, borderRadius:12, padding:'12px 14px', border:`1.5px solid ${color}30` }}>
+                      <div style={{ fontSize:11, color:'#888', fontWeight:600, marginBottom:4 }}>{label.toUpperCase()}</div>
+                      <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* ── Records Table / List ── */}
+              {arLoad ? <Spinner /> : arFetched && arData.length === 0
+                ? <Empty icon={<BarChart2 size={26} color="#aaa" />} title="No records found" sub="Try adjusting the date range or employee filter" />
+                : arFetched && (
+                  <div>
+                    <div className="list-header-row" style={{ marginBottom:8 }}>
+                      <h4 style={{ margin:0, fontSize:14, fontWeight:700, color:'#333' }}>
+                        {arData.length} record{arData.length !== 1 ? 's' : ''}
+                        {arEmp ? ` · ${umUsers.find(u => u.email === arEmp)?.name || arEmp}` : ' · All Employees'}
+                      </h4>
+                      <button onClick={exportAttCSV}
+                        style={{ background:'none', border:'none', cursor:'pointer', color:'#10b981', display:'flex', alignItems:'center', gap:4, fontSize:12, fontWeight:700 }}>
+                        <Download size={14} /> Export CSV
+                      </button>
+                    </div>
+                    {arData.map((r, i) => {
+                      const clockIn  = r.clock_in_time  ? new Date(r.clock_in_time)  : null;
+                      const clockOut = r.clock_out_time ? new Date(r.clock_out_time) : null;
+                      const durationHrs = (clockIn && clockOut)
+                        ? ((clockOut - clockIn) / 3600000).toFixed(1)
+                        : null;
+                      const ps  = (r.punch_status || '').toLowerCase();
+                      const col = STATUS_COLOR[ps] || '#888';
+                      const bg  = STATUS_BG[ps]    || '#fafafa';
+                      const lbl = STATUS_LABEL[ps]  || (r.punch_status || '--');
+                      return (
+                        <div key={r.attendance_id || i} style={{
+                          background:'#fff', borderRadius:12, marginBottom:8,
+                          border:'1px solid #eee', overflow:'hidden'
+                        }}>
+                          <div style={{ height:3, background:col }} />
+                          <div style={{ padding:'11px 14px' }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+                              <div>
+                                <div style={{ fontWeight:700, fontSize:13, color:'#2b1d62' }}>
+                                  {r.employee_name || r.user_name || '--'}
+                                </div>
+                                <div style={{ fontSize:11, color:'#aaa' }}>{r.employee_email || r.user_email || ''}</div>
+                              </div>
+                              <span style={{ fontSize:11, fontWeight:700, color:col, background:bg, borderRadius:20, padding:'3px 10px' }}>
+                                {lbl}
+                              </span>
+                            </div>
+                            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+                              <div>
+                                <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>DATE</div>
+                                <div style={{ fontSize:12, fontWeight:600, color:'#333' }}>
+                                  {clockIn ? clockIn.toLocaleDateString('en-GB') : (r.work_date?.slice(0,10) || '--')}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>DURATION</div>
+                                <div style={{ fontSize:12, fontWeight:600, color: durationHrs ? '#2b1d62' : '#aaa' }}>
+                                  {durationHrs ? `${durationHrs} hrs` : '--'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>CLOCK IN</div>
+                                <div style={{ fontSize:12, color:'#333' }}>
+                                  {clockIn ? clockIn.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--'}
+                                </div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>CLOCK OUT</div>
+                                <div style={{ fontSize:12, color:'#333' }}>
+                                  {clockOut ? clockOut.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--'}
+                                </div>
+                              </div>
+                              {(r.location_name || r.clock_in_location) && (
+                                <div style={{ gridColumn:'1 / -1' }}>
+                                  <div style={{ fontSize:10, color:'#aaa', fontWeight:600 }}>LOCATION</div>
+                                  <div style={{ fontSize:12, color:'#555', display:'flex', alignItems:'center', gap:4 }}>
+                                    <MapPin size={11} color="#aaa" />
+                                    {r.location_name || r.clock_in_location}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )
+              }
+            </div>
+          );
+        })()}
+
+        {/* ── REQUEST CENTER (HR only) ──────────────────────────────────────── */}
+        {view === 'requestCenter' && isHR && (() => {
+          const RC_TABS = [
+            { id: 'leaves',   label: 'Leaves',   Icon: Umbrella,   count: rcPendingLeaves },
+            { id: 'claims',   label: 'Claims',   Icon: CreditCard, count: rcPendingClaims },
+            { id: 'tickets',  label: 'Tickets',  Icon: Ticket,     count: rcPendingTickets },
+            { id: 'visitors', label: 'Visitors', Icon: Users,      count: rcPendingVisitors },
+          ];
+          const rcStatusBadge = (s) => {
+            const l = String(s || '').toLowerCase();
+            const color = l.includes('approve') ? '#16a34a' : l.includes('reject') ? '#dc2626' : '#d97706';
+            const bg    = l.includes('approve') ? '#f0fdf4' : l.includes('reject') ? '#fef2f2' : '#fffbeb';
+            return <span style={{ fontSize: 11, fontWeight: 700, color, background: bg, borderRadius: 20, padding: '2px 9px' }}>{s || 'Pending'}</span>;
+          };
+          const rcItems = rcTab === 'claims' ? rcClaims : rcTab === 'tickets' ? rcTickets : rcTab === 'visitors' ? rcVisitors : rcLeaves;
+
+          const renderCard = (kind, item) => {
+            const id = kind === 'claims' ? (item.claim_id ?? item.id) : kind === 'tickets' ? (item.id ?? item.ticket_id) : kind === 'leaves' ? item.leave_id : item.appointment_id;
+            const rawStatus = kind === 'claims' ? (item.status ?? item.status_code) : kind === 'leaves' ? (item.status_code || item.status) : item.status;
+            const st = rcStatusClass(rawStatus);
+            const la = rcActionId === `${kind}-${id}-approve`;
+            const lr = rcActionId === `${kind}-${id}-reject`;
+            return (
+              <div key={`rc-${kind}-${id}`} onClick={() => setRcDetail({ kind, item })}
+                style={{ background: '#fff', borderRadius: 14, marginBottom: 10, border: '1px solid #eee', overflow: 'hidden', cursor: 'pointer' }}>
+                <div style={{ height: 3, background: st === 'approved' ? '#16a34a' : st === 'rejected' ? '#dc2626' : st === 'cancelled' ? '#d97706' : '#6c47d9' }} />
+                <div style={{ padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <span style={{ fontSize: 11, color: '#aaa', display: 'flex', alignItems: 'center', gap: 4 }}><Hash size={11} />{id ?? '—'}</span>
+                    {rcStatusBadge(rawStatus)}
+                  </div>
+                  {kind === 'leaves' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>EMPLOYEE</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#2b1d62' }}>{item.employee_name || item.user_name || '—'}</div>
+                      </div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>LEAVE TYPE</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.leave_type_name || item.leave_type || '—'}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>DURATION</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.total_days ?? '—'} day{item.total_days !== 1 ? 's' : ''}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>FROM</div><div style={{ fontSize: 12, color: '#555' }}>{item.start_date ? fmt(new Date(item.start_date)) : '—'}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>TO</div><div style={{ fontSize: 12, color: '#555' }}>{item.end_date ? fmt(new Date(item.end_date)) : '—'}</div></div>
+                      {item.reason && <div style={{ gridColumn: '1 / -1' }}><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>REASON</div><div style={{ fontSize: 12, color: '#666', fontStyle: 'italic' }}>{item.reason}</div></div>}
+                    </div>
+                  )}
+                  {kind === 'claims' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>TYPE</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.claim_type || item.type || '—'}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>AMOUNT</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.total_amount ?? item.amount ?? '—'}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>BY</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.employee_name || item.name || '—'}</div></div>
+                      <div><div style={{ fontSize: 10, color: '#aaa', fontWeight: 600 }}>DATE</div><div style={{ fontSize: 13, fontWeight: 600, color: '#333' }}>{item.receipt_date || item.date || '—'}</div></div>
+                    </div>
+                  )}
+                  {kind === 'tickets' && (
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>{item.issueCategory ?? item.issueDescription ?? '—'}</div>
+                      <div style={{ fontSize: 11, color: '#888' }}>{item.level ?? item.facility_area ?? '—'} · {item.date ?? item.created_at ?? '—'}</div>
+                    </div>
+                  )}
+                  {kind === 'visitors' && (
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 4 }}>{item.visitor_name ?? '—'}</div>
+                      <div style={{ fontSize: 11, color: '#888' }}>{item.official_email ?? '—'} · Visit: {item.visit_date ?? '—'}</div>
+                    </div>
+                  )}
+                  {st === 'pending' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }} onClick={e => e.stopPropagation()}>
+                      <button onClick={() => rcDecide(kind, item, 'approve')} disabled={la || lr}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 0', borderRadius: 9, background: '#f0fdf4', border: '1.5px solid #bbf7d0', color: '#16a34a', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        {la ? <Loader2 size={13} style={{ animation: 'fhr-spin 1s linear infinite' }} /> : <Check size={13} />} Approve
+                      </button>
+                      <button onClick={() => setRcRejectModal({ kind, item })} disabled={la || lr}
+                        style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 0', borderRadius: 9, background: '#fef2f2', border: '1.5px solid #fecaca', color: '#dc2626', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                        {lr ? <Loader2 size={13} style={{ animation: 'fhr-spin 1s linear infinite' }} /> : <X size={13} />} Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          };
+
+          return (
+            <div style={{ padding: '0 0 24px' }}>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto' }}>
+                {RC_TABS.map(({ id, label, Icon, count }) => (
+                  <button key={id} onClick={() => setRcTab(id)}
+                    style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, padding: '8px 12px', borderRadius: 12, border: '1.5px solid', fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all .2s',
+                      background: rcTab === id ? '#2b1d62' : '#fff',
+                      borderColor: rcTab === id ? '#2b1d62' : '#ddd',
+                      color: rcTab === id ? '#fff' : '#666',
+                    }}>
+                    <Icon size={13} />
+                    {label}
+                    {count > 0 && <span style={{ background: '#dc2626', color: '#fff', borderRadius: 20, fontSize: 10, fontWeight: 700, padding: '1px 6px' }}>{count}</span>}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+                <button onClick={() => rcLoadData()} disabled={rcLoading}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6c47d9', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                  <RefreshCw size={13} style={rcLoading ? { animation: 'fhr-spin 1s linear infinite' } : {}} /> Refresh
+                </button>
+              </div>
+              {rcErr && <ErrBanner msg={rcErr} onRetry={rcLoadData} />}
+              {rcLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '50px 0', gap: 10 }}>
+                  <Loader2 size={28} color="#2b1d62" style={{ animation: 'fhr-spin 1s linear infinite' }} />
+                  <span style={{ fontSize: 13, color: '#aaa' }}>Loading requests…</span>
+                </div>
+              ) : rcItems.length === 0 ? (
+                <Empty icon={<Inbox size={26} color="#ddd" />} title="No requests found" sub="Pull to refresh" />
+              ) : (
+                rcItems.map(item => renderCard(rcTab, item))
+              )}
+              {rcRejectModal && (() => {
+                let reason = '';
+                return (
+                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 999, display: 'flex', alignItems: 'flex-end' }}
+                    onClick={e => { if (e.target === e.currentTarget) setRcRejectModal(null); }}>
+                    <div style={{ background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 36px', width: '100%' }}>
+                      <div style={{ width: 36, height: 4, background: '#e5e7eb', borderRadius: 99, margin: '0 auto 16px' }} />
+                      <div style={{ fontSize: 16, fontWeight: 700, color: '#333', marginBottom: 4 }}>Reject Request</div>
+                      <div style={{ fontSize: 12, color: '#999', marginBottom: 12 }}>Provide an optional reason.</div>
+                      <textarea defaultValue="" onChange={e => { reason = e.target.value; }}
+                        placeholder="e.g. Missing documentation…"
+                        rows={3} style={{ width: '100%', borderRadius: 10, border: '1.5px solid #ddd', padding: '10px 12px', fontSize: 13, fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }} />
+                      <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                        <button onClick={() => setRcRejectModal(null)}
+                          style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: '1.5px solid #ddd', background: '#f9f9f9', fontWeight: 600, fontSize: 14, cursor: 'pointer', color: '#555' }}>Cancel</button>
+                        <button onClick={() => rcDecide(rcRejectModal.kind, rcRejectModal.item, 'reject', reason)}
+                          style={{ flex: 1, padding: '12px 0', borderRadius: 12, border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+                          {rcActionId ? <Loader2 size={14} style={{ animation: 'fhr-spin 1s linear infinite' }} /> : 'Confirm Reject'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── DETAIL MODAL ──────────────────────────────────────────────────── */}
@@ -1484,5 +2064,6 @@ const FlexHR = ({ userInfo }) => {
     </div>
   );
 };
+
 
 export default FlexHR;
