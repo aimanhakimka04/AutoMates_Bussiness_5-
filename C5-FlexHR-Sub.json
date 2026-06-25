@@ -5,13 +5,13 @@
       "parameters": {
         "jsCode": "const input  = $input.first().json;\nconst plan   = input.final_plan || input;\nconst params = plan.parameters  || {};\nconst data   = { ...params, ...plan };\nconst action = (plan.action || '').toLowerCase();\n\nconst clean = (v) => (!v || v === 'undefined' || v === 'null') ? '' : String(v).trim();\n\n// Core fields\nconst user_email   = clean(input.user_email)    || clean(plan.user_email);\nconst user_name    = clean(input.user_name)     || clean(plan.user_name);\nconst leave_type   = data.leave_type    || '';\nconst start_date   = data.start_date    || '';\nconst end_date     = data.end_date      || '';\nconst total_days   = data.total_days    || 0;\nconst reason       = data.reason        || '';\nconst leave_id     = data.leave_id      || null;\nconst attendance_id = data.attendance_id || null;\nconst hours        = data.hours         || 0;\nconst work_date    = data.work_date     || '';\nconst employee_id  = input.employee_id  || null;\n\n// Auth fields\nconst email        = clean(data.email)        || clean(input.user_email);\nconst password     = clean(data.password)     || '';\nconst role         = clean(data.role)         || 'staff';\nconst is_active    = data.is_active !== undefined ? data.is_active : true;\nconst target_email = clean(data.target_email) || '';\nconst new_email    = clean(data.new_email)    || '';\nconst name         = clean(data.name)         || clean(data.user_name) || '';\nconst employment_start_date = clean(data.employment_start_date) || '';\n\n// Timetable fields\nconst month_start        = clean(data.month_start)  || clean(input.month_start) || '';\nconst month_end          = clean(data.month_end)    || clean(input.month_end)   || '';\nconst shift_id           = data.shift_id            || input.shift_id           || null;\nconst shift_name         = clean(data.shift_name)   || '';\nconst start_time         = clean(data.start_time)   || '';\nconst end_time           = clean(data.end_time)     || '';\nconst target_employee_id = data.target_employee_id  || input.target_employee_id || null;\nconst weekdays_only      = data.weekdays_only        || false;\nconst is_off             = data.is_off               || false;\n\nreturn [{\n  json: {\n    action,\n    user_email, user_name,\n    leave_type, start_date, end_date, total_days, reason,\n    leave_id, attendance_id, hours, work_date, employee_id,\n    email, password, role, is_active, target_email, new_email, name, employment_start_date,\n    month_start, month_end, shift_id, shift_name, start_time, end_time,\n    target_employee_id, weekdays_only, is_off,\n  }\n}];\n"
       },
-      "id": "5cc53372-ac91-426f-a015-0915e535384b",
+      "id": "cac696f8-0731-4004-a014-85cadca9f102",
       "name": "Parse Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1136,
-        1216
+        15808,
+        8608
       ]
     },
     {
@@ -454,6 +454,29 @@
               },
               "renameOutput": true,
               "outputKey": "assign_timetable"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_all_attendance",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_all_attendance"
             }
           ]
         },
@@ -462,13 +485,13 @@
           "renameFallbackOutput": "Unknown"
         }
       },
-      "id": "816f088e-ad60-4a48-8d5a-45b4b4f8b731",
+      "id": "a131fd8e-0e7e-4f50-bcb4-8566dcefc643",
       "name": "Route Action",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
       "position": [
-        1376,
-        1216
+        16048,
+        8608
       ]
     },
     {
@@ -477,13 +500,13 @@
         "jsonOutput": "={{ $json }}",
         "options": {}
       },
-      "id": "fd602fe5-fabf-4e59-8fa3-a582c123f1d8",
+      "id": "8eaae511-0d42-40ac-b604-7a3a06428a38",
       "name": "Prep Punch In",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1648,
-        736
+        16320,
+        8128
       ]
     },
     {
@@ -492,13 +515,13 @@
         "query": "SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}'",
         "options": {}
       },
-      "id": "1a8a8374-0462-45ed-a79e-b93d0e1ae892",
+      "id": "5b806538-c988-452d-9ee1-784156737ad0",
       "name": "Find Employee (Punch In)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        736
+        16560,
+        8128
       ],
       "credentials": {
         "postgres": {
@@ -513,13 +536,13 @@
         "query": "INSERT INTO employee_attendance (employee_id, clock_in_time, clock_in_ip) VALUES ('{{ $json.employee_id }}', NOW(), 'app') RETURNING attendance_id, clock_in_time",
         "options": {}
       },
-      "id": "9782ab53-bf37-41a9-8963-9e37509e18a8",
+      "id": "3935f09f-944c-4fc9-9a7b-3f1700ca7b32",
       "name": "Insert Punch In",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        2128,
-        736
+        16800,
+        8128
       ],
       "credentials": {
         "postgres": {
@@ -530,15 +553,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch In failed \u2014 no record returned', data: null } }];\nreturn [{ json: { success: true, message: 'Punched In successfully', data: row } }];"
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch In failed — no record returned', data: null } }];\nreturn [{ json: { success: true, message: 'Punched In successfully', data: row } }];"
       },
-      "id": "b87baf62-d64a-4d68-b46a-67892c627826",
+      "id": "bf902c30-2ca5-40e6-a394-43b070c05f76",
       "name": "Format Punch In",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2368,
-        736
+        17040,
+        8128
       ]
     },
     {
@@ -547,13 +570,13 @@
         "query": "UPDATE employee_attendance SET clock_out_time = NOW(), clock_out_ip = 'app' WHERE attendance_id = '{{ $json.attendance_id }}' AND clock_out_time IS NULL RETURNING attendance_id, clock_in_time, clock_out_time",
         "options": {}
       },
-      "id": "fa380914-f614-46a1-b217-db65d614c7d8",
+      "id": "ac4789ed-c068-4042-8468-81886c8eca10",
       "name": "Update Punch Out",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        896
+        16560,
+        8288
       ],
       "credentials": {
         "postgres": {
@@ -564,15 +587,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch Out failed \u2014 record not found or already clocked out', data: null } }];\nreturn [{ json: { success: true, message: 'Punched Out successfully', data: row } }];"
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.attendance_id) return [{ json: { success: false, message: 'Punch Out failed — record not found or already clocked out', data: null } }];\nreturn [{ json: { success: true, message: 'Punched Out successfully', data: row } }];"
       },
-      "id": "5af27659-2f72-4767-a9fa-949127478eab",
+      "id": "6c8e2c17-ecf8-4e94-9e5a-5bbc2daf2a01",
       "name": "Format Punch Out",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        896
+        16800,
+        8288
       ]
     },
     {
@@ -581,13 +604,13 @@
         "query": "SELECT \n    ea.attendance_id, \n    ea.clock_in_time, \n    ea.clock_in_latitude, \n    ea.clock_in_longitude, \n    ea.clock_out_time, \n    ea.clock_out_latitude, \n    ea.clock_out_longitude \nFROM employee_attendance ea\nJOIN employees e ON e.employee_id = ea.employee_id\nWHERE e.email = '{{ $json.user_email }}'\nORDER BY ea.clock_in_time DESC \nLIMIT 20",
         "options": {}
       },
-      "id": "435c3a73-f1ee-45f9-bc1c-8da0a3c51bb6",
+      "id": "f52b1800-8967-435f-85b3-7239f94d80ee",
       "name": "Query Attendance",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        1056
+        16560,
+        8448
       ],
       "credentials": {
         "postgres": {
@@ -600,13 +623,13 @@
       "parameters": {
         "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.attendance_id);\nreturn [{ json: { success: true, data: rows } }];"
       },
-      "id": "97b58fb6-f2d6-4269-8515-41cfac52079b",
+      "id": "d61ef71e-5ae8-457f-b3ad-559bebec1cce",
       "name": "Format List Attendance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        1056
+        16800,
+        8448
       ]
     },
     {
@@ -615,13 +638,13 @@
         "query": "SELECT \n    lt.leave_type_id, \n    sc.status_id \nFROM employees e\nCROSS JOIN leave_types lt\nCROSS JOIN status_codes sc\nWHERE e.employee_id = '{{ $json.employee_id }}'\nAND UPPER(lt.leave_type_name) ILIKE '%' || UPPER('{{ $json.leave_type }}') || '%'\nAND sc.status_code = 'PENDING'\nLIMIT 1;",
         "options": {}
       },
-      "id": "8694a8d6-0cec-42f9-95a7-a1ded0f986f2",
+      "id": "c3e9c0e8-232e-4a7a-90ef-0d8c86cb52c0",
       "name": "Get Employee + LeaveType IDs",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        1216
+        16560,
+        8608
       ],
       "credentials": {
         "postgres": {
@@ -634,13 +657,13 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_type_id) {\n  const lt = $('Parse Input').first()?.json?.leave_type || 'unknown';\n  return [{ json: { success: false, message: `Leave type not found: ${lt}`, data: null } }];\n}\nconst p = $('Parse Input').first().json;\nreturn [{ json: { employee_id: row.employee_id, leave_type_id: row.leave_type_id, status_id: row.status_id, start_date: p.start_date, end_date: p.end_date, total_days: p.total_days, reason: p.reason } }];"
       },
-      "id": "56bd40c7-ad06-4ab8-997f-77360e2e5349",
+      "id": "9293f6c7-8c4c-4dab-a73c-49eac4269d06",
       "name": "Guard Apply Leave",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        1216
+        16800,
+        8608
       ]
     },
     {
@@ -649,13 +672,13 @@
         "query": "INSERT INTO employee_leaves (employee_id, leave_type_id, start_date, end_date, total_days, reason, status_id, applied_at) VALUES ('{{ $('Execute Workflow Trigger').item.json.employee_id || $('Execute Workflow Trigger').item.json.final_plan.employee_id}}', '{{ $json.leave_type_id }}', '{{ $json.start_date }}'::date, '{{ $json.end_date }}'::date, {{ $json.total_days }}, '{{ $json.reason }}', 1, NOW()) RETURNING leave_id, start_date, end_date, total_days",
         "options": {}
       },
-      "id": "d1beb90b-1a11-4e5e-b2dd-b7b1662df51f",
+      "id": "faee9a0f-bbe3-47ec-a468-f5bf4e543455",
       "name": "Insert Leave",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        2400,
-        1232
+        17072,
+        8624
       ],
       "credentials": {
         "postgres": {
@@ -668,13 +691,13 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_id) return [{ json: { success: false, message: 'Leave insert returned no record', data: null } }];\nreturn [{ json: { success: true, message: `Leave application submitted (ID: ${row.leave_id})`, data: row } }];"
       },
-      "id": "3ba63e42-2220-4c13-9c1c-c43f2a7bcaac",
+      "id": "9956610b-4004-44c1-a45e-d4235153d73b",
       "name": "Format Apply Leave",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2608,
-        1216
+        17280,
+        8608
       ]
     },
     {
@@ -683,13 +706,13 @@
         "query": "UPDATE employee_leaves el SET status_id = sc.status_id FROM status_codes sc, employees e WHERE sc.status_code = 'CANCELLED' AND e.email = '{{ $json.user_email }}' AND el.employee_id = e.employee_id AND el.leave_id = {{ $json.leave_id }} RETURNING el.leave_id",
         "options": {}
       },
-      "id": "f8620159-af71-478f-bb81-9db1f2a58902",
+      "id": "e1a59044-6829-4a20-8995-3fe63b7f7154",
       "name": "Cancel Leave DB",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        1584
+        16560,
+        8976
       ],
       "credentials": {
         "postgres": {
@@ -700,15 +723,15 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_id) return [{ json: { success: false, message: 'Cancel failed \u2014 record not found or already processed', data: null } }];\nreturn [{ json: { success: true, message: 'Leave application cancelled', data: row } }];"
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.leave_id) return [{ json: { success: false, message: 'Cancel failed — record not found or already processed', data: null } }];\nreturn [{ json: { success: true, message: 'Leave application cancelled', data: row } }];"
       },
-      "id": "57b67c18-c132-4859-8322-44cdd8e65a77",
+      "id": "983f0a06-d058-4e12-9a22-28dd39a77f72",
       "name": "Format Cancel Leave",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        1584
+        16800,
+        8976
       ]
     },
     {
@@ -717,13 +740,13 @@
         "query": "SELECT el.leave_id, lt.leave_type_name, el.start_date, el.end_date, el.total_days, el.reason, el.applied_at, sc.status_code, sc.status_description FROM employee_leaves el JOIN employees e ON e.employee_id = el.employee_id JOIN leave_types lt ON lt.leave_type_id = el.leave_type_id JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '{{ $json.user_email }}' ORDER BY el.applied_at DESC LIMIT 50",
         "options": {}
       },
-      "id": "49eac747-782f-4e34-bbb8-4345b7f943a9",
+      "id": "ec820a64-b7df-4caa-a2f6-29803eb90ca8",
       "name": "Query Leaves",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        1744
+        16560,
+        9136
       ],
       "credentials": {
         "postgres": {
@@ -736,13 +759,13 @@
       "parameters": {
         "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_id);\nreturn [{ json: { success: true, data: rows } }];"
       },
-      "id": "a0c002ae-f409-482d-878c-493172f85638",
+      "id": "820d1e3a-f055-44a7-b25d-e700bad0a246",
       "name": "Format List Leaves",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        1744
+        16800,
+        9136
       ]
     },
     {
@@ -751,13 +774,13 @@
         "query": "SELECT lt.leave_type_name, COALESCE(SUM(el.total_days) FILTER (WHERE sc.status_code = 'APPROVED'), 0) AS used, CASE lt.leave_type_name WHEN 'Annual Leave' THEN 14 WHEN 'Sick Leave' THEN 14 WHEN 'Emergency Leave' THEN 3 WHEN 'Personal Leave' THEN 2 WHEN 'Maternity Leave' THEN 60 WHEN 'Paternity Leave' THEN 3 ELSE 0 END AS entitled, e.employment_start_date FROM employees e CROSS JOIN leave_types lt LEFT JOIN employee_leaves el ON el.employee_id = e.employee_id AND el.leave_type_id = lt.leave_type_id AND el.start_date >= DATE_TRUNC('year', NOW()) LEFT JOIN status_codes sc ON sc.status_id = el.status_id WHERE e.email = '={{ $json.user_email }}' GROUP BY lt.leave_type_name, e.employment_start_date",
         "options": {}
       },
-      "id": "5a42d2dc-5cc9-430b-8232-171e26edb996",
+      "id": "83651ed8-37b2-4335-81c3-4780163656dd",
       "name": "Query Balance",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        1904
+        16560,
+        9296
       ],
       "credentials": {
         "postgres": {
@@ -770,13 +793,13 @@
       "parameters": {
         "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.leave_type_name);\nconst empDate = rows[0]?.employment_start_date || null;\nconst bal = { annual_leave_used: 0, sick_leave_used: 0, employment_start_date: empDate };\nrows.forEach(r => {\n  if (r.leave_type_name === 'Annual Leave') bal.annual_leave_used = Number(r.used) || 0;\n  if (r.leave_type_name === 'Sick Leave')   bal.sick_leave_used   = Number(r.used) || 0;\n});\nreturn [{ json: { success: true, data: bal } }];"
       },
-      "id": "ad883228-039b-4ad3-a131-5934dccbe872",
+      "id": "44151b24-25e3-41a4-a82f-48a41abba08d",
       "name": "Format Leave Balance",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        1904
+        16800,
+        9296
       ]
     },
     {
@@ -785,13 +808,13 @@
         "query": "SELECT e.employee_id, sc.status_id FROM employees e CROSS JOIN status_codes sc WHERE e.email = '{{ $json.user_email }}' AND sc.status_code = 'PENDING' LIMIT 1",
         "options": {}
       },
-      "id": "9f27866d-a29e-44ed-a163-b8197e7afd86",
+      "id": "e8d0eb3f-e588-4f30-810c-7000ff40feef",
       "name": "Find Employee (OT)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        2064
+        16560,
+        9456
       ],
       "credentials": {
         "postgres": {
@@ -804,13 +827,13 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nif (!row?.employee_id) {\n  const em = $('Parse Input').first()?.json?.user_email || 'unknown';\n  return [{ json: { success: false, message: `Employee not found for email: ${em}`, data: null } }];\n}\nconst p = $('Parse Input').first().json;\nreturn [{ json: { employee_id: row.employee_id, status_id: row.status_id, work_date: p.work_date, hours: p.hours, reason: p.reason } }];"
       },
-      "id": "1ff67ff3-43da-4630-ad60-1b6fd89bd45d",
+      "id": "5f8aba48-8935-412a-9a29-f3b9124f1d73",
       "name": "Guard OT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        2064
+        16800,
+        9456
       ]
     },
     {
@@ -819,13 +842,13 @@
         "query": "INSERT INTO employee_overtime (employee_id, work_date, hours, reason, status_id, applied_at) VALUES ('{{ $json.employee_id }}', '{{ $json.work_date }}'::date, {{ $json.hours }}, '{{ $json.reason }}', '{{ $json.status_id }}', NOW()) RETURNING overtime_id, work_date, hours",
         "options": {}
       },
-      "id": "36fa9c3e-513a-4271-a34a-d0efcd75b428",
+      "id": "431aa0f5-f743-4007-9d61-2c9d651883c5",
       "name": "Insert Overtime",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        2368,
-        2064
+        17040,
+        9456
       ],
       "credentials": {
         "postgres": {
@@ -836,28 +859,28 @@
     },
     {
       "parameters": {
-        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.overtime_id) return [{ json: { success: false, message: 'Overtime insert returned no record', data: null } }];\nreturn [{ json: { success: true, message: `OT request submitted (ID: ${row.overtime_id}) \u2014 ${row.work_date} ${row.hours}h`, data: row } }];"
+        "jsCode": "const row = $input.first()?.json || {};\nif (!row?.overtime_id) return [{ json: { success: false, message: 'Overtime insert returned no record', data: null } }];\nreturn [{ json: { success: true, message: `OT request submitted (ID: ${row.overtime_id}) — ${row.work_date} ${row.hours}h`, data: row } }];"
       },
-      "id": "c986a769-ced3-41a1-9c95-ce061b665108",
+      "id": "934b7fc3-d311-494e-8c73-035b6361c9ea",
       "name": "Format Overtime",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2608,
-        2064
+        17280,
+        9456
       ]
     },
     {
       "parameters": {
         "jsCode": "const a = $('Parse Input').first()?.json?.action || 'unknown';\nreturn [{ json: { success: false, message: `Unknown FlexHR action: ${a}`, data: null } }];"
       },
-      "id": "c7ffceba-d56d-4877-90a4-f6c407a0b62c",
+      "id": "e6128bb6-c036-437f-ac93-8a2eed79fc88",
       "name": "Unknown Action",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1888,
-        2224
+        16560,
+        9616
       ]
     },
     {
@@ -866,13 +889,13 @@
         "query": "INSERT INTO employees (employee_name, email, employee_type) VALUES ('{{ $json.user_name }}', '{{ $json.user_email }}', 'staff') ON CONFLICT (email) DO UPDATE SET employee_name = CASE WHEN EXCLUDED.employee_name != '' AND EXCLUDED.employee_name IS NOT NULL THEN EXCLUDED.employee_name ELSE employees.employee_name END RETURNING employee_id, employee_name, email, employee_role AS role",
         "options": {}
       },
-      "id": "896f1dd9-7b4f-42a1-8229-fb704cc3daa9",
+      "id": "da8c18fe-2e6b-4f20-87e1-89ee8f72fee5",
       "name": "Upsert User (sync)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        2384
+        16560,
+        9776
       ],
       "credentials": {
         "postgres": {
@@ -885,13 +908,13 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nreturn [{ json: { success: true, message: `User synced (employee_id: ${row.employee_id || 'unknown'})`, data: row } }];"
       },
-      "id": "57475069-2f19-48c2-bd0c-deef042c526a",
+      "id": "7e250f8a-9913-453b-8074-771daeb6144a",
       "name": "Format Sync User",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        2384
+        16800,
+        9776
       ]
     },
     {
@@ -926,13 +949,13 @@
           ]
         }
       },
-      "id": "c59642e1-e171-4ca5-ae68-0b2d21c2462e",
+      "id": "a5b7d306-97cd-4a88-912b-86cd6caebef4",
       "name": "Execute Workflow Trigger",
       "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1.1,
       "position": [
-        848,
-        1200
+        15520,
+        8592
       ],
       "alwaysOutputData": false
     },
@@ -944,13 +967,13 @@
           "dotNotation": false
         }
       },
-      "id": "35e122d2-3ec0-4c66-b2b9-7897af0c41e0",
+      "id": "9a5312a1-ed83-412a-bbc9-fa5def923f09",
       "name": "Respond1",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        3440,
-        1456
+        18112,
+        8848
       ]
     },
     {
@@ -959,13 +982,13 @@
         "query": "SELECT e.employee_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employment_start_date FROM public.employees e WHERE e.email = '{{ $json.email }}' AND e.password_hash IS NOT NULL AND e.password_hash = crypt('{{ $json.password }}', e.password_hash) AND COALESCE(e.is_active, TRUE) = TRUE LIMIT 1",
         "options": {}
       },
-      "id": "auth-login-query-001",
+      "id": "10c86704-b738-451a-b965-10937e7d3e8e",
       "name": "Query Login",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        2544
+        16560,
+        9936
       ],
       "credentials": {
         "postgres": {
@@ -978,13 +1001,13 @@
       "parameters": {
         "jsCode": "const row = $input.first().json;\nif (!row?.email) return [{ json: { success: false, message: 'Invalid email or password.' } }];\nreturn [{ json: { success: true, user: { user_id: row.employee_id, email: row.email, name: row.name || row.email, role: row.role || 'staff', employee_id: row.employee_id, employment_start_date: row.employment_start_date || null } } }];"
       },
-      "id": "auth-login-format-001",
+      "id": "010f7d35-e72b-4f53-83b8-12fda66c332f",
       "name": "Format Login",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        2544
+        16800,
+        9936
       ]
     },
     {
@@ -993,13 +1016,13 @@
         "query": "SELECT e.employee_id AS user_id, e.email, e.employee_role AS role, e.employee_name AS name, COALESCE(e.is_active, TRUE) AS is_active, e.employee_type, e.employment_start_date FROM public.employees e ORDER BY e.employee_id ASC",
         "options": {}
       },
-      "id": "auth-list-users-query-001",
+      "id": "69e958d0-3747-4580-9917-53114afdd1f0",
       "name": "Query List Users",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        2704
+        16560,
+        10096
       ],
       "credentials": {
         "postgres": {
@@ -1012,13 +1035,13 @@
       "parameters": {
         "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && (r.email || r.user_id));\nreturn [{ json: { success: true, data: rows } }];"
       },
-      "id": "auth-list-users-format-001",
+      "id": "8e839ea2-7b7a-42d2-853e-c132bf749166",
       "name": "Format List Users",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        2704
+        16800,
+        10096
       ]
     },
     {
@@ -1027,13 +1050,13 @@
         "query": "INSERT INTO public.employees (employee_name, email, employee_type, employee_role, password_hash, is_active, employment_start_date) VALUES ('{{ $json.name }}', '{{ $json.email }}', '{{ $json.role }}', '{{ $json.role }}', crypt('{{ $json.password }}', gen_salt('bf')), TRUE, NULLIF('{{ $json.employment_start_date }}', '')::date) ON CONFLICT (email) DO NOTHING RETURNING employee_id AS user_id, email, employee_role AS role, employment_start_date",
         "options": {}
       },
-      "id": "auth-create-user-query-001",
+      "id": "0f64e258-62b1-4034-b9bf-67efe9dd3c4f",
       "name": "Insert New User",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        2864
+        16560,
+        10256
       ],
       "credentials": {
         "postgres": {
@@ -1046,13 +1069,13 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nif (!row?.user_id && !row?.employee_id) return [{ json: { success: false, message: 'Email already exists or insert failed.' } }];\nreturn [{ json: { success: true, message: `User created: ${row.email}`, user: row } }];"
       },
-      "id": "auth-create-user-format-001",
+      "id": "06f3f3b5-3a33-470c-a120-c266756c013b",
       "name": "Format Create User",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        2864
+        16800,
+        10256
       ]
     },
     {
@@ -1061,13 +1084,13 @@
         "query": "UPDATE public.employees SET email = '{{ $json.new_email || $json.target_email }}', employee_name = '{{ $json.name }}', employee_role = '{{ $json.role }}', is_active = {{ $json.is_active }}, employment_start_date = NULLIF('{{ $json.employment_start_date }}', '')::date, password_hash = CASE WHEN '{{ $json.password }}' != '' AND '{{ $json.password }}' != 'undefined' THEN crypt('{{ $json.password }}', gen_salt('bf')) ELSE password_hash END WHERE email = '{{ $json.target_email }}' RETURNING employee_id AS user_id, email, employee_role AS role, is_active, employment_start_date",
         "options": {}
       },
-      "id": "auth-update-user-query-001",
+      "id": "fb82fe01-d90a-4020-a710-ed9eb67a5ff1",
       "name": "Update User",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        1888,
-        3024
+        16560,
+        10416
       ],
       "credentials": {
         "postgres": {
@@ -1080,27 +1103,28 @@
       "parameters": {
         "jsCode": "const row = $input.first()?.json || {};\nif (!row?.user_id && !row?.employee_id) return [{ json: { success: false, message: 'User not found or update failed.' } }];\nreturn [{ json: { success: true, message: `User updated: ${row.email}`, user: row } }];"
       },
-      "id": "auth-update-user-format-001",
+      "id": "c9d237db-061c-4a36-a492-33e938843799",
       "name": "Format Update User",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2128,
-        3024
+        16800,
+        10416
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "DELETE FROM public.employees WHERE email = '{{ $json.target_email }}' AND email != 'aimanhakimka@gmail.com' RETURNING employee_id, email, employee_name AS name"
+        "query": "DELETE FROM public.employees WHERE email = '{{ $json.target_email }}' AND email != 'aimanhakimka@gmail.com' RETURNING employee_id, email, employee_name AS name",
+        "options": {}
       },
-      "id": "del-user-pg-001",
+      "id": "8c09def2-f17e-47a0-b4ec-7c32fb961f2a",
       "name": "Delete User",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        2400,
-        480
+        17072,
+        7872
       ],
       "credentials": {
         "postgres": {
@@ -1113,27 +1137,28 @@
       "parameters": {
         "jsCode": "const row=($input.all()||[])[0]?.json||{};\nif(!row?.employee_id&&!row?.email)return[{json:{success:false,message:'User not found or protected account.'}}];\nreturn[{json:{success:true,message:`Account deleted: ${row.email}`,data:row}}];"
       },
-      "id": "fmt-del-user-001",
+      "id": "67170eac-b3ce-4065-88ce-6b2b77bcc9e6",
       "name": "Format Delete User",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2600,
-        480
+        17264,
+        7872
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT shift_id, shift_name, start_time::text, end_time::text, created_at FROM public.work_shifts ORDER BY shift_id ASC"
+        "query": "SELECT shift_id, shift_name, start_time::text, end_time::text, created_at FROM public.work_shifts ORDER BY shift_id ASC",
+        "options": {}
       },
-      "id": "tt-pg-Query List Shifts",
+      "id": "fb8e9665-4803-4871-9912-9eb7dd0a5f22",
       "name": "Query List Shifts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        100
+        17664,
+        7488
       ],
       "credentials": {
         "postgres": {
@@ -1145,15 +1170,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO public.work_shifts (shift_name, start_time, end_time, created_by) VALUES ('{{ $json.shift_name }}', '{{ $json.start_time }}'::time, '{{ $json.end_time }}'::time, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1)) RETURNING shift_id, shift_name, start_time::text, end_time::text"
+        "query": "INSERT INTO public.work_shifts (shift_name, start_time, end_time, created_by) VALUES ('{{ $json.shift_name }}', '{{ $json.start_time }}'::time, '{{ $json.end_time }}'::time, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1)) RETURNING shift_id, shift_name, start_time::text, end_time::text",
+        "options": {}
       },
-      "id": "tt-pg-Query Create Shift",
+      "id": "c3bcf630-7f0a-4e44-a763-1eb3d4593679",
       "name": "Query Create Shift",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        220
+        17664,
+        7616
       ],
       "credentials": {
         "postgres": {
@@ -1165,15 +1191,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT et.timetable_id, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text AS start_time, ws.end_time::text AS end_time, ea.attendance_id, ea.clock_in_time, ea.clock_out_time, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN TRUE ELSE FALSE END AS is_ot, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2) ELSE 0 END AS ot_hours FROM public.employee_timetable et JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC"
+        "query": "SELECT et.timetable_id, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text AS start_time, ws.end_time::text AS end_time, ea.attendance_id, ea.clock_in_time, ea.clock_out_time, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN TRUE ELSE FALSE END AS is_ot, CASE WHEN ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time THEN ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2) ELSE 0 END AS ot_hours FROM public.employee_timetable et JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC",
+        "options": {}
       },
-      "id": "tt-pg-Query My Timetable",
+      "id": "592ad9df-9206-4b46-9fea-4159b7f35515",
       "name": "Query My Timetable",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        340
+        17664,
+        7728
       ],
       "credentials": {
         "postgres": {
@@ -1185,15 +1212,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT et.timetable_id, et.employee_id, e.employee_name, e.email, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text, ws.end_time::text, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status FROM public.employee_timetable et JOIN public.employees e ON e.employee_id = et.employee_id JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC, e.employee_name ASC"
+        "query": "SELECT et.timetable_id, et.employee_id, e.employee_name, e.email, et.work_date::text, et.is_off, ws.shift_id, ws.shift_name, ws.start_time::text, ws.end_time::text, CASE WHEN et.is_off THEN 'rest_day' WHEN ea.attendance_id IS NULL AND et.work_date < CURRENT_DATE THEN 'absent' WHEN ea.attendance_id IS NULL THEN 'scheduled' WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END AS punch_status FROM public.employee_timetable et JOIN public.employees e ON e.employee_id = et.employee_id JOIN public.work_shifts ws ON ws.shift_id = et.shift_id LEFT JOIN public.employee_attendance ea ON ea.employee_id = et.employee_id AND ea.clock_in_time::date = et.work_date WHERE et.work_date >= '{{ $json.month_start }}'::date AND et.work_date <= '{{ $json.month_end }}'::date ORDER BY et.work_date ASC, e.employee_name ASC",
+        "options": {}
       },
-      "id": "tt-pg-Query All Timetable",
+      "id": "01a8c73b-392b-4723-8c8e-08123da91951",
       "name": "Query All Timetable",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        460
+        17664,
+        7856
       ],
       "credentials": {
         "postgres": {
@@ -1205,15 +1233,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO public.employee_timetable (employee_id, shift_id, work_date, is_off, created_by) SELECT {{ $json.target_employee_id }}, {{ $json.shift_id }}, gs::date, {{ $json.is_off || false }}, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) FROM generate_series('{{ $json.start_date }}'::date, '{{ $json.end_date }}'::date, '1 day'::interval) gs WHERE ({{ $json.weekdays_only || false }} = false OR EXTRACT(DOW FROM gs) NOT IN (0, 6)) ON CONFLICT (employee_id, work_date) DO UPDATE SET shift_id = EXCLUDED.shift_id, is_off = EXCLUDED.is_off, created_by = EXCLUDED.created_by RETURNING timetable_id, work_date::text, shift_id, is_off"
+        "query": "INSERT INTO public.employee_timetable (employee_id, shift_id, work_date, is_off, created_by) SELECT {{ $json.target_employee_id }}, {{ $json.shift_id }}, gs::date, {{ $json.is_off || false }}, (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) FROM generate_series('{{ $json.start_date }}'::date, '{{ $json.end_date }}'::date, '1 day'::interval) gs WHERE ({{ $json.weekdays_only || false }} = false OR EXTRACT(DOW FROM gs) NOT IN (0, 6)) ON CONFLICT (employee_id, work_date) DO UPDATE SET shift_id = EXCLUDED.shift_id, is_off = EXCLUDED.is_off, created_by = EXCLUDED.created_by RETURNING timetable_id, work_date::text, shift_id, is_off",
+        "options": {}
       },
-      "id": "tt-pg-Query Assign Timetable",
+      "id": "e6ef9194-d36e-4ca1-a270-176cee70c3e5",
       "name": "Query Assign Timetable",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        580
+        17664,
+        7968
       ],
       "credentials": {
         "postgres": {
@@ -1225,15 +1254,16 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO public.employee_overtime (employee_id, status_id, work_date, hours, reason) SELECT ea.employee_id, (SELECT status_id FROM leave_status WHERE LOWER(status_code) = 'pending' LIMIT 1), CURRENT_DATE, ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2), 'Auto-detected OT (timetable check-out)' FROM public.employee_attendance ea JOIN public.employee_timetable et ON et.employee_id = ea.employee_id AND et.work_date = CURRENT_DATE JOIN public.work_shifts ws ON ws.shift_id = et.shift_id WHERE ea.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND ea.clock_in_time::date = CURRENT_DATE AND ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time ON CONFLICT DO NOTHING RETURNING overtime_id, hours"
+        "query": "INSERT INTO public.employee_overtime (employee_id, status_id, work_date, hours, reason) SELECT ea.employee_id, (SELECT status_id FROM leave_status WHERE LOWER(status_code) = 'pending' LIMIT 1), CURRENT_DATE, ROUND(EXTRACT(EPOCH FROM (ea.clock_out_time::time - ws.end_time)) / 3600.0, 2), 'Auto-detected OT (timetable check-out)' FROM public.employee_attendance ea JOIN public.employee_timetable et ON et.employee_id = ea.employee_id AND et.work_date = CURRENT_DATE JOIN public.work_shifts ws ON ws.shift_id = et.shift_id WHERE ea.employee_id = (SELECT employee_id FROM employees WHERE email = '{{ $json.user_email }}' LIMIT 1) AND ea.clock_in_time::date = CURRENT_DATE AND ea.clock_out_time IS NOT NULL AND ea.clock_out_time::time > ws.end_time ON CONFLICT DO NOTHING RETURNING overtime_id, hours",
+        "options": {}
       },
-      "id": "tt-pg-Query Auto OT",
+      "id": "72de4a66-8ffb-42a5-bf00-5dbe5756d310",
       "name": "Query Auto OT",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.5,
       "position": [
-        3000,
-        700
+        17664,
+        8096
       ],
       "credentials": {
         "postgres": {
@@ -1246,79 +1276,107 @@
       "parameters": {
         "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.shift_id);\nreturn [{json:{success:true,data:rows}}];"
       },
-      "id": "tt-cd-Format List Shifts",
+      "id": "01890617-fe07-43f9-934c-3794e07e7273",
       "name": "Format List Shifts",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        100
+        17872,
+        7488
       ]
     },
     {
       "parameters": {
         "jsCode": "const row=($input.all()||[])[0]?.json||{};\nif(!row?.shift_id)return[{json:{success:false,message:'Create shift failed'}}];\nreturn[{json:{success:true,message:`Shift created: ${row.shift_name}`,data:row}}];"
       },
-      "id": "tt-cd-Format Create Shift",
+      "id": "abdc3841-21b6-406f-b5d8-5c92fba28399",
       "name": "Format Create Shift",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        220
+        17872,
+        7616
       ]
     },
     {
       "parameters": {
         "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
       },
-      "id": "tt-cd-Format My Timetable",
+      "id": "0fb5c53b-569c-4c66-b342-f329453b5729",
       "name": "Format My Timetable",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        340
+        17872,
+        7728
       ]
     },
     {
       "parameters": {
         "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.work_date);\nreturn [{json:{success:true,data:rows}}];"
       },
-      "id": "tt-cd-Format All Timetable",
+      "id": "e1a5abff-890b-4b61-833c-131b5cc4ecaa",
       "name": "Format All Timetable",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        460
+        17872,
+        7856
       ]
     },
     {
       "parameters": {
-        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.timetable_id);\nif(!rows.length)return[{json:{success:false,message:'Assignment failed \u2014 check date range or employee ID'}}];\nreturn[{json:{success:true,message:`Assigned ${rows.length} day(s)`,data:rows}}];"
+        "jsCode": "const rows = ($input.all()||[]).map(i=>i?.json).filter(r=>r&&r.timetable_id);\nif(!rows.length)return[{json:{success:false,message:'Assignment failed — check date range or employee ID'}}];\nreturn[{json:{success:true,message:`Assigned ${rows.length} day(s)`,data:rows}}];"
       },
-      "id": "tt-cd-Format Assign Timetable",
+      "id": "a08649e6-71cb-481d-8be2-57a9e5d07138",
       "name": "Format Assign Timetable",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        580
+        17872,
+        7968
       ]
     },
     {
       "parameters": {
         "jsCode": "const row=($input.all()||[])[0]?.json||{};\nreturn[{json:{success:true,ot_detected:!!row?.overtime_id,ot_hours:row?.hours||0}}];"
       },
-      "id": "tt-cd-Format Auto OT",
+      "id": "f054e098-7fda-4370-b541-f8afd50d66e5",
       "name": "Format Auto OT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3200,
-        700
+        17872,
+        8096
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT e.employee_name, e.email AS employee_email, ea.attendance_id, ea.clock_in_time, ea.clock_in_latitude, ea.clock_in_longitude, ea.clock_out_time, ea.clock_out_latitude, ea.clock_out_longitude, CASE WHEN ws.shift_id IS NOT NULL AND ea.clock_in_time IS NOT NULL THEN CASE WHEN ea.clock_in_time::time <= (ws.start_time + INTERVAL '5 minutes') THEN 'on_time' ELSE 'late' END ELSE NULL END AS punch_status FROM public.employee_attendance ea JOIN public.employees e ON e.employee_id = ea.employee_id LEFT JOIN public.employee_timetable et ON et.employee_id = ea.employee_id AND et.work_date = ea.clock_in_time::date LEFT JOIN public.work_shifts ws ON ws.shift_id = et.shift_id WHERE ea.clock_in_time::date BETWEEN '{{ $json.start_date }}'::date AND '{{ $json.end_date }}'::date AND ('{{ $json.target_email }}' = '' OR e.email = '{{ $json.target_email }}') ORDER BY ea.clock_in_time DESC",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Query All Attendance",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [16560, 9800],
+      "credentials": {
+        "postgres": {
+          "id": "VA1zpzWg0o8f29xC",
+          "name": "Postgres account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json).filter(r => r && r.attendance_id);\nreturn [{ json: { success: true, data: rows } }];"
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "name": "Format All Attendance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [16800, 9800]
     }
   ],
   "pinData": {},
@@ -1471,6 +1529,13 @@
         ],
         [
           {
+            "node": "Query All Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
             "node": "Unknown Action",
             "type": "main",
             "index": 0
@@ -1556,6 +1621,28 @@
       ]
     },
     "Format List Attendance": {
+      "main": [
+        [
+          {
+            "node": "Respond1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query All Attendance": {
+      "main": [
+        [
+          {
+            "node": "Format All Attendance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format All Attendance": {
       "main": [
         [
           {
@@ -1718,11 +1805,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "Unknown Action": {
-      "main": [
-        []
       ]
     },
     "Upsert User (sync)": {
@@ -2004,9 +2086,10 @@
   "active": true,
   "settings": {
     "executionOrder": "v1",
+    "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "75305127-a686-4870-9372-668a4bea6aa5",
+  "versionId": "4110f689-f70c-42a6-8405-ed7865f94f8e",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "9a3c51ff32cff91ad3f1b694b4a637ae9ef7b781a2abe15abb448c8f41253563"

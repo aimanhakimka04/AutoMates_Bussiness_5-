@@ -8,6 +8,9 @@ import {
   Shield, UserPlus, Edit3, KeyRound, ToggleLeft, ToggleRight, Trash2, CalendarDays,
   Inbox, Check, Hash, CreditCard, Ticket, Users, AlertTriangle, Download, BarChart2
 } from 'lucide-react';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 import './FlexHR.css';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -459,7 +462,6 @@ const FlexHR = ({ userInfo }) => {
       const r = await callN8N('list_all_attendance', payload);
       console.log('[fetchAttReport] raw:', r);
       const d = r?.data ?? r?.result?.data ?? r?.records ?? (Array.isArray(r) ? r : []);
-      console.log('[fetchAttReport] parsed rows:', Array.isArray(d) ? d.length : d);
       setArData(Array.isArray(d) ? d : []);
       setArFetched(true);
     } catch (e) { setArErr(e?.message || 'Could not load attendance report.'); }
@@ -467,38 +469,62 @@ const FlexHR = ({ userInfo }) => {
   }, [arFrom, arTo, arEmp, userEmail, userName]);
 
 
-  const exportAttCSV = () => {
+
+
+  // Works on web (blob download) and Android (Share sheet).
+  // On Android: tries writing to cache via Filesystem then shares the file URI.
+  // Falls back to sharing raw CSV text if the Filesystem plugin isn't registered.
+  const exportAttCSV = async () => {
     if (!arData.length) return;
     const headers = ['Employee', 'Email', 'Date', 'Clock In', 'Clock Out', 'Location', 'Duration (hrs)', 'Status'];
     const rows = arData.map(r => {
       const clockIn  = r.clock_in_time  ? new Date(r.clock_in_time)  : null;
       const clockOut = r.clock_out_time ? new Date(r.clock_out_time) : null;
-      const durationHrs = (clockIn && clockOut)
-        ? ((clockOut - clockIn) / 3600000).toFixed(2)
-        : '';
+      const durationHrs = (clockIn && clockOut) ? ((clockOut - clockIn) / 3600000).toFixed(2) : '';
       const dateStr = clockIn ? clockIn.toLocaleDateString('en-GB') : (r.work_date ? r.work_date.slice(0,10) : '--');
       const inStr   = clockIn  ? clockIn.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--';
       const outStr  = clockOut ? clockOut.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : '--';
       return [
         `"${r.employee_name || r.user_name || '--'}"`,
         `"${r.employee_email || r.user_email || '--'}"`,
-        dateStr,
-        inStr,
-        outStr,
+        dateStr, inStr, outStr,
         `"${r.location_name || r.clock_in_location || '--'}"`,
         durationHrs,
         `"${r.punch_status || r.status || '--'}"`,
       ];
     });
-    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = `attendance_report_${arFrom}_to_${arTo}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csv      = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const filename = `attendance_report_${arFrom}_to_${arTo}.csv`;
+
+    if (Capacitor.isNativePlatform()) {
+      // ── Android / iOS ────────────────────────────────────────────────────
+      try {
+        // Try Filesystem first (requires @capacitor/filesystem installed directly)
+        await Filesystem.writeFile({ path: filename, data: csv, directory: Directory.Cache, encoding: Encoding.UTF8 });
+        const { uri } = await Filesystem.getUri({ path: filename, directory: Directory.Cache });
+        await Share.share({ title: 'Attendance Report', url: uri, dialogTitle: 'Save or share CSV' });
+      } catch {
+        // Filesystem not available — share raw CSV text as fallback
+        try {
+          await Share.share({
+            title: 'Attendance Report',
+            text: csv,
+            dialogTitle: 'Save attendance CSV',
+          });
+        } catch (e2) {
+          alert('Export failed: ' + (e2?.message || e2));
+        }
+      }
+    } else {
+      // ── Web browser ──────────────────────────────────────────────────────
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    }
   };
+
 
   // ── User Management (HR only) ─────────────────────────────────────────────
   const [umUsers, setUmUsers] = useState([]);
